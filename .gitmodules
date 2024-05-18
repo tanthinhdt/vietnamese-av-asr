@@ -1,3 +1,6 @@
-[submodule "src/models/av_hubert"]
-	path = src/models/av_hubert
+[submodule "src/modules/fairseq"]
+	path = src/modules/fairseq
+	url = https://github.com/pytorch/fairseq
+[submodule "src/modules/av_hubert"]
+	path = src/modules/av_hubert
 	url = https://github.com/tanthinhdt/av_hubert.git
