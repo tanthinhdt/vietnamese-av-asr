@@ -1,0 +1,3 @@
+[submodule "src/models/av_hubert"]
+	path = src/models/av_hubert
+	url = https://github.com/tanthinhdt/av_hubert.git
