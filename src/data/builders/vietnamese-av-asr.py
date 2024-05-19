@@ -15,8 +15,8 @@ _DESCRIPTION = """
 
 """
 _HOMEPAGE = "https://github.com/tanthinhdt/vietnamese-av-asr"
-_META_REPO_PATH = "datasets/phdkhanh2507/vietnamese-speaker-lip-clip"
-_AUDIO_REPO_PATH = "datasets/phdkhanh2507/transcribed-vietnamese-audio"
+_META_REPO_PATH = "datasets/GSU24AI03-SU24AI21/vietnamese-speaker-lip-clip"
+_AUDIO_REPO_PATH = "datasets/GSU24AI03-SU24AI21/transcribed-vietnamese-audio"
 _REPO_URL = "https://huggingface.co/{}/resolve/main"
 _URLS = {
     "meta": f"{_REPO_URL}/metadata/".format(_META_REPO_PATH) + "{channel}.parquet",

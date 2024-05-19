@@ -73,8 +73,8 @@ class TranscribingTaskConfig(TaskConfig):
     This config is used to transcribe audio.
     """
     task: str = "transcribe"
-    src_repo_id: str = "phdkhanh2507/vietnamese-detected-clip"
-    dest_repo_id: str = "phdkhanh2507/transcribed-vietnamese-audio"
+    src_repo_id: str = "GSU24AI03-SU24AI21/vietnamese-detected-clip"
+    dest_repo_id: str = "GSU24AI03-SU24AI21/transcribed-vietnamese-audio"
     schemas: list = field(default_factory=lambda: ["transcript", "audio"])
     remove_columns_loading: list = field(default_factory=lambda: ["visual"])
     remove_columns_mapping: list = field(default_factory=lambda: ["audio"])
@@ -98,8 +98,8 @@ class CroppingTaskConfig(TaskConfig):
     This config is used to crop mouth region in video.
     """
     task: str = "crop"
-    src_repo_id: str = "phdkhanh2507/transcribed-vietnamese-audio"
-    dest_repo_id: str = "phdkhanh2507/vietnamese-speaker-lip-clip"
+    src_repo_id: str = "GSU24AI03-SU24AI21/transcribed-vietnamese-audio"
+    dest_repo_id: str = "GSU24AI03-SU24AI21/vietnamese-speaker-lip-clip"
     schemas: list = field(default_factory=lambda: ["visual"])
     remove_columns_loading: list = field(default_factory=lambda: ["transcript", "audio"])
     remove_columns_mapping: list = field(default_factory=lambda: ["visual"])

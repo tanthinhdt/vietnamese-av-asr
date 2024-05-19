@@ -15,7 +15,7 @@ _DESCRIPTION = """
     This dataset extracts the mouth region from short clips of Vietnamese speakers.
 """
 _HOMEPAGE = "https://github.com/tanthinhdt/vietnamese-av-asr"
-_MAIN_REPO_PATH = "datasets/phdkhanh2507/vietnamese-speaker-lip-clip"
+_MAIN_REPO_PATH = "datasets/GSU24AI03-SU24AI21/vietnamese-speaker-lip-clip"
 _REPO_URL = "https://huggingface.co/{}/resolve/main"
 _URLS = {
     "meta": f"{_REPO_URL}/metadata/".format(_MAIN_REPO_PATH) + "{channel}.parquet",

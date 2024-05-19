@@ -14,9 +14,9 @@ _CITATION = """
 _DESCRIPTION = """
     This dataset contains transcripts from audio of Vietnamese speakers.
 """
-_HOMEPAGE = "https://github.com/duytran1332002/vlr"
-_MAIN_REPO_PATH = "datasets/phdkhanh2507/transcribed-vietnamese-audio"
-_VISUAL_REPO_PATH = "datasets/phdkhanh2507/vietnamese-detected-clip"
+_HOMEPAGE = "https://github.com/tanthinhdt/vietnamese-av-asr"
+_MAIN_REPO_PATH = "datasets/GSU24AI03-SU24AI21/transcribed-vietnamese-audio"
+_VISUAL_REPO_PATH = "datasets/GSU24AI03-SU24AI21/vietnamese-detected-clip"
 _REPO_URL = "https://huggingface.co/{}/resolve/main"
 _URLS = {
     "meta": f"{_REPO_URL}/metadata/".format(_MAIN_REPO_PATH) + "{channel}.parquet",
