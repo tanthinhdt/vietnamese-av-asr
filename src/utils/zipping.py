@@ -33,10 +33,11 @@ def extract_zip(
 
 
 def zip_dir(
-    path: str,
-    zip_path: str,
+    dir_path: str,
+    output_dir: str,
     logger: Logger,
     overwrite: bool = False,
+    delete_after_zip: bool = False,
 ) -> None:
     """
     Zip a directory.
@@ -52,8 +53,12 @@ def zip_dir(
     overwrite : bool, optional
         Overwrite the existing zip file, by default False
     """
-    if not os.path.exists(zip_path) or overwrite:
-        shutil.make_archive(zip_path, "zip", path)
-        logger.info(f"Zipped {path} to {zip_path}")
+    output_path = os.path.join(output_dir, os.path.basename(dir_path) + ".zip")
+    if not os.path.exists(output_path) or overwrite:
+        shutil.make_archive(output_path[:-4], "zip", dir_path)
+        logger.info(f"Zipped {dir_path} to {output_path}")
     else:
-        logger.warning(f"{zip_path} already exists, skipping zipping")
+        logger.warning(f"{output_path} already exists, skipping zipping")
+    if delete_after_zip:
+        shutil.rmtree(dir_path)
+        logger.info(f"Deleted {dir_path}")
