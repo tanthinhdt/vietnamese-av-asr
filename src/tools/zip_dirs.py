@@ -54,7 +54,7 @@ def main(args: argparse.Namespace, logger: Logger) -> None:
             overwrite=args.overwrite,
             delete_after_zip=args.delete_after_zip,
         )
-    logger.info("Finished zipping directories")
+    logger.info("Zipping directories completed")
 
 
 if __name__ == "__main__":

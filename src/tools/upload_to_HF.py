@@ -88,6 +88,7 @@ def main(args: argparse.Namespace, logger: Logger) -> None:
         )
     else:
         logger.warning(f"{dest_path} already exists in {args.repo_id} repository")
+    logger.info("Uploading files completed")
 
 
 if __name__ == "__main__":

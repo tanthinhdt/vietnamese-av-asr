@@ -70,6 +70,7 @@ def main(args: argparse.Namespace, logger: Logger) -> None:
         },
         num_proc=args.num_proc,
     )
+    logger.info("Extraction completed")
 
 
 if __name__ == "__main__":
