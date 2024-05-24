@@ -76,6 +76,7 @@ def main(args: argparse.Namespace, logger: Logger) -> None:
             zip_dir(
                 dir_path=path,
                 output_dir=os.path.dirname(path),
+                logger=logger,
             )
             src_path = path + ".zip"
         else:
