@@ -55,7 +55,12 @@ def zip_dir(
     """
     output_path = os.path.join(output_dir, os.path.basename(dir_path) + ".zip")
     if not os.path.exists(output_path) or overwrite:
-        shutil.make_archive(output_path[:-4], "zip", dir_path)
+        shutil.make_archive(
+            base_name=output_path[:-4],
+            format="zip",
+            root_dir=os.path.dirname(dir_path),
+            base_dir=os.path.basename(dir_path),
+        )
         logger.info(f"Zipped {dir_path} to {output_path}")
     else:
         logger.warning(f"{output_path} already exists, skipping zipping")
