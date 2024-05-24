@@ -44,12 +44,17 @@ def get_logger(name: str, log_path: str = None) -> logging.Logger:
     logging.Logger
         Logger
     """
-    logger = logging.get_logger(name)
+    logger = logging.getLogger(name)
     logger.setLevel(logging.INFO)
-    logger.addFormatter(
-        logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-    )
-    logger.addHandler(logging.StreamHandler())
+    formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+
+    stream_handler = logging.StreamHandler()
+    stream_handler.setFormatter(formatter)
+    logger.addHandler(stream_handler)
+
     if log_path is not None:
-        logger.addHandler(logging.FileHandler(log_path))
+        file_handler = logging.FileHandler(log_path)
+        file_handler.setFormatter(formatter)
+        logger.addHandler(file_handler)
+
     return logger
