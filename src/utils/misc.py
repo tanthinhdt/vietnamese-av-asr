@@ -6,7 +6,7 @@ def check_compatibility_with_bf16(
     compute_dtype: torch.dtype,
     use_4bit: bool,
 ) -> bool:
-    '''
+    """
     Check if the GPU supports bfloat16.
 
     Parameters
@@ -20,7 +20,7 @@ def check_compatibility_with_bf16(
     -------
     bool
         True if the GPU supports bfloat16
-    '''
+    """
     if compute_dtype == torch.float16 and use_4bit:
         major, _ = torch.cuda.get_device_capability()
         if major >= 8:
@@ -29,7 +29,7 @@ def check_compatibility_with_bf16(
 
 
 def get_logger(name: str, log_path: str = None) -> logging.Logger:
-    '''
+    """
     Get a logger.
 
     Parameters
@@ -43,11 +43,11 @@ def get_logger(name: str, log_path: str = None) -> logging.Logger:
     -------
     logging.Logger
         Logger
-    '''
+    """
     logger = logging.get_logger(name)
     logger.setLevel(logging.INFO)
     logger.addFormatter(
-        logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
     )
     logger.addHandler(logging.StreamHandler())
     if log_path is not None:

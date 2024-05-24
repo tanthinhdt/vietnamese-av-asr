@@ -10,7 +10,7 @@ def extract_zip(
     logger: Logger,
     delete_after_extract: bool = False,
 ) -> None:
-    '''
+    """
     Extract a zip file.
 
     Parameters
@@ -23,13 +23,13 @@ def extract_zip(
         Logger
     delete_after_extract : bool, optional
         Delete the zip file after extracting, by default False
-    '''
-    with zipfile.ZipFile(zip_path['file'], 'r') as z:
+    """
+    with zipfile.ZipFile(zip_path["file"], "r") as z:
         z.extractall(output_dir)
-        logger.info(f'Extracted {zip_path} to {output_dir}')
+        logger.info(f"Extracted {zip_path} to {output_dir}")
     if delete_after_extract:
-        os.remove(zip_path['file'])
-        logger.info(f'Deleted {zip_path}')
+        os.remove(zip_path["file"])
+        logger.info(f"Deleted {zip_path}")
 
 
 def zip_dir(
@@ -38,7 +38,7 @@ def zip_dir(
     logger: Logger,
     overwrite: bool = False,
 ) -> None:
-    '''
+    """
     Zip a directory.
 
     Parameters
@@ -51,9 +51,9 @@ def zip_dir(
         Logger
     overwrite : bool, optional
         Overwrite the existing zip file, by default False
-    '''
+    """
     if not os.path.exists(zip_path) or overwrite:
-        shutil.make_archive(zip_path, 'zip', path)
-        logger.info(f'Zipped {path} to {zip_path}')
+        shutil.make_archive(zip_path, "zip", path)
+        logger.info(f"Zipped {path} to {zip_path}")
     else:
-        logger.warning(f'{zip_path} already exists, skipping zipping')
+        logger.warning(f"{zip_path} already exists, skipping zipping")
