@@ -1,8 +1,12 @@
 import os
+import sys
+
+sys.path.append(os.getcwd())
+
 import argparse
 from glob import glob
 from logging import Logger
-from utils import get_default_arg_parser, get_logger, zip_dir
+from src.utils import get_default_arg_parser, get_logger, zip_dir
 
 
 def get_args() -> argparse.Namespace:
