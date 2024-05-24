@@ -4,6 +4,7 @@ import sys
 sys.path.append(os.getcwd())
 
 import argparse
+from glob import glob
 from logging import Logger
 from src.utils import (
     get_logger,
@@ -67,27 +68,43 @@ def get_args() -> argparse.Namespace:
 
 def main(args: argparse.Namespace, logger: Logger) -> None:
     logger.info("Uploading files to HuggingFace Hub")
-    if os.path.isdir(args.path) and args.zip:
-        zip_dir(args.path, args.path)
-        src_path = args.path + ".zip"
-    else:
-        src_path = args.path
-    dest_path = os.path.join(args.dir_in_repo, os.path.basename(src_path))
 
-    if args.overwrite or not exist_in_hf(
-        repo_id=args.repo_id,
-        path_in_repo=dest_path,
-        repo_type=args.repo_type,
-    ):
-        upload_to_hf(
-            src_path=src_path,
-            dest_path=dest_path,
+    paths = glob(args.path)
+    for i, path in enumerate(paths):
+        logger.info(f"[{i + 1}/{len(paths)}] Uploading {path}")
+        if os.path.isdir(path) and args.zip:
+            zip_dir(
+                dir_path=path,
+                output_dir=os.path.dirname(path),
+            )
+            src_path = path + ".zip"
+        else:
+            src_path = path
+        dest_path = os.path.join(args.dir_in_repo, os.path.basename(src_path))
+
+        if args.overwrite or not exist_in_hf(
             repo_id=args.repo_id,
+            path_in_repo=dest_path,
             repo_type=args.repo_type,
-            logger=logger,
-        )
-    else:
-        logger.warning(f"{dest_path} already exists in {args.repo_id} repository")
+        ):
+            upload_to_hf(
+                src_path=src_path,
+                dest_path=dest_path,
+                repo_id=args.repo_id,
+                repo_type=args.repo_type,
+                logger=logger,
+            )
+        else:
+            logger.warning(f"{dest_path} already exists in {args.repo_id} repository")
+
+        if args.zip and args.delete_zip_after_upload:
+            os.remove(src_path)
+            logger.info(f"Deleted {src_path}")
+            src_path = path
+        if args.delete_after_upload:
+            os.remove(src_path)
+            logger.info(f"Deleted {src_path}")
+
     logger.info("Uploading files completed")
 
 
