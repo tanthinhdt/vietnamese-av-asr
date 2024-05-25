@@ -37,55 +37,35 @@ class Transcriber(Processor):
 
     def process(
         self, sample: dict,
-        transcript_output_dir: str,
-        audio_output_dir: str,
-        output_sampling_rate: int = 10000,
         beam_width: int = 500,
     ) -> dict:
         """
         Transcribe for a sample.
         :param sample:                  Audio sample.
-        :param transcript_output_dir:   Path to directory containing transcript.
-        :param audio_output_dir:        Path to directory containing denoised audio array.
-        :param output_sampling_rate:    Sampling rate of audio array.
         :param beam_width:              Beam width.
         :return:                        Sample with path to transcript and audio array.
         """
-        transcript_output_path = os.path.join(transcript_output_dir, sample["id"][0] + ".txt")
-        audio_output_path = os.path.join(audio_output_dir, sample["id"][0] + ".wav")
-        if not os.path.exists(transcript_output_path):
-            try:
-                audio_array, sampling_rate = torchaudio.load(sample["audio"][0])
-                transcript_sampling_rate = 16000
+        try:
+            audio_array, sampling_rate = torchaudio.load(sample["audio"][0])
 
-                # Resample
-                resampler = torchaudio.transforms.Resample(sampling_rate, transcript_sampling_rate)
-                resampled_audio_array = resampler(audio_array)
-                transcript = self.transcribe(
-                    audio_array=resampled_audio_array,
-                    sampling_rate=transcript_sampling_rate,
-                    beam_width=beam_width,
-                )
+            transcript = self.transcribe(
+                audio_array=audio_array,
+                sampling_rate=sampling_rate,
+                beam_width=beam_width,
+            )
 
-                resampler = torchaudio.transforms.Resample(transcript_sampling_rate, output_sampling_rate)
-                output_audio_array = resampler(resampled_audio_array)
-
-                torchaudio.save(
-                    audio_output_path,
-                    output_audio_array,
-                    output_sampling_rate,
-                )
-
-                if not self.check_output(transcript=transcript):
-                    raise Exception("Transcript is invalid.")
-
-                with open(transcript_output_path, "w", encoding="utf-8") as f:
-                    print(transcript.strip(), file=f)
-            except Exception:
-                sample["id"][0] = None
-
-        sample["sampling_rate"][0] = output_sampling_rate
-        return sample
+            if not self.check_output(transcript=transcript):
+                raise Exception("Transcript is invalid.")
+        except Exception:
+            sample["id"][0] = None
+            transcript = None
+        return {
+            "id": sample["id"],
+            "chunk_id": sample["chunk_id"],
+            "video_fps": sample["video_fps"],
+            "audio_fps": sample["audio_fps"],
+            "transcript": [transcript.strip() if transcript else None],
+        }
 
     def check_output(self, transcript: str) -> str:
         """

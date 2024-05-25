@@ -4,8 +4,8 @@ sys.path.append(os.getcwd())
 
 import argparse
 from tqdm import tqdm
-from processors.executor import Executor
-from utils import TaskConfig, TranscribingTaskConfig, CroppingTaskConfig
+from src.data.processors.executor import Executor
+from src.data.utils import TaskConfig, TranscribingTaskConfig, CroppingTaskConfig, DenoisingTaskConfig
 
 
 def parse_args() -> argparse.Namespace:
@@ -67,7 +67,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--cache-dir",
         type=str,
-        default=os.path.join(os.getcwd(), ".cache"),
+        default=os.path.join(os.getcwd(), "data/.cache"),
         help="Cache directory.",
     )
     return parser.parse_args()
@@ -80,13 +80,17 @@ def get_task_configs(args: argparse.Namespace) -> TaskConfig:
     :return:        Task config.
     """
     task_dict = {
+        "denoise": {
+            "config": DenoisingTaskConfig,
+            "dir": "denoised-vietnamese-audio",
+        },
         "transcribe": {
             "config": TranscribingTaskConfig,
             "dir": "transcribed-vietnamese-audio",
         },
         "crop": {
             "config": CroppingTaskConfig,
-            "dir": "vietnamese-speaker-lip-clip",
+            "dir": "vietnamese-speaker-lip-clip-v1",
         },
     }
     task_configs = task_dict[args.task]["config"](
@@ -117,6 +121,7 @@ def main(configs: TaskConfig) -> None:
         unit="channel"
     )
     for channel in progress_bar:
+        print()
         print("-" * 20 + f" Processing {channel} " + "-" * 20)
 
         if executor.is_skipped(channel):

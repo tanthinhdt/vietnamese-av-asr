@@ -20,7 +20,7 @@ class Cropper(Processor):
     def process(
         self, sample: dict,
         visual_output_dir: str,
-        padding: int = 20,
+        padding: int = 96,
     ) -> dict:
         """
         Crop mouth region in video.
@@ -82,21 +82,35 @@ class Cropper(Processor):
         :param padding:     Padding.
         :return:            Mouth region.
         """
+        # face_landmarks = self.landmark_detector.process(frame).multi_face_landmarks
+
+        # if face_landmarks:
+        #     mouth_landmarks = np.array(face_landmarks[0].landmark)[self.mouth_landmark_idxes]
+        #     max_x, max_y = 0, 0
+        #     min_x, min_y = frame.shape[1], frame.shape[0]
+        #     for landmark in mouth_landmarks:
+        #         x = int(landmark.x * frame.shape[1])
+        #         y = int(landmark.y * frame.shape[0])
+        #         max_x, max_y = max(max_x, x), max(max_y, y)
+        #         min_x, min_y = min(min_x, x), min(min_y, y)
+        #     max_x += padding
+        #     max_y += padding
+        #     min_x -= padding
+        #     min_y -= padding
+        #     return frame[min_y:max_y, min_x:max_x]
+        
         face_landmarks = self.landmark_detector.process(frame).multi_face_landmarks
 
         if face_landmarks:
-            mouth_landmarks = np.array(face_landmarks[0].landmark)[self.mouth_landmark_idxes]
-            max_x, max_y = 0, 0
-            min_x, min_y = frame.shape[1], frame.shape[0]
-            for landmark in mouth_landmarks:
-                x = int(landmark.x * frame.shape[1])
-                y = int(landmark.y * frame.shape[0])
-                max_x, max_y = max(max_x, x), max(max_y, y)
-                min_x, min_y = min(min_x, x), min(min_y, y)
-            max_x += padding
-            max_y += padding
-            min_x -= padding
-            min_y -= padding
+            mouth_landmarks = np.array([
+                [landmark.x, landmark.y] for landmark in face_landmarks[0].landmark
+            ])[self.mouth_landmark_idxes, :]
+            center_x = np.mean(mouth_landmarks[:, 0]) * frame.shape[1]
+            min_x = int(center_x - padding / 2)
+            max_x = int(center_x + padding / 2)
+            center_y = np.mean(mouth_landmarks[:, 1]) * frame.shape[0]
+            min_y = int(center_y - padding / 2)
+            max_y = int(center_y + padding / 2)
             return frame[min_y:max_y, min_x:max_x]
         return None
 

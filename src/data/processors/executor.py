@@ -1,13 +1,14 @@
 import os
 import shutil
 from .processor import Processor
+from .denoiser import Denoiser
 from .transcriber import Transcriber
 from .cropper import Cropper
 from .uploader import Uploader
 from datasets import (Dataset, disable_progress_bar, enable_progress_bar,
                       get_dataset_config_names, load_dataset)
 from huggingface_hub import HfFileSystem
-from utils import TaskConfig, check_num_samples_in_dir, prepare_dir
+from src.data.utils import TaskConfig, check_num_samples_in_dir, prepare_dir
 
 
 class Executor(Processor):
@@ -15,6 +16,7 @@ class Executor(Processor):
     This processor is used to execute other processors.
     """
     PROCESSORS = {
+        "denoise": Denoiser,
         "transcribe": Transcriber,
         "crop": Cropper,
     }
@@ -149,6 +151,7 @@ class Executor(Processor):
 
         metadata_path = os.path.join(self.metadata_dir, channel + ".parquet")
         disable_progress_bar()
+        # self.dataset = self.dataset.select_columns(["id", "chunk_id", "video_fps", "audio_fps"])
         self.dataset.to_parquet(metadata_path)
         enable_progress_bar()
 

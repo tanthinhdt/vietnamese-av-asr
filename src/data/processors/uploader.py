@@ -1,6 +1,6 @@
 import os
 from huggingface_hub import HfApi, HfFolder, HfFileSystem
-from phdkhanh2507.testVLR.utils import zip_dir
+from src.data.utils import zip_dir
 from .processor import Processor
 
 

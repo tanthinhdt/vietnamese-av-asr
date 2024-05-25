@@ -15,14 +15,14 @@ _DESCRIPTION = """
 
 """
 _HOMEPAGE = "https://github.com/tanthinhdt/vietnamese-av-asr"
-_META_REPO_PATH = "datasets/GSU24AI03-SU24AI21/vietnamese-speaker-lip-clip"
-_AUDIO_REPO_PATH = "datasets/GSU24AI03-SU24AI21/transcribed-vietnamese-audio"
+_META_REPO_PATH = "datasets/GSU24AI03-SU24AI21/transcribed-vietnamese-audio"
+_VISUAL_REPO_PATH = "datasets/GSU24AI03-SU24AI21/vietnamese-speaker-lip-clip"
+_AUDIO_REPO_PATH = "datasets/GSU24AI03-SU24AI21/vietnamese-detected-clip"
 _REPO_URL = "https://huggingface.co/{}/resolve/main"
 _URLS = {
     "meta": f"{_REPO_URL}/metadata/".format(_META_REPO_PATH) + "{channel}.parquet",
-    "visual": f"{_REPO_URL}/visual/".format(_META_REPO_PATH) + "{channel}.zip",
+    "visual": f"{_REPO_URL}/visual/".format(_VISUAL_REPO_PATH) + "{channel}.zip",
     "audio": f"{_REPO_URL}/audio/".format(_AUDIO_REPO_PATH) + "{channel}.zip",
-    "transcript": f"{_REPO_URL}/transcript/".format(_AUDIO_REPO_PATH) + "{channel}.zip",
 }
 _CONFIGS = ["all"]
 if fs.exists(_META_REPO_PATH + "/metadata"):
@@ -63,7 +63,6 @@ class VietnameseAVASR(datasets.GeneratorBasedBuilder):
             "fps": datasets.Value("int8"),
             "audio": datasets.Value("binary"),
             "sampling_rate": datasets.Value("int64"),
-            "transcript": datasets.Value("string"),
         })
 
         return datasets.DatasetInfo(
@@ -119,14 +118,6 @@ class VietnameseAVASR(datasets.GeneratorBasedBuilder):
             for channel, audio_dir in zip(config_names, audio_dirs)
         }
 
-        transcript_dirs = dl_manager.download_and_extract(
-            [_URLS["transcript"].format(channel=channel) for channel in config_names]
-        )
-        transcript_dict = {
-            channel: transcript_dir
-            for channel, transcript_dir in zip(config_names, transcript_dirs)
-        }
-
         return [
             datasets.SplitGenerator(
                 name=name,
@@ -134,7 +125,6 @@ class VietnameseAVASR(datasets.GeneratorBasedBuilder):
                     "split": split,
                     "visual_dict": visual_dict,
                     "audio_dict": audio_dict,
-                    "transcript_dict": transcript_dict,
                 },
             )
             for name, split in split_dict.items()
@@ -144,7 +134,6 @@ class VietnameseAVASR(datasets.GeneratorBasedBuilder):
         self, split: datasets.Dataset,
         visual_dict: dict,
         audio_dict: dict,
-        transcript_dict: dict,
     ) -> Tuple[int, dict]:
         """
         Generate examples.
@@ -162,9 +151,6 @@ class VietnameseAVASR(datasets.GeneratorBasedBuilder):
             audio_path = os.path.join(
                 audio_dict[channel], channel, sample["id"] + ".wav"
             )
-            transcript_path = os.path.join(
-                transcript_dict[channel], channel, sample["id"] + ".txt"
-            )
 
             yield i, {
                 "id": sample["id"],
@@ -174,7 +160,7 @@ class VietnameseAVASR(datasets.GeneratorBasedBuilder):
                 "fps": sample["fps"],
                 "audio": self.__get_binary_data(audio_path),
                 "sampling_rate": sample["sampling_rate"],
-                "transcript": self.__get_text_data(transcript_path),
+                "transcript": sample["transcript"],
             }
 
     def __get_binary_data(self, path: str) -> bytes:
