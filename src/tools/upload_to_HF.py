@@ -7,11 +7,9 @@ import argparse
 from glob import glob
 from logging import Logger
 from src.utils import (
-    get_logger,
-    zip_dir,
-    upload_to_hf,
-    exist_in_hf,
     get_default_arg_parser,
+    get_logger,
+    UploadScheduler,
 )
 
 
@@ -30,6 +28,12 @@ def get_args() -> argparse.Namespace:
         type=str,
         required=True,
         help="Path to the file or directory to upload",
+    )
+    parser.add_argument(
+        "--every",
+        type=float,
+        default=1,
+        help="Upload every F minutes",
     )
     parser.add_argument(
         "--dir-in-repo",
@@ -58,55 +62,30 @@ def get_args() -> argparse.Namespace:
         action="store_true",
         help="Zip the directory before uploading",
     )
-    parser.add_argument(
-        "--delete-zip-after-upload",
-        action="store_true",
-        help="Delete the zip file after uploading",
-    )
     return parser.parse_args()
 
 
 def main(args: argparse.Namespace, logger: Logger) -> None:
     logger.info("Uploading files to HuggingFace Hub")
-
-    paths = glob(args.path)
-    for i, path in enumerate(paths):
-        logger.info(f"[{i + 1}/{len(paths)}] Uploading {path}")
-        if os.path.isdir(path) and args.zip:
-            zip_dir(
-                dir_path=path,
-                output_dir=os.path.dirname(path),
-                logger=logger,
-            )
-            src_path = path + ".zip"
-        else:
-            src_path = path
-        dest_path = os.path.join(args.dir_in_repo, os.path.basename(src_path))
-
-        if args.overwrite or not exist_in_hf(
+    try:
+        upload_scheduler = UploadScheduler(
             repo_id=args.repo_id,
-            path_in_repo=dest_path,
+            folder_path=args.path,
+            every=args.every,
+            path_in_repo=args.dir_in_repo,
             repo_type=args.repo_type,
-        ):
-            upload_to_hf(
-                src_path=src_path,
-                dest_path=dest_path,
-                repo_id=args.repo_id,
-                repo_type=args.repo_type,
-                logger=logger,
-            )
-        else:
-            logger.warning(f"{dest_path} already exists in {args.repo_id} repository")
-
-        if args.zip and args.delete_zip_after_upload:
-            os.remove(src_path)
-            logger.info(f"Deleted {src_path}")
-            src_path = path
-        if args.delete_after_upload:
-            os.remove(src_path)
-            logger.info(f"Deleted {src_path}")
-
-    logger.info("Uploading files completed")
+            logger=logger,
+            delete_after_upload=args.delete_after_upload,
+            overwrite=args.overwrite,
+            zip=args.zip,
+        )
+        while True:
+            if upload_scheduler.is_done:
+                upload_scheduler.stop()
+                break
+        logger.info("Uploading files completed")
+    except Exception:
+        logger.info("Uploading files interrupted")
 
 
 if __name__ == "__main__":
