@@ -341,6 +341,7 @@ class ActiveSpeakerExtracter(Processor):
             self,
             sample: dict,
             output_dir: str,
+            tmp_dir: str,
             **kwargs
     ) -> dict:
         videoPath = sample['video_path'][0]
@@ -349,7 +350,7 @@ class ActiveSpeakerExtracter(Processor):
         video_id = video_file_name.split('@')[-1][:-4]
         try:
             self.outputPath = output_dir
-            self.network_dir = os.path.join(output_dir, channel, f"{channel}@{video_id}@network_results")
+            self.network_dir = os.path.join(tmp_dir, channel, f"{channel}@{video_id}@network_results")
             self.pyaviPath = os.path.join(self.network_dir, 'pyavi')
             self.pyframesPath = os.path.join(self.network_dir, 'pyframes')
             self.pyworkPath = os.path.join(self.network_dir, 'pywork')
@@ -450,10 +451,9 @@ class ActiveSpeakerExtracter(Processor):
                 sample['chunk_audio_id'] = audio_ids
             else:
                 sample['id'][0] = None
-            if self.clear:
-                if os.path.isdir(self.network_dir):
-                    prefix, _ = os.path.split(self.network_dir)
-                    shutil.rmtree(prefix)
+            if os.path.isdir(self.network_dir):
+                prefix, _ = os.path.split(self.network_dir)
+                shutil.rmtree(prefix)
         except KeyError as e:
             print(e)
             print("Error processing video: %s" % videoPath)

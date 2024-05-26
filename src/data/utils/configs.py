@@ -15,7 +15,7 @@ class TaskConfig:
     clean_input: bool = False
     clean_output: bool = False
     version: int = 1
-    cache_dir: str = os.path.join(os.getcwd(), ".cache")
+    cache_dir: str = os.path.join(os.getcwd(), "data" , "external")
 
     task: str = None
     src_repo_id: str = None
@@ -85,7 +85,8 @@ class SpeakerDetectTaskConfig(TaskConfig):
         """
         task_kwargs = super().get_task_kwargs()
         task_kwargs["fn_kwargs"].update({
-            "output_dir": self.output_dir
+            "output_dir": self.output_dir,
+            "tmp_dir": os.path.join(os.getcwd(), "data", "interim"),
         })
         return task_kwargs
 

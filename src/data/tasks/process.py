@@ -20,7 +20,7 @@ def parse_args() -> argparse.Namespace:
         type=str,
         default=None,
         required=True,
-        help="Available tasks: asd, vndetect, transcribe, crop.",
+        help="Available tasks: asd, vndetect, transcribe, crop",
     )
     parser.add_argument(
         "--output-dir",
@@ -68,7 +68,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--cache-dir",
         type=str,
-        default=os.path.join(os.getcwd(), "data/external/.cache"),
+        default=os.path.join(os.getcwd(), "data/external/"),
         help="Cache directory.",
     )
     return parser.parse_args()
