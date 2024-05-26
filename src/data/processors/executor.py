@@ -1,6 +1,8 @@
 import os
 import shutil
 from .processor import Processor
+from .as_extracter import ActiveSpeakerExtracter
+from .vietnamese_detector import VietnameseDetector
 from .transcriber import Transcriber
 from .cropper import Cropper
 from .uploader import Uploader
@@ -15,6 +17,8 @@ class Executor(Processor):
     This processor is used to execute other processors.
     """
     PROCESSORS = {
+        "asd": ActiveSpeakerExtracter,
+        "vndetect": VietnameseDetector,
         "transcribe": Transcriber,
         "crop": Cropper,
     }
@@ -77,6 +81,7 @@ class Executor(Processor):
             self.configs.src_repo_id, channel,
             split="train",
             cache_dir=self.configs.cache_dir,
+            trust_remote_code=True,
         )
         if self.configs.remove_columns_loading:
             self.dataset = self.dataset.remove_columns(
@@ -149,7 +154,6 @@ class Executor(Processor):
 
         metadata_path = os.path.join(self.metadata_dir, channel + ".parquet")
         disable_progress_bar()
-        # self.dataset = self.dataset.select_columns(["id", "chunk_id", "video_fps", "audio_fps"])
         self.dataset.to_parquet(metadata_path)
         enable_progress_bar()
 

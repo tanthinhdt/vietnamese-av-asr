@@ -5,6 +5,7 @@ sys.path.append(os.getcwd())
 import argparse
 from tqdm import tqdm
 from src.data.processors.executor import Executor
+from src.data.utils import TaskConfig, SpeakerDetectTaskConfig, VietnameseDetectTaskConfig
 from src.data.utils import TaskConfig, TranscribingTaskConfig, CroppingTaskConfig
 
 
@@ -19,7 +20,7 @@ def parse_args() -> argparse.Namespace:
         type=str,
         default=None,
         required=True,
-        help="Available tasks: transcribe, crop.",
+        help="Available tasks: asd, vndetect, transcribe, crop.",
     )
     parser.add_argument(
         "--output-dir",
@@ -80,6 +81,14 @@ def get_task_configs(args: argparse.Namespace) -> TaskConfig:
     :return:        Task config.
     """
     task_dict = {
+        "asd": {
+            "config": SpeakerDetectTaskConfig,
+            "dir": "detected-speaker-clip",
+        },
+        "vndetect": {
+            "config": VietnameseDetectTaskConfig,
+            "dir": "detected-vietnamese-clip",
+        },
         "transcribe": {
             "config": TranscribingTaskConfig,
             "dir": "transcribed-vietnamese-audio",
@@ -161,3 +170,4 @@ if __name__ == "__main__":
     args = parse_args()
     task_configs = get_task_configs(args)
     main(task_configs)
+    
