@@ -450,10 +450,9 @@ class ActiveSpeakerExtracter(Processor):
                 sample['chunk_audio_id'] = audio_ids
             else:
                 sample['id'][0] = None
-            if self.clear:
-                if os.path.isdir(self.network_dir):
-                    prefix, _ = os.path.split(self.network_dir)
-                    shutil.rmtree(prefix)
+            if os.path.isdir(self.network_dir):
+                prefix, _ = os.path.split(self.network_dir)
+                shutil.rmtree(prefix)
         except KeyError as e:
             print(e)
             print("Error processing video: %s" % videoPath)
