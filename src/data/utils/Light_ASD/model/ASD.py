@@ -10,10 +10,11 @@ from src.data.utils.Light_ASD.model.Model import ASD_Model
 
 class ASD(nn.Module):
     def __init__(self, lr = 0.001, lrDecay = 0.95, **kwargs):
-        super(ASD, self).__init__()        
-        self.model = ASD_Model().cpu()
-        self.lossAV = lossAV().cpu()
-        self.lossV = lossV().cpu()
+        super(ASD, self).__init__()
+        self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        self.model = ASD_Model().to(device=self.device)
+        self.lossAV = lossAV().to(device=self.device)
+        self.lossV = lossV().to(device=self.device)
         self.optim = torch.optim.Adam(self.parameters(), lr = lr)
         self.scheduler = torch.optim.lr_scheduler.StepLR(self.optim, step_size = 1, gamma=lrDecay)
         #print(time.strftime("%m-%d %H:%M:%S") + " Model para number = %.2f"%(sum(param.numel() for param in self.model.parameters()) / 1000 / 1000))
@@ -27,20 +28,20 @@ class ASD(nn.Module):
         for num, (audioFeature, visualFeature, labels) in enumerate(loader, start=1):
             self.zero_grad()
 
-            audioEmbed = self.model.forward_audio_frontend(audioFeature[0].cpu())
-            visualEmbed = self.model.forward_visual_frontend(visualFeature[0].cpu())
+            audioEmbed = self.model.forward_audio_frontend(audioFeature[0].to(device=self.device))
+            visualEmbed = self.model.forward_visual_frontend(visualFeature[0].to(device=self.device))
 
             outsAV= self.model.forward_audio_visual_backend(audioEmbed, visualEmbed)  
             outsV = self.model.forward_visual_backend(visualEmbed)
 
-            labels = labels[0].reshape((-1)).cpu() # Loss
+            labels = labels[0].reshape((-1)).to(self.device) # Loss
             nlossAV, _, _, prec = self.lossAV.forward(outsAV, labels, r)
             nlossV = self.lossV.forward(outsV, labels, r)
             nloss = nlossAV + 0.5 * nlossV
 
-            lossV += nlossV.detach().cpu().numpy()
-            lossAV += nlossAV.detach().cpu().numpy()
-            loss += nloss.detach().cpu().numpy()
+            lossV += nlossV.detach().to(device=self.device).numpy()
+            lossAV += nlossAV.detach().to(device=self.device).numpy()
+            loss += nloss.detach().to(device=self.device).numpy()
             top1 += prec
             nloss.backward()
             self.optim.step()
@@ -59,12 +60,12 @@ class ASD(nn.Module):
         predScores = []
         for audioFeature, visualFeature, labels in tqdm.tqdm(loader):
             with torch.no_grad():                
-                audioEmbed  = self.model.forward_audio_frontend(audioFeature[0].cpu())
-                visualEmbed = self.model.forward_visual_frontend(visualFeature[0].cpu())
+                audioEmbed  = self.model.forward_audio_frontend(audioFeature[0].to(self.device))
+                visualEmbed = self.model.forward_visual_frontend(visualFeature[0].to(self.device))
                 outsAV= self.model.forward_audio_visual_backend(audioEmbed, visualEmbed)  
-                labels = labels[0].reshape((-1)).cpu()             
+                labels = labels[0].reshape((-1)).to(self.device) 
                 _, predScore, _, _ = self.lossAV.forward(outsAV, labels)    
-                predScore = predScore[:,1].detach().cpu().numpy()
+                predScore = predScore[:,1].detach().to(self.device).numpy()
                 predScores.extend(predScore)
                 # break
         evalLines = open(evalOrig).read().splitlines()[1:]
@@ -86,7 +87,7 @@ class ASD(nn.Module):
 
     def loadParameters(self, path):
         selfState = self.state_dict()
-        loadedState = torch.load(path,map_location=torch.device('cpu'))
+        loadedState = torch.load(path,map_location=torch.device(self.device))
         for name, param in loadedState.items():
             origName = name;
             if name not in selfState:

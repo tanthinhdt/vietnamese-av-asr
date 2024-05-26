@@ -11,7 +11,7 @@ img_mean = np.array([104., 117., 123.])[:, np.newaxis, np.newaxis].astype('float
 
 class S3FD():
 
-    def __init__(self, device='cpu'):
+    def __init__(self, device):
 
         tstamp = time.time()
         self.device = device
@@ -21,8 +21,7 @@ class S3FD():
         state_dict = torch.load(PATH, map_location=self.device)
         self.net.load_state_dict(state_dict)
         self.net.eval()
-        # print('[S3FD] finished loading (%.4f sec)' % (time.time() - tstamp))
-    
+
     def detect_faces(self, image, conf_th=0.8, scales=[1]):
 
         w, h = image.shape[1], image.shape[0]
@@ -49,7 +48,7 @@ class S3FD():
                     j = 0
                     while detections[0, i, j, 0] > conf_th:
                         score = detections[0, i, j, 0]
-                        pt = (detections[0, i, j, 1:] * scale).cpu().numpy()
+                        pt = (detections[0, i, j, 1:] * scale).to(self.device).numpy()
                         bbox = (pt[0], pt[1], pt[2], pt[3], score)
                         bboxes = np.vstack((bboxes, bbox))
                         j += 1

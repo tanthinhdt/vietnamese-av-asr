@@ -18,7 +18,7 @@ class VietnameseDetector(Processor):
         self.model = EncoderClassifier.from_hparams(
             source="speechbrain/lang-id-voxlingua107-ecapa",
             savedir="tmp"
-        )
+        ).to(device=self.device)
         self.sampling_rate = 16000
 
     def classify(self, audio_array: torch.Tensor, sampling_rate: int) -> Tuple[int, float]:

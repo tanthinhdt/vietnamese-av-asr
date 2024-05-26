@@ -31,7 +31,6 @@ class ActiveSpeakerExtracterV1(Processor):
     def __init__(self,
                  minTrack: int = 10,
                  numFailedDet: int = 10,
-                 device: str = 'cpu',
                  facedetScale: float = 0.25,
                  cropScale: float = 0.4,
                  minFaceSize: int = 1,
@@ -47,7 +46,6 @@ class ActiveSpeakerExtracterV1(Processor):
 
         super().__init__()
 
-        self.device = device
         self.minTrack = minTrack
         self.numFailedDet = numFailedDet
         self.facedetScale = facedetScale
@@ -68,7 +66,8 @@ class ActiveSpeakerExtracterV1(Processor):
             raise ValueError('extract must be origin or sample')
         self.extract = extract
 
-        # init for face detection
+        self.device = "cuda" if torch.cuda.is_available() else "cpu"
+
         self.facedetScale = facedetScale
         self.DET = S3FD(device=self.device)
 
@@ -255,9 +254,9 @@ class ActiveSpeakerExtracterV1(Processor):
                 with torch.no_grad():
                     for i in range(batchSize):
                         inputA = torch.FloatTensor(
-                            audioFeature[i * duration * 100:(i + 1) * duration * 100, :]).unsqueeze(0).cpu()
+                            audioFeature[i * duration * 100:(i + 1) * duration * 100, :]).unsqueeze(0).to(device=self.device)
                         inputV = torch.FloatTensor(
-                            videoFeature[i * duration * 25: (i + 1) * duration * 25, :, :]).unsqueeze(0).cpu()
+                            videoFeature[i * duration * 25: (i + 1) * duration * 25, :, :]).unsqueeze(0).to(device=self.device)
                         embedA = self.asd.model.forward_audio_frontend(inputA)
                         embedV = self.asd.model.forward_visual_frontend(inputV)
                         out = self.asd.model.forward_audio_visual_backend(embedA, embedV)
@@ -270,39 +269,6 @@ class ActiveSpeakerExtracterV1(Processor):
             with open(os.path.join(self.pyworkPath, 'scores.pckl'), 'wb') as fil:
                 pickle.dump(allScores, fil)
         return allScores
-
-    def visualization(self, flist: list, tracks: tuple, scores: list) -> None:
-        # CPU: visulize the result for video format
-        faces = [[] for i in range(len(flist))]
-        for tidx, track in enumerate(tracks):
-            score = scores[tidx]
-            for fidx, frame in enumerate(track['track']['frame'].tolist()):
-                # average smoothing
-                s = score[max(fidx - 2, 0): min(fidx + 3, len(score) - 1)]
-                s = np.mean(s)
-                faces[frame].append({'track': tidx, 'score': float(s), 's': track['proc_track']['s']
-                [fidx], 'x': track['proc_track']['x'][fidx], 'y': track['proc_track']['y'][fidx]})
-        firstImage = cv2.imread(flist[0])
-        fw = firstImage.shape[1]
-        fh = firstImage.shape[0]
-        vOut = cv2.VideoWriter(os.path.join(
-            self.pyaviPath, 'video_only.avi'), cv2.VideoWriter_fourcc(*'XVID'), 25, (fw, fh))
-        colorDict = {0: 0, 1: 255}
-        for fidx, fname in enumerate(flist):
-            image = cv2.imread(fname)
-            for face in faces[fidx]:
-                clr = colorDict[int((face['score'] >= 0))]
-                txt = round(face['score'], 1)
-                cv2.rectangle(image, (int(face['x'] - face['s']), int(face['y'] - face['s'])), (int(
-                    face['x'] + face['s']), int(face['y'] + face['s'])), (0, clr, 255 - clr), 10)
-                cv2.putText(image, '%s' % (txt), (int(face['x'] - face['s']), int(
-                    face['y'] - face['s'])), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (0, clr, 255 - clr), 5)
-            vOut.write(image)
-        vOut.release()
-        command = ("ffmpeg -y -i %s -i %s -threads %d -c:v copy -c:a copy %s -loglevel panic" %
-                   (os.path.join(self.pyaviPath, 'video_only.avi'), os.path.join(self.pyaviPath, 'audio.wav'),
-                    self.nDataLoaderThread, os.path.join(self.pyaviPath, 'video_out.avi')))
-        output = subprocess.call(command, shell=True, stdout=None)
 
     def _get_active_speaker(self, network_dir: str,) -> int:
         work_path: str = os.path.join(network_dir, 'pywork')
@@ -400,8 +366,7 @@ class ActiveSpeakerExtracterV1(Processor):
 
             # Extract video
             self.videoFilePath = os.path.join(self.pyaviPath, 'video.avi')
-            if os.path.isfile(self.videoFilePath):
-                # If duration did not set, extract the whole video, otherwise extract the video from 'self.start' to 'self.start + self.duration'
+            if not os.path.isfile(self.videoFilePath):
                 if sample['uploader'] == 'truyenhinhnhandantv':
                     self.start = 0.
                     self.duration = 15.
@@ -419,7 +384,7 @@ class ActiveSpeakerExtracterV1(Processor):
 
             # Extract audio
             self.audioFilePath = os.path.join(self.pyaviPath, 'audio.wav')
-            if os.path.isfile(self.audioFilePath):
+            if not os.path.isfile(self.audioFilePath):
                 command = ("ffmpeg -y -i %s -qscale:a 0 -ac 1 -c:a copy -vn -threads %d -ar 16000 %s -loglevel panic" %
                            (self.videoFilePath, self.nDataLoaderThread, self.audioFilePath))
                 subprocess.call(command, shell=True, stdout=None)

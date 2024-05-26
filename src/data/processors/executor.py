@@ -1,11 +1,5 @@
 import os
 import shutil
-# from .cropper import Cropper
-# from .denoiser import Denoiser
-# from .slicer import Slicer
-# from .transcriber import Transcriber
-# from .transcriber_v1 import Transcriber_V1
-# from .cropper_v1 import Cropper_V1
 from .processor import Processor
 from .as_extracter import ActiveSpeakerExtracterV1
 from .vietnamese_detector import VietnameseDetector
@@ -23,13 +17,6 @@ class Executor(Processor):
     PROCESSORS = {
         "asd": ActiveSpeakerExtracterV1,
         "vndetect": VietnameseDetector,
-        "trans": VietnameseDetector,
-        # "slice": Slicer,
-        # "denoise": Denoiser,
-        # "transcribe": Transcriber,
-        # "transcribe_v1": Transcriber_V1,
-        # "crop": Cropper,
-        # "crop_v1": Cropper_V1,
     }
 
     def __init__(self, configs: TaskConfig) -> None:

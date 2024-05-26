@@ -19,6 +19,7 @@ _REPO_PATH_BRANCH = f"{_REPO_PATH}@{_BRANCH}"
 _REPO_URL = f"https://huggingface.co/{_REPO_PATH}/resolve/{_BRANCH}"
 
 _URLS = {
+    "visual": f"{_REPO_URL}" + "/visual/{channel}.zip",
     "audio": f"{_REPO_URL}" + "/audio/{channel}.zip",
     "metadata": f"{_REPO_URL}" + "/metadata/{channel}.parquet",
 }
@@ -57,9 +58,13 @@ class VietnameseDetectedClip(datasets.GeneratorBasedBuilder):
         features = datasets.Features({
             "id": datasets.Value("string"),
             "channel": datasets.Value("string"),
+            "chunk_visual_id": datasets.Value("string"),
             "chunk_audio_id": datasets.Value("string"),
-            "audio_path": datasets.Value("string"),
+            "visual": datasets.Value("string"),
+            "audio": datasets.Value("string"),
+            "visual_num_frames": datasets.Value("float64"),
             "audio_num_frames": datasets.Value("float64"),
+            "visual_fps": datasets.Value("int64"),
             "audio_fps": datasets.Value("int64"),
         })
         return datasets.DatasetInfo(
@@ -83,13 +88,17 @@ class VietnameseDetectedClip(datasets.GeneratorBasedBuilder):
             [_URLS["metadata"].format(channel=channel) for channel in config_names]
         )
 
+        visual_paths = dl_manager.download_and_extract(
+            [_URLS["visual"].format(channel=channel) for channel in config_names]
+        )
+
         audio_paths = dl_manager.download_and_extract(
             [_URLS["audio"].format(channel=channel) for channel in config_names]
         )
 
         data_dict = {
-            channel: audio_path
-            for channel, audio_path in zip(config_names, audio_paths)
+            channel: (visual_path, audio_path)
+            for channel, visual_path, audio_path in zip(config_names, visual_paths, audio_paths)
         }
 
         return [
@@ -119,6 +128,10 @@ class VietnameseDetectedClip(datasets.GeneratorBasedBuilder):
             split="train",
         )
         for i, sample in enumerate(dataset):
+            visual_path = os.path.join(
+                data_dict[sample['channel']][0], sample['channel'], sample['chunk_visual_id'] + ".mp4"
+            )
+
             audio_path = os.path.join(
                 data_dict[sample['channel']][1], sample['channel'], sample['chunk_audio_id'] + ".wav"
             )
@@ -126,8 +139,12 @@ class VietnameseDetectedClip(datasets.GeneratorBasedBuilder):
             yield i, {
                 'id': sample['id'],
                 'channel': sample['channel'],
+                'chunk_visual_id': sample['chunk_visual_id'],
                 'chunk_audio_id': sample['chunk_audio_id'],
-                'audio_path': audio_path,
+                'visual': visual_path,
+                'audio': audio_path,
+                'visual_num_frames': sample['visual_num_frames'],
                 'audio_num_frames': sample['audio_num_frames'],
+                'visual_fps': sample['visual_fps'],
                 'audio_fps': sample['audio_fps']
             }

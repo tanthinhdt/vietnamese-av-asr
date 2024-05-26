@@ -11,16 +11,16 @@ from datasets import get_dataset_config_names
 #     with open('split_id_56.pckl', 'rb') as f:
 #         split_id2 = pickle.load(f)
 #         print(end='')
-#
+
 #     id_path = []
 #     id_path1 = []
 #     id_path2 = []
 #     tmp_split_id = dict()
 #     tmp_split_id1 = dict()
 #     tmp_split_id2 = dict()
-#
+
 #     result_d = dict()
-#
+
 #     for k,v in split_id2.items():
 #         if len(v) == 50 and k != "batch_99999":
 #             id_path2.extend(v)
@@ -28,7 +28,7 @@ from datasets import get_dataset_config_names
 #     for idx_batch, i in enumerate(range(0, new_metadata_volume, 50),start=0):
 #         tmp_split_id2[f"batch_%.5d" % (idx_batch,)] = id_path2[i:i + 50]
 #     result_d.update(tmp_split_id2)
-#
+
 #     for k,v in split_id1.items():
 #         if len(v) == 50 and k != "batch_99999":
 #             id_path1.extend(v)
@@ -36,7 +36,7 @@ from datasets import get_dataset_config_names
 #     for idx_batch, i in enumerate(range(0, new_metadata_volume, 50),start=len(tmp_split_id2)):
 #         tmp_split_id1[f"batch_%.5d" % (idx_batch,)] = id_path1[i:i + 50]
 #     result_d.update(tmp_split_id1)
-#
+
 #     for k,v in split_id.items():
 #         if len(v) == 50 and k != "batch_99999":
 #             id_path.extend(v)
@@ -48,10 +48,15 @@ from datasets import get_dataset_config_names
 #     tmp = []
 #     for v in result_d.values():
 #         tmp.extend(v)
-#
+
 #     assert 1150 + 6350 + 18700 + 2 == len(set(tmp))
 #     with open('split_id.pckl', 'wb') as f:
 #         pickle.dump(obj=result_d,file=f)
 
-s = get_dataset_config_names('GSU24AI03-SU24AI21/downloaded-vietnamese-video',trust_remote_code=True)
-print(sorted(s))
+with open('./databases/split_id.pckl','rb') as f:
+    split_id: dict = pickle.load(f)
+
+tmp = []
+for v in split_id.values():
+    tmp.extend(v)
+print(len(tmp))

@@ -7,6 +7,7 @@ class lossAV(nn.Module):
 		super(lossAV, self).__init__()
 		self.criterion = nn.BCELoss()
 		self.FC        = nn.Linear(128, 2)
+		self.device = "cuda" if torch.cuda.is_available() else "cpu"
 		
 	def forward(self, x, labels = None, r = 1):	
 		x = x.squeeze(1)
@@ -14,7 +15,7 @@ class lossAV(nn.Module):
 		if labels == None:
 			predScore = x[:,1]
 			predScore = predScore.t()
-			predScore = predScore.view(-1).detach().cpu().numpy()
+			predScore = predScore.view(-1).detach().to(self.device).numpy()
 			return predScore
 		else:
 			x1 = x / r
