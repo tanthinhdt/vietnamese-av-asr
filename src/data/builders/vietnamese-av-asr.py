@@ -15,13 +15,12 @@ _DESCRIPTION = """
 
 """
 _HOMEPAGE = "https://github.com/tanthinhdt/vietnamese-av-asr"
-_META_REPO_PATH = "datasets/GSU24AI03-SU24AI21/transcribed-vietnamese-audio"
-_VISUAL_REPO_PATH = "datasets/GSU24AI03-SU24AI21/vietnamese-speaker-lip-clip"
-_AUDIO_REPO_PATH = "datasets/GSU24AI03-SU24AI21/vietnamese-detected-clip"
+_META_REPO_PATH = "datasets/GSU24AI03-SU24AI21/vietnamese-speaker-lip-clip"
+_AUDIO_REPO_PATH = "datasets/GSU24AI03-SU24AI21/detected-vietnamese-clip"
 _REPO_URL = "https://huggingface.co/{}/resolve/main"
 _URLS = {
     "meta": f"{_REPO_URL}/metadata/".format(_META_REPO_PATH) + "{channel}.parquet",
-    "visual": f"{_REPO_URL}/visual/".format(_VISUAL_REPO_PATH) + "{channel}.zip",
+    "visual": f"{_REPO_URL}/visual/".format(_META_REPO_PATH) + "{channel}.zip",
     "audio": f"{_REPO_URL}/audio/".format(_AUDIO_REPO_PATH) + "{channel}.zip",
 }
 _CONFIGS = ["all"]
@@ -59,10 +58,14 @@ class VietnameseAVASR(datasets.GeneratorBasedBuilder):
             "id": datasets.Value("string"),
             "channel": datasets.Value("string"),
             "visual": datasets.Value("binary"),
-            "duration": datasets.Value("float64"),
-            "fps": datasets.Value("int8"),
             "audio": datasets.Value("binary"),
-            "sampling_rate": datasets.Value("int64"),
+            "chunk_visual_id": datasets.Value("string"),
+            "chunk_audio_id": datasets.Value("string"),
+            "visual_num_frames": datasets.Value("float64"),
+            "audio_num_frames": datasets.Value("float64"),
+            "visual_fps": datasets.Value("int64"),
+            "audio_fps": datasets.Value("int64"),
+            "transcript": datasets.Value("string"),
         })
 
         return datasets.DatasetInfo(
@@ -140,7 +143,6 @@ class VietnameseAVASR(datasets.GeneratorBasedBuilder):
         :param split:                   Split.
         :param visual_dict:             Paths to directory containing visual files.
         :param audio_dict:              Paths to directory containing audio files.
-        :param transcript_dict:         Paths to directory containing transcripts.
         :return:                        Example.
         """
         for i, sample in enumerate(split):
@@ -156,10 +158,13 @@ class VietnameseAVASR(datasets.GeneratorBasedBuilder):
                 "id": sample["id"],
                 "channel": channel,
                 "visual": self.__get_binary_data(visual_path),
-                "duration": sample["duration"],
-                "fps": sample["fps"],
                 "audio": self.__get_binary_data(audio_path),
-                "sampling_rate": sample["sampling_rate"],
+                "chunk_visual_id": sample["chunk_visual_id"],
+                "chunk_audio_id": sample["chunk_audio_id"],
+                "visual_num_frames": sample["visual_num_frames"],
+                "audio_num_frames": sample["audio_num_frames"],
+                "visual_fps": sample["visual_fps"],
+                "audio_fps": sample["audio_fps"],
                 "transcript": sample["transcript"],
             }
 

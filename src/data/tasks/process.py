@@ -5,7 +5,7 @@ sys.path.append(os.getcwd())
 import argparse
 from tqdm import tqdm
 from src.data.processors.executor import Executor
-from src.data.utils import TaskConfig, TranscribingTaskConfig, CroppingTaskConfig, DenoisingTaskConfig
+from src.data.utils import TaskConfig, TranscribingTaskConfig, CroppingTaskConfig
 
 
 def parse_args() -> argparse.Namespace:
@@ -80,17 +80,13 @@ def get_task_configs(args: argparse.Namespace) -> TaskConfig:
     :return:        Task config.
     """
     task_dict = {
-        "denoise": {
-            "config": DenoisingTaskConfig,
-            "dir": "denoised-vietnamese-audio",
-        },
         "transcribe": {
             "config": TranscribingTaskConfig,
             "dir": "transcribed-vietnamese-audio",
         },
         "crop": {
             "config": CroppingTaskConfig,
-            "dir": "vietnamese-speaker-lip-clip-v1",
+            "dir": "vietnamese-speaker-lip-clip",
         },
     }
     task_configs = task_dict[args.task]["config"](

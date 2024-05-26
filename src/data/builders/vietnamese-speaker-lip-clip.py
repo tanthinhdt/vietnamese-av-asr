@@ -57,10 +57,13 @@ class VietnameseSpeakerLipClip(datasets.GeneratorBasedBuilder):
             "id": datasets.Value("string"),
             "channel": datasets.Value("string"),
             "visual": datasets.Value("string"),
-            "duration": datasets.Value("float64"),
-            "fps": datasets.Value("int8"),
-            "audio": datasets.Value("string"),
-            "sampling_rate": datasets.Value("int64"),
+            "chunk_visual_id": datasets.Value("string"),
+            "chunk_audio_id": datasets.Value("string"),
+            "visual_num_frames": datasets.Value("float64"),
+            "audio_num_frames": datasets.Value("float64"),
+            "visual_fps": datasets.Value("int64"),
+            "audio_fps": datasets.Value("int64"),
+            "transcript": datasets.Value("string"),
         })
 
         return datasets.DatasetInfo(
@@ -104,13 +107,11 @@ class VietnameseSpeakerLipClip(datasets.GeneratorBasedBuilder):
     def _generate_examples(
         self, metadata_paths: List[str],
         visual_dict: dict,
-        audio_dict: dict,
     ) -> Tuple[int, dict]:
         """
         Generate examples from metadata.
         :param metadata_paths:      Paths to metadata.
         :param visual_dict:         Paths to directory containing videos.
-        :param audio_dict:          Paths to directory containing audios.
         :yield:                     Example.
         """
         dataset = datasets.load_dataset(
@@ -121,14 +122,18 @@ class VietnameseSpeakerLipClip(datasets.GeneratorBasedBuilder):
         for i, sample in enumerate(dataset):
             channel = sample["channel"]
             visual_path = os.path.join(
-                visual_dict[channel], channel, sample["id"] + ".mp4"
+                visual_dict[channel], channel, sample["chunk_visual_id"] + ".mp4"
             )
 
             yield i, {
                 "id": sample["id"],
                 "channel": channel,
                 "visual": visual_path,
-                "duration": sample["duration"],
-                "fps": sample["fps"],
-                "sampling_rate": sample["sampling_rate"],
+                "chunk_visual_id": sample["chunk_visual_id"],
+                "chunk_audio_id": sample["chunk_audio_id"],
+                "visual_num_frames": sample["visual_num_frames"],
+                "audio_num_frames": sample["audio_num_frames"],
+                "visual_fps": sample["visual_fps"],
+                "audio_fps": sample["audio_fps"],
+                "transcript": sample["transcript"],
             }

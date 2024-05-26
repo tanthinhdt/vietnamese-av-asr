@@ -1,7 +1,6 @@
 import os
 import shutil
 from .processor import Processor
-from .denoiser import Denoiser
 from .transcriber import Transcriber
 from .cropper import Cropper
 from .uploader import Uploader
@@ -16,7 +15,6 @@ class Executor(Processor):
     This processor is used to execute other processors.
     """
     PROCESSORS = {
-        "denoise": Denoiser,
         "transcribe": Transcriber,
         "crop": Cropper,
     }

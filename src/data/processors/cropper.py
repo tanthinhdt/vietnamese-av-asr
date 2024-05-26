@@ -29,7 +29,7 @@ class Cropper(Processor):
         :param padding:             Padding.
         :return:                    Sample with path to video of cropped mouth region.
         """
-        visual_output_path = os.path.join(visual_output_dir, sample["id"][0] + ".mp4")
+        visual_output_path = os.path.join(visual_output_dir, sample["chunk_visual_id"][0] + ".mp4")
 
         if not os.path.exists(visual_output_path):
             mouths = []
@@ -44,15 +44,15 @@ class Cropper(Processor):
 
             if self.check_output(
                 num_cropped=len(mouths),
-                sample_fps=sample["fps"][0],
-                sample_duration=sample["duration"][0],
+                sample_fps=sample["visual_fps"][0],
+                sample_duration=sample["visual_num_frames"][0] / sample["visual_fps"][0],
             ):
                 self.write_video(
                     video_path=visual_output_path,
                     frames=mouths,
                     frame_width=max_width,
                     frame_height=max_height,
-                    fps=sample["fps"][0],
+                    fps=sample["visual_fps"][0],
                 )
             else:
                 sample["id"][0] = None

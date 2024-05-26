@@ -61,8 +61,12 @@ class Transcriber(Processor):
             transcript = None
         return {
             "id": sample["id"],
-            "chunk_id": sample["chunk_id"],
-            "video_fps": sample["video_fps"],
+            "channel": sample["channel"],
+            "chunk_visual_id": sample["chunk_visual_id"],
+            "chunk_audio_id": sample["chunk_audio_id"],
+            "visual_num_frames": sample["visual_num_frames"],
+            "audio_num_frames": sample["audio_num_frames"],
+            "visual_fps": sample["visual_fps"],
             "audio_fps": sample["audio_fps"],
             "transcript": [transcript.strip() if transcript else None],
         }

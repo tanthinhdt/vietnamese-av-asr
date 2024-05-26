@@ -16,13 +16,11 @@ _DESCRIPTION = """
 """
 _HOMEPAGE = "https://github.com/tanthinhdt/vietnamese-av-asr"
 _MAIN_REPO_PATH = "datasets/GSU24AI03-SU24AI21/transcribed-vietnamese-audio"
-_VISUAL_REPO_PATH = "datasets/GSU24AI03-SU24AI21/vietnamese-detected-clip"
+_VISUAL_REPO_PATH = "datasets/GSU24AI03-SU24AI21/detected-vietnamese-clip"
 _REPO_URL = "https://huggingface.co/{}/resolve/main"
 _URLS = {
     "meta": f"{_REPO_URL}/metadata/".format(_MAIN_REPO_PATH) + "{channel}.parquet",
     "visual": f"{_REPO_URL}/visual/".format(_VISUAL_REPO_PATH) + "{channel}.zip",
-    "audio": f"{_REPO_URL}/audio/".format(_MAIN_REPO_PATH) + "{channel}.zip",
-    "transcript": f"{_REPO_URL}/transcript/".format(_MAIN_REPO_PATH) + "{channel}.zip",
 }
 _CONFIGS = ["all"]
 if fs.exists(_MAIN_REPO_PATH + "/metadata"):
@@ -59,11 +57,13 @@ class TranscribedVietnameseAudio(datasets.GeneratorBasedBuilder):
         features = datasets.Features({
             "id": datasets.Value("string"),
             "channel": datasets.Value("string"),
+            "chunk_visual_id": datasets.Value("string"),
+            "chunk_audio_id": datasets.Value("string"),
             "visual": datasets.Value("string"),
-            "duration": datasets.Value("float64"),
-            "fps": datasets.Value("int8"),
-            "audio": datasets.Value("binary"),
-            "sampling_rate": datasets.Value("int64"),
+            "visual_num_frames": datasets.Value("float64"),
+            "audio_num_frames": datasets.Value("float64"),
+            "visual_fps": datasets.Value("int64"),
+            "audio_fps": datasets.Value("int64"),
             "transcript": datasets.Value("string"),
         })
 
@@ -90,22 +90,9 @@ class TranscribedVietnameseAudio(datasets.GeneratorBasedBuilder):
         visual_dirs = dl_manager.download_and_extract(
             [_URLS["visual"].format(channel=channel) for channel in config_names]
         )
-        audio_dirs = dl_manager.download_and_extract(
-            [_URLS["audio"].format(channel=channel) for channel in config_names]
-        )
-        transcript_dirs = dl_manager.download_and_extract(
-            [_URLS["transcript"].format(channel=channel) for channel in config_names]
-        )
 
         visual_dict = {
             channel: visual_dir for channel, visual_dir in zip(config_names, visual_dirs)
-        }
-        audio_dict = {
-            channel: audio_dir for channel, audio_dir in zip(config_names, audio_dirs)
-        }
-        transcript_dict = {
-            channel: transcript_dir
-            for channel, transcript_dir in zip(config_names, transcript_dirs)
         }
 
         return [
@@ -114,8 +101,6 @@ class TranscribedVietnameseAudio(datasets.GeneratorBasedBuilder):
                 gen_kwargs={
                     "metadata_paths": metadata_paths,
                     "visual_dict": visual_dict,
-                    "audio_dict": audio_dict,
-                    "transcript_dict": transcript_dict,
                 },
             ),
         ]
@@ -123,8 +108,6 @@ class TranscribedVietnameseAudio(datasets.GeneratorBasedBuilder):
     def _generate_examples(
         self, metadata_paths: List[str],
         visual_dict: dict,
-        audio_dict: dict,
-        transcript_dict: dict,
     ) -> Tuple[int, dict]:
         """
         Generate examples from metadata.
@@ -141,40 +124,18 @@ class TranscribedVietnameseAudio(datasets.GeneratorBasedBuilder):
         for i, sample in enumerate(dataset):
             channel = sample["channel"]
             visual_path = os.path.join(
-                visual_dict[channel], channel, sample["id"] + ".mp4"
-            )
-            audio_path = os.path.join(
-                audio_dict[channel], channel, sample["id"] + ".wav"
-            )
-            transcript_path = os.path.join(
-                transcript_dict[channel], channel, sample["id"] + ".txt"
+                visual_dict[channel], channel, sample["chunk_visual_id"] + ".mp4"
             )
 
             yield i, {
                 "id": sample["id"],
                 "channel": channel,
                 "visual": visual_path,
-                "duration": sample["duration"],
-                "fps": sample["fps"],
-                "audio": self.__get_binary_data(audio_path),
-                "sampling_rate": sample["sampling_rate"],
-                "transcript": self.__get_text_data(transcript_path),
+                "chunk_visual_id": sample["chunk_visual_id"],
+                "chunk_audio_id": sample["chunk_audio_id"],
+                "visual_num_frames": sample["visual_num_frames"],
+                "audio_num_frames": sample["audio_num_frames"],
+                "visual_fps": sample["visual_fps"],
+                "audio_fps": sample["audio_fps"],
+                "transcript": sample["transcript"],
             }
-
-    def __get_binary_data(self, path: str) -> bytes:
-        """
-        Get binary data from path.
-        :param path:    Path to file.
-        :return:        Binary data.
-        """
-        with open(path, "rb") as f:
-            return f.read()
-
-    def __get_text_data(self, path: str) -> str:
-        """
-        Get transcript from path.
-        :param path:     Path to transcript.
-        :return:         Transcript.
-        """
-        with open(path, "r", encoding="utf-8") as f:
-            return f.read().strip()
