@@ -1,12 +1,14 @@
 import os
 import shutil
 from .processor import Processor
-from .as_extracter import ActiveSpeakerExtracterV1
+from .as_extracter import ActiveSpeakerExtracter
 from .vietnamese_detector import VietnameseDetector
+from .transcriber import Transcriber
+from .cropper import Cropper
 from .uploader import Uploader
-from datasets import (Dataset, disable_progress_bar, enable_progress_bar,
+from datasets import (Dataset, disable_progress_bar, enable_progress_bar, # type: ignore
                       get_dataset_config_names, load_dataset)
-from huggingface_hub import HfFileSystem
+from huggingface_hub import HfFileSystem # type: ignore
 from src.data.utils import TaskConfig, prepare_dir, check_num_samples_in_dir
 
 
@@ -15,8 +17,13 @@ class Executor(Processor):
     This processor is used to execute other processors.
     """
     PROCESSORS = {
-        "asd": ActiveSpeakerExtracterV1,
+        "asd": ActiveSpeakerExtracter,
+
         "vndetect": VietnameseDetector,
+
+        "transcribe": Transcriber,
+        
+        "crop": Cropper,
     }
 
     def __init__(self, configs: TaskConfig) -> None:

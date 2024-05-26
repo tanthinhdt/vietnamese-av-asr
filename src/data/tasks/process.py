@@ -5,7 +5,8 @@ sys.path.append(os.getcwd())
 import argparse
 from tqdm import tqdm
 from src.data.processors.executor import Executor
-from src.data.utils.configs import TaskConfig, SpeakerDetectTaskConfig, VietnameseDetectTaskConfig, VietnameseTranscribeTaskConfig
+from src.data.utils import TaskConfig, SpeakerDetectTaskConfig, VietnameseDetectTaskConfig
+from src.data.utils import TaskConfig, TranscribingTaskConfig, CroppingTaskConfig
 
 def parse_args() -> argparse.Namespace:
     """
@@ -18,13 +19,13 @@ def parse_args() -> argparse.Namespace:
         type=str,
         default="asd",
         required=False,
-        help="Available tasks: asd, vndetect, slice, crop, denoise, transcribe, transcribe_v1, crop_v1.",
+        help="Available tasks: asd, vndetect, transcribe, crop.",
     )
     parser.add_argument(
         "--output-dir",
         type=str,
-        default="data/processed",
-        required=False,
+        default='data/processed',
+        required=True,
         help="Path to data directory.",
     )
     parser.add_argument(
@@ -79,18 +80,22 @@ def get_task_configs(args: argparse.Namespace) -> TaskConfig:
     :return:        Task config.
     """
     task_dict = {
-        "vndetect": {
-            "config": VietnameseDetectTaskConfig,
-            "dir": "detected-vietnamese-clip",
-        },
         "asd": {
             "config": SpeakerDetectTaskConfig,
             "dir": "detected-speaker-clip",
         },
-        "trans": {
-            "config": VietnameseTranscribeTaskConfig,
+        "vndetect": {
+            "config": VietnameseDetectTaskConfig,
+            "dir": "detected-vietnamese-clip",
+        },
+        "transcribe": {
+            "config": TranscribingTaskConfig,
             "dir": "transcribed-vietnamese-audio",
-        }
+        },
+        "crop": {
+            "config": CroppingTaskConfig,
+            "dir": "vietnamese-speaker-lip-clip",
+        },
     }
 
     task_configs = task_dict[args.task]["config"](
@@ -121,6 +126,7 @@ def main(configs: TaskConfig) -> None:
         unit="channel"
     )
     for channel in progress_bar:
+        print()
         print("-" * 20 + f" Processing {channel} " + "-" * 20)
 
         if executor.is_skipped(channel):

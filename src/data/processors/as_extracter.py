@@ -27,7 +27,7 @@ from ..utils.Light_ASD.model.ASD import ASD
 from ..utils.Light_ASD.model.faceDetector import S3FD
 
 
-class ActiveSpeakerExtracterV1(Processor):
+class ActiveSpeakerExtracter(Processor):
     def __init__(self,
                  minTrack: int = 10,
                  numFailedDet: int = 10,

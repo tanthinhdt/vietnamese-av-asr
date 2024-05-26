@@ -42,7 +42,6 @@ def check_num_samples_in_dir(dir_path: str, num_samples: int):
     num_samples_in_dir = len(os.listdir(dir_path))
     print(f"Expected {num_samples} in {dir_path}, but got {num_samples_in_dir}")
 
-
 def get_file_ids_in_dir(dir: str) -> List[str]:
     """
     Get file ids in directory.
