@@ -7,7 +7,7 @@ import shutil
 # from .transcriber_v1 import Transcriber_V1
 # from .cropper_v1 import Cropper_V1
 from .processor import Processor
-from .as_extracter_v1 import ActiveSpeakerExtracterV1
+from .as_extracter import ActiveSpeakerExtracterV1
 from .vietnamese_detector import VietnameseDetector
 from .uploader import Uploader
 from datasets import (Dataset, disable_progress_bar, enable_progress_bar,
