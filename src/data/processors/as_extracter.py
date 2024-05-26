@@ -449,7 +449,7 @@ class ActiveSpeakerExtracter(Processor):
                 sample['chunk_visual_id'] = video_ids
                 sample['chunk_audio_id'] = audio_ids
             else:
-                sample['id'] = [None] * len(video_id)
+                sample['id'][0] = None
             if self.clear:
                 if os.path.isdir(self.network_dir):
                     prefix, _ = os.path.split(self.network_dir)

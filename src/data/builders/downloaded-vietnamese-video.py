@@ -132,6 +132,8 @@ class DownloadedVietnameseVideo(datasets.GeneratorBasedBuilder):
 
                 video_id_path = [video_id_path for video_id_path in SPLIT_ID[channel] if video_id in video_id_path][0]
                 video_repo_path = os.path.join(video_id_path, 'video.mp4')
+                if not fs.isfile(video_repo_path):
+                    continue
 
                 video_repo_url = video_repo_path.replace(_REPO_PATH_BRANCH, _REPO_URL)
                 video_local_path_tmp = dl_manager.download(video_repo_url)
