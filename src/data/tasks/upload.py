@@ -7,7 +7,7 @@ import argparse
 from tqdm import tqdm
 from logging import getLogger
 from huggingface_hub import HfApi
-from phdkhanh2507.testVLR.utils import zip_dir
+from src.data.utils import zip_dir
 
 
 logger = getLogger()

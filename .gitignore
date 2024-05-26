@@ -66,8 +66,6 @@ target/
 # Pycharm
 .idea
 
-/data/
-
 # VS Code
 .vscode/
 
@@ -89,4 +87,6 @@ target/
 # Mypy cache
 .mypy_cache/
 
+/data/
 /tmp/
+#/src/data/utils/Light_ASD/

@@ -67,170 +67,170 @@ class TaskConfig:
         print(f"\tNumber of samples lost: {num_samples_change}")
 
 
-@dataclass
-class SlicingTaskConfig(TaskConfig):
-    """
-    This config is used to slice video into segments, then save audio and visual separately.
-    """
-    task: str = "slice"
-    src_repo_id: str = "phdkhanh2507/vietnamese-speaker-video"
-    dest_repo_id: str = "phdkhanh2507/vietnamese-speaker-clip"
-    schemas: list = field(default_factory=lambda: ["audio", "visual"])
-    num_proc: int = os.cpu_count()
-    remove_columns_mapping: list = field(default_factory=lambda: ["video"])
-
-    def get_task_kwargs(self) -> dict:
-        """
-        Get task kwargs.
-        :return:            Task kwargs.
-        """
-        task_kwargs = super().get_task_kwargs()
-        task_kwargs["fn_kwargs"].update({
-            "fps": 25,
-            "clip_duration": 3.0,
-            "clip_overlap": 1.0,
-            "keep_last": True,
-        })
-        return task_kwargs
-
-    def print_num_samples_change(self, num_samples_change: int) -> None:
-        """
-        Print changes.
-        :param num_samples_change:  Number of samples change.
-        """
-        print(f"\tNumber of samples added: {num_samples_change}")
-
-
-@dataclass
-class CroppingTaskConfig(TaskConfig):
-    """
-    This config is used to crop mouth region in video.
-    """
-    task: str = "crop"
-    src_repo_id: str = "phdkhanh2507/vietnamese-speaker-clip"
-    dest_repo_id: str = "phdkhanh2507/vietnamese-speaker-lip-clip"
-    schemas: list = field(default_factory=lambda: ["visual"])
-    remove_columns_loading: list = field(default_factory=lambda: ["audio"])
-    remove_columns_mapping: list = field(default_factory=lambda: ["visual"])
-
-    def get_task_kwargs(self) -> dict:
-        """
-        Get task kwargs.
-        :return:            Task kwargs.
-        """
-        task_kwargs = super().get_task_kwargs()
-        task_kwargs["fn_kwargs"].update({
-            "padding": 20,
-        })
-        return task_kwargs
-
-
-@dataclass
-class DenoisingTaskConfig(TaskConfig):
-    """
-    This config is used to denoise audio.
-    """
-    task: str = "denoise"
-    src_repo_id: str = "phdkhanh2507/vietnamese-speaker-lip-clip"
-    dest_repo_id: str = "phdkhanh2507/denoised-vietnamese-audio"
-    schemas: list = field(default_factory=lambda: ["audio"])
-    remove_columns_loading: list = field(default_factory=lambda: ["visual"])
-    remove_columns_mapping: list = field(default_factory=lambda: ["audio"])
-
-    def get_task_kwargs(self) -> dict:
-        """
-        Get task kwargs.
-        :return:            Task kwargs.
-        """
-        task_kwargs = super().get_task_kwargs()
-        task_kwargs["fn_kwargs"].update({
-            "output_sampling_rate": 16000,
-        })
-        return task_kwargs
-
-
-@dataclass
-class TranscribingTaskConfig(TaskConfig):
-    """
-    This config is used to transcribe audio.
-    """
-    task: str = "transcribe"
-    src_repo_id: str = "phdkhanh2507/denoised-vietnamese-audio"
-    dest_repo_id: str = "phdkhanh2507/purified-vietnamese-audio"
-    schemas: list = field(default_factory=lambda: ["transcript"])
-    remove_columns_mapping: list = field(default_factory=lambda: ["audio"])
-
-    def get_task_kwargs(self) -> dict:
-        """
-        Get task kwargs.
-        :return:            Task kwargs.
-        """
-        task_kwargs = super().get_task_kwargs()
-        task_kwargs["fn_kwargs"].update({
-            "language_threshold": 0.8,
-            "beam_width": 500,
-        })
-        return task_kwargs
-
-
-@dataclass
-class TranscribingTaskConfig_V1(TaskConfig):
-    """
-    This config is used to transcribe audio.
-    """
-    task: str = "transcribe_v1"
-    src_repo_id: str = "phdkhanh2507/vietnamese-speaker-clip"
-    dest_repo_id: str = "phdkhanh2507/transcribed-vietnamese-audio"
-    schemas: list = field(default_factory=lambda: ["transcript", "audio"])
-    remove_columns_loading: list = field(default_factory=lambda: ["visual"])
-    remove_columns_mapping: list = field(default_factory=lambda: ["audio"])
-
-    def get_task_kwargs(self) -> dict:
-        """
-        Get task kwargs.
-        :return:            Task kwargs.
-        """
-        task_kwargs = super().get_task_kwargs()
-        task_kwargs["fn_kwargs"].update({
-            "beam_width": 500,
-            "output_sampling_rate": 10000,
-        })
-        return task_kwargs
-
-
-@dataclass
-class CroppingTaskConfig_V1(TaskConfig):
-    """
-    This config is used to crop mouth region in video.
-    """
-    task: str = "crop_v1"
-    src_repo_id: str = "phdkhanh2507/transcribed-vietnamese-audio"
-    dest_repo_id: str = "phdkhanh2507/vietnamese-speaker-lip-clip-v1"
-    schemas: list = field(default_factory=lambda: ["visual"])
-    remove_columns_loading: list = field(default_factory=lambda: ["transcript", "audio"])
-    remove_columns_mapping: list = field(default_factory=lambda: ["visual"])
-
-    def get_task_kwargs(self) -> dict:
-        """
-        Get task kwargs.
-        :return:            Task kwargs.
-        """
-        task_kwargs = super().get_task_kwargs()
-        task_kwargs["fn_kwargs"].update({
-            "padding": 20,
-        })
-        return task_kwargs
+# @dataclass
+# class SlicingTaskConfig(TaskConfig):
+#     """
+#     This config is used to slice video into segments, then save audio and visual separately.
+#     """
+#     task: str = "slice"
+#     src_repo_id: str = "phdkhanh2507/vietnamese-speaker-video"
+#     dest_repo_id: str = "phdkhanh2507/vietnamese-speaker-clip"
+#     schemas: list = field(default_factory=lambda: ["audio", "visual"])
+#     num_proc: int = os.cpu_count()
+#     remove_columns_mapping: list = field(default_factory=lambda: ["video"])
+#
+#     def get_task_kwargs(self) -> dict:
+#         """
+#         Get task kwargs.
+#         :return:            Task kwargs.
+#         """
+#         task_kwargs = super().get_task_kwargs()
+#         task_kwargs["fn_kwargs"].update({
+#             "fps": 25,
+#             "clip_duration": 3.0,
+#             "clip_overlap": 1.0,
+#             "keep_last": True,
+#         })
+#         return task_kwargs
+#
+#     def print_num_samples_change(self, num_samples_change: int) -> None:
+#         """
+#         Print changes.
+#         :param num_samples_change:  Number of samples change.
+#         """
+#         print(f"\tNumber of samples added: {num_samples_change}")
+#
+#
+# @dataclass
+# class CroppingTaskConfig(TaskConfig):
+#     """
+#     This config is used to crop mouth region in video.
+#     """
+#     task: str = "crop"
+#     src_repo_id: str = "phdkhanh2507/vietnamese-speaker-clip"
+#     dest_repo_id: str = "phdkhanh2507/vietnamese-speaker-lip-clip"
+#     schemas: list = field(default_factory=lambda: ["visual"])
+#     remove_columns_loading: list = field(default_factory=lambda: ["audio"])
+#     remove_columns_mapping: list = field(default_factory=lambda: ["visual"])
+#
+#     def get_task_kwargs(self) -> dict:
+#         """
+#         Get task kwargs.
+#         :return:            Task kwargs.
+#         """
+#         task_kwargs = super().get_task_kwargs()
+#         task_kwargs["fn_kwargs"].update({
+#             "padding": 20,
+#         })
+#         return task_kwargs
+#
+#
+# @dataclass
+# class DenoisingTaskConfig(TaskConfig):
+#     """
+#     This config is used to denoise audio.
+#     """
+#     task: str = "denoise"
+#     src_repo_id: str = "phdkhanh2507/vietnamese-speaker-lip-clip"
+#     dest_repo_id: str = "phdkhanh2507/denoised-vietnamese-audio"
+#     schemas: list = field(default_factory=lambda: ["audio"])
+#     remove_columns_loading: list = field(default_factory=lambda: ["visual"])
+#     remove_columns_mapping: list = field(default_factory=lambda: ["audio"])
+#
+#     def get_task_kwargs(self) -> dict:
+#         """
+#         Get task kwargs.
+#         :return:            Task kwargs.
+#         """
+#         task_kwargs = super().get_task_kwargs()
+#         task_kwargs["fn_kwargs"].update({
+#             "output_sampling_rate": 16000,
+#         })
+#         return task_kwargs
+#
+#
+# @dataclass
+# class TranscribingTaskConfig(TaskConfig):
+#     """
+#     This config is used to transcribe audio.
+#     """
+#     task: str = "transcribe"
+#     src_repo_id: str = "phdkhanh2507/denoised-vietnamese-audio"
+#     dest_repo_id: str = "phdkhanh2507/purified-vietnamese-audio"
+#     schemas: list = field(default_factory=lambda: ["transcript"])
+#     remove_columns_mapping: list = field(default_factory=lambda: ["audio"])
+#
+#     def get_task_kwargs(self) -> dict:
+#         """
+#         Get task kwargs.
+#         :return:            Task kwargs.
+#         """
+#         task_kwargs = super().get_task_kwargs()
+#         task_kwargs["fn_kwargs"].update({
+#             "language_threshold": 0.8,
+#             "beam_width": 500,
+#         })
+#         return task_kwargs
+#
+#
+# @dataclass
+# class TranscribingTaskConfig_V1(TaskConfig):
+#     """
+#     This config is used to transcribe audio.
+#     """
+#     task: str = "transcribe_v1"
+#     src_repo_id: str = "phdkhanh2507/vietnamese-speaker-clip"
+#     dest_repo_id: str = "phdkhanh2507/transcribed-vietnamese-audio"
+#     schemas: list = field(default_factory=lambda: ["transcript", "audio"])
+#     remove_columns_loading: list = field(default_factory=lambda: ["visual"])
+#     remove_columns_mapping: list = field(default_factory=lambda: ["audio"])
+#
+#     def get_task_kwargs(self) -> dict:
+#         """
+#         Get task kwargs.
+#         :return:            Task kwargs.
+#         """
+#         task_kwargs = super().get_task_kwargs()
+#         task_kwargs["fn_kwargs"].update({
+#             "beam_width": 500,
+#             "output_sampling_rate": 10000,
+#         })
+#         return task_kwargs
+#
+#
+# @dataclass
+# class CroppingTaskConfig_V1(TaskConfig):
+#     """
+#     This config is used to crop mouth region in video.
+#     """
+#     task: str = "crop_v1"
+#     src_repo_id: str = "phdkhanh2507/transcribed-vietnamese-audio"
+#     dest_repo_id: str = "phdkhanh2507/vietnamese-speaker-lip-clip-v1"
+#     schemas: list = field(default_factory=lambda: ["visual"])
+#     remove_columns_loading: list = field(default_factory=lambda: ["transcript", "audio"])
+#     remove_columns_mapping: list = field(default_factory=lambda: ["visual"])
+#
+#     def get_task_kwargs(self) -> dict:
+#         """
+#         Get task kwargs.
+#         :return:            Task kwargs.
+#         """
+#         task_kwargs = super().get_task_kwargs()
+#         task_kwargs["fn_kwargs"].update({
+#             "padding": 20,
+#         })
+#         return task_kwargs
 
 
 @dataclass
 class SpeakerDetectTaskConfig(TaskConfig):
-
     task: str = 'asd'
     src_repo_id: str = 'GSU24AI03-SU24AI21/downloaded-vietnamese-video'
-    dest_repo_id: str = 'GSU24AI03-SU24AI21/speaker-detected-video'
-    schemas: list = field(default_factory=lambda: ['video', 'audio'])
-    remove_columns_loading: list = field(default_factory=lambda: ["duration"])
-    remove_columns_mapping: list = field(default_factory=lambda: [])
+    dest_repo_id: str = 'GSU24AI03-SU24AI21/detected-speaker-clip'
+    schemas: list = field(default_factory=lambda: ['visual', 'audio'])
+    remove_columns_loading: list = field(default_factory=lambda: [])
+    remove_columns_mapping: list = field(default_factory=
+                                         lambda: ["duration", "video_path", "video_num_frames", "video_fps", "uploader", "video_id"])
 
     def get_task_kwargs(self) -> dict:
         """
@@ -246,13 +246,12 @@ class SpeakerDetectTaskConfig(TaskConfig):
 
 @dataclass
 class VietnameseDetectTaskConfig(TaskConfig):
-
     task: str = 'vndetect'
-    src_repo_id: str = 'GSU24AI03-SU24AI21/speaker-detected-video'
-    dest_repo_id: str = 'GSU24AI03-SU24AI21/vietnamese-detected-clip'
-    schemas: list = field(default_factory=lambda: ['video', 'audio'])
+    src_repo_id: str = 'GSU24AI03-SU24AI21/detected-speaker-clip'
+    dest_repo_id: str = 'GSU24AI03-SU24AI21/detected-vietnamese-clip'
+    schemas: list = field(default_factory=lambda: ['visual', 'audio'])
     remove_columns_loading: list = field(default_factory=lambda: [])
-    remove_columns_mapping: list = field(default_factory=lambda: [])
+    remove_columns_mapping: list = field(default_factory=lambda: ["visual_path", "audio_path"])
 
     def get_task_kwargs(self) -> dict:
         """
@@ -261,6 +260,26 @@ class VietnameseDetectTaskConfig(TaskConfig):
         """
         task_kwargs = super().get_task_kwargs()
         task_kwargs["fn_kwargs"].update({
-            "output_dir": self.output_dir
+
+        })
+        return task_kwargs
+
+@dataclass
+class VietnameseTranscribeTaskConfig(TaskConfig):
+    task: str = 'trans'
+    src_repo_id: str = 'GSU24AI03-SU24AI21/detected-vietnamese-clip'
+    dest_repo_id: str = 'GSU24AI03-SU24AI21/transcribed-vietnamese-audio'
+    schemas: list = field(default_factory=lambda: ['audio'])
+    remove_columns_loading: list = field(default_factory=lambda: [])
+    remove_columns_mapping: list = field(default_factory=lambda: ["audio_path"])
+
+    def get_task_kwargs(self) -> dict:
+        """
+        Get task keyword arguments.
+        :return:
+        """
+        task_kwargs = super().get_task_kwargs()
+        task_kwargs["fn_kwargs"].update({
+
         })
         return task_kwargs

@@ -19,22 +19,21 @@ _REPO_PATH = "datasets/GSU24AI03-SU24AI21/downloaded-vietnamese-video"
 _BRANCH = 'raw_data'
 _REPO_PATH_BRANCH = f"{_REPO_PATH}@{_BRANCH}"
 _REPO_URL = f"https://huggingface.co/{_REPO_PATH}/resolve/{_BRANCH}"
-_REPO_CONFIGS_URL = f"https://huggingface.co/{_REPO_PATH}/resolve/main/split_id.pckl"
+_REPO_CONFIG_URL = f"{_REPO_PATH}@main/split_id.pckl"
 
 _PATHS = {
-    "video": f"{_REPO_PATH_BRANCH}" + "/raw/*/{video_id}/video.mp4",
-    "metadata": f"{_REPO_PATH_BRANCH}" + "/raw/*/{video_id}/video.info.json",
+    "video": f"{_REPO_PATH_BRANCH}" + "/raw/{uploader}/{video_id}/video.mp4",
+    "metadata": f"{_REPO_PATH_BRANCH}" + "/raw/{uploader}/{video_id}/video.info.json",
 }
 
-
-with open(_REPO_CONFIGS_URL, 'rb') as f:
+with fs.open(_REPO_CONFIG_URL, 'rb') as f:
     SPLIT_ID: dict = pickle.load(f)
 
 _CONFIGS = ["all"]
 _CONFIGS.extend(list(SPLIT_ID.keys()))
 
 
-class RawVietnameseClipConfig(datasets.BuilderConfig):
+class DownloadedVietnameseVideoConfig(datasets.BuilderConfig):
     """Raw Vietnamese Clip configuration."""
 
     def __init__(self, name: str, **kwargs):
@@ -50,15 +49,16 @@ class RawVietnameseClipConfig(datasets.BuilderConfig):
         )
 
 
-class RawVietnameseClip(datasets.GeneratorBasedBuilder):
+class DownloadedVietnameseVideo(datasets.GeneratorBasedBuilder):
     """Raw Vietnamese Clip dataset."""
 
-    BUILDER_CONFIGS = [RawVietnameseClipConfig(name) for name in _CONFIGS]
+    BUILDER_CONFIGS = [DownloadedVietnameseVideoConfig(name) for name in _CONFIGS]
     DEFAULT_CONFIG_NAME = "all"
 
     def _info(self) -> datasets.DatasetInfo:
         features = datasets.Features({
             "id": datasets.Value("string"),
+            "uploader": datasets.Value("string"),
             "channel": datasets.Value("string"),
             "video_id": datasets.Value("string"),
             "video_path": datasets.Value("string"),
@@ -89,8 +89,9 @@ class RawVietnameseClip(datasets.GeneratorBasedBuilder):
         data_dict = dict()
         for channel in config_names:
             metadata_paths = []
-            for video_id in SPLIT_ID[channel]:
-                metadata_repo_path = fs.glob(_PATHS['metadata'].format(video_id=video_id), detail=False)[0]
+            for video_id_path in SPLIT_ID[channel]:
+                uploader, video_id = video_id_path.split('/')[-2:]
+                metadata_repo_path = _PATHS['metadata'].format(video_id=video_id, uploader=uploader)
                 metadata_url = metadata_repo_path.replace(_REPO_PATH_BRANCH, _REPO_URL)
                 metadata_paths.extend(dl_manager.download([metadata_url]))
 
@@ -125,8 +126,12 @@ class RawVietnameseClip(datasets.GeneratorBasedBuilder):
                 trust_remote_code=False,
             )
             for i, sample in enumerate(dataset):
-                video_id = sample['video_id']
-                video_repo_path = fs.glob(_PATHS['video'].format(video_id=video_id), detail=False)[0]
+                video_id = sample['id']
+                video_num_frames = sample['duration'] * sample['fps']
+                audio_num_frames = sample['duration'] * sample['asr']
+
+                video_id_path = [video_id_path for video_id_path in SPLIT_ID[channel] if video_id in video_id_path][0]
+                video_repo_path = os.path.join(video_id_path, 'video.mp4')
 
                 video_repo_url = video_repo_path.replace(_REPO_PATH_BRANCH, _REPO_URL)
                 video_local_path_tmp = dl_manager.download(video_repo_url)
@@ -138,16 +143,18 @@ class RawVietnameseClip(datasets.GeneratorBasedBuilder):
                 local_path = os.path.join(cache_dir, channel, '')
                 os.makedirs(local_path, exist_ok=True)
                 local_path = os.path.join(local_path, f"{channel}@{video_id}.mp4")
+
                 fs.get(rpath=video_repo_path, lpath=local_path, recursive=True)
 
                 yield i, {
                     'id': hash_id,
+                    'uploader': sample['uploader_id'][1:],
                     'channel': channel,
-                    'video_id': sample['video_id'],
+                    'video_id': video_id,
                     'video_path': local_path,
                     'duration': sample['duration'],
-                    'video_num_frames': sample['video_num_frames'],
-                    'audio_num_frames': sample['audio_num_frames'],
-                    'video_fps': sample['video_fps'],
-                    'audio_fps': sample['audio_fps']
+                    'video_num_frames': video_num_frames,
+                    'audio_num_frames': audio_num_frames,
+                    'video_fps': sample['fps'],
+                    'audio_fps': sample['asr']
                 }

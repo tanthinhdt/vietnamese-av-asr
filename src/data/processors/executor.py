@@ -1,14 +1,14 @@
 import os
 import shutil
-from .cropper import Cropper
-from .denoiser import Denoiser
+# from .cropper import Cropper
+# from .denoiser import Denoiser
+# from .slicer import Slicer
+# from .transcriber import Transcriber
+# from .transcriber_v1 import Transcriber_V1
+# from .cropper_v1 import Cropper_V1
 from .processor import Processor
-from .slicer import Slicer
 from .as_extracter_v1 import ActiveSpeakerExtracterV1
 from .vietnamese_detector import VietnameseDetector
-from .transcriber import Transcriber
-from .transcriber_v1 import Transcriber_V1
-from .cropper_v1 import Cropper_V1
 from .uploader import Uploader
 from datasets import (Dataset, disable_progress_bar, enable_progress_bar,
                       get_dataset_config_names, load_dataset)
@@ -23,12 +23,13 @@ class Executor(Processor):
     PROCESSORS = {
         "asd": ActiveSpeakerExtracterV1,
         "vndetect": VietnameseDetector,
-        "slice": Slicer,
-        "denoise": Denoiser,
-        "transcribe": Transcriber,
-        "transcribe_v1": Transcriber_V1,
-        "crop": Cropper,
-        "crop_v1": Cropper_V1,
+        "trans": VietnameseDetector,
+        # "slice": Slicer,
+        # "denoise": Denoiser,
+        # "transcribe": Transcriber,
+        # "transcribe_v1": Transcriber_V1,
+        # "crop": Cropper,
+        # "crop_v1": Cropper_V1,
     }
 
     def __init__(self, configs: TaskConfig) -> None:
@@ -64,6 +65,7 @@ class Executor(Processor):
             else:
                 new_channels = {self.configs.channel_names}
             available_channels = available_channels.intersection(new_channels)
+
         return list(available_channels)
 
     def prepare_dir(self, channel: str) -> None:

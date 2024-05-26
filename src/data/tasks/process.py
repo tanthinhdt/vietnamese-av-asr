@@ -5,9 +5,8 @@ sys.path.append(os.getcwd())
 import argparse
 from tqdm import tqdm
 from src.data.processors.executor import Executor
-from src.data.utils.configs import TaskConfig, SlicingTaskConfig, DenoisingTaskConfig, SpeakerDetectTaskConfig, VietnameseDetectTaskConfig
-from src.data.utils.configs import CroppingTaskConfig, CroppingTaskConfig_V1, TranscribingTaskConfig, TranscribingTaskConfig_V1
-""
+from src.data.utils.configs import TaskConfig, SpeakerDetectTaskConfig, VietnameseDetectTaskConfig, VietnameseTranscribeTaskConfig
+# from src.data.utils.configs import CroppingTaskConfig, CroppingTaskConfig_V1, TranscribingTaskConfig, TranscribingTaskConfig_V1, SlicingTaskConfig, DenoisingTaskConfig
 
 def parse_args() -> argparse.Namespace:
     """
@@ -83,37 +82,42 @@ def get_task_configs(args: argparse.Namespace) -> TaskConfig:
     task_dict = {
         "vndetect": {
             "config": VietnameseDetectTaskConfig,
-            "dir": "vietnamese-detected-clip",
+            "dir": "detected-vietnamese-clip",
         },
         "asd": {
             "config": SpeakerDetectTaskConfig,
-            "dir": "speaker-detected-video",
+            "dir": "detected-speaker-clip",
         },
-        "slice": {
-            "config": SlicingTaskConfig,
-            "dir": "vietnamese-speaker-clip",
-        },
-        "crop": {
-            "config": CroppingTaskConfig,
-            "dir": "vietnamese-speaker-lip-clip",
-        },
-        "denoise": {
-            "config": DenoisingTaskConfig,
-            "dir": "denoised-vietnamese-audio",
-        },
-        "transcribe": {
-            "config": TranscribingTaskConfig,
-            "dir": "purified-vietnamese-audio",
-        },
-        "transcribe_v1": {
-            "config": TranscribingTaskConfig_V1,
+        "trans": {
+            "config": VietnameseTranscribeTaskConfig,
             "dir": "transcribed-vietnamese-audio",
-        },
-        "crop_v1": {
-            "config": CroppingTaskConfig_V1,
-            "dir": "vietnamese-speaker-lip-clip-v1",
-        },
+        }
     }
+    #     "slice": {
+    #         "config": SlicingTaskConfig,
+    #         "dir": "vietnamese-speaker-clip",
+    #     },
+    #     "crop": {
+    #         "config": CroppingTaskConfig,
+    #         "dir": "vietnamese-speaker-lip-clip",
+    #     },
+    #     "denoise": {
+    #         "config": DenoisingTaskConfig,
+    #         "dir": "denoised-vietnamese-audio",
+    #     },
+    #     "transcribe": {
+    #         "config": TranscribingTaskConfig,
+    #         "dir": "purified-vietnamese-audio",
+    #     },
+    #     "transcribe_v1": {
+    #         "config": TranscribingTaskConfig_V1,
+    #         "dir": "transcribed-vietnamese-audio",
+    #     },
+    #     "crop_v1": {
+    #         "config": CroppingTaskConfig_V1,
+    #         "dir": "vietnamese-speaker-lip-clip-v1",
+    #     },
+    # }
     task_configs = task_dict[args.task]["config"](
         output_dir=os.path.join(args.output_dir, task_dict[args.task]["dir"]),
         channel_names=args.channel_names,

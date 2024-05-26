@@ -16,7 +16,7 @@ from huggingface_hub import HfApi
 import tqdm
 from logging import getLogger
 
-from phdkhanh2507.testVLR.processors.as_extracter import ActiveSpeakerExtractor
+#from src.data.processors.as_extracter import ActiveSpeakerExtractor
 
 logger = getLogger(__name__)
 warnings.filterwarnings("ignore")
