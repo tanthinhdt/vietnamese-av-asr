@@ -57,19 +57,15 @@ class UploadScheduler(CommitScheduler):
                         output_dir=temp_dir,
                         logger=self.logger,
                     )
-                    src_path = path + ".zip"
+                    src_path = src_path + ".zip"
 
-                try:
-                    upload_to_hf(
-                        src_path=src_path,
-                        dest_path=dest_path,
-                        repo_id=self.repo_id,
-                        repo_type=self.repo_type,
-                        logger=self.logger,
-                    )
-                except HfHubHTTPError:
-                    self.logger.error("Limit exceeded. Try again later.")
-                    break
+                upload_to_hf(
+                    src_path=src_path,
+                    dest_path=dest_path,
+                    repo_id=self.repo_id,
+                    repo_type=self.repo_type,
+                    logger=self.logger,
+                )
 
                 if self.delete_after_upload:
                     os.remove(path)
