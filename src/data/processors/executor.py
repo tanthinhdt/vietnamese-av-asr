@@ -81,7 +81,6 @@ class Executor(Processor):
             split="train",
             cache_dir=self.configs.cache_dir,
             trust_remote_code=True,
-            trust_remote_code=True,
         )
         if self.configs.remove_columns_loading:
             self.dataset = self.dataset.remove_columns(
