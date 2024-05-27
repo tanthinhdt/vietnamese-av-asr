@@ -375,20 +375,16 @@ class ActiveSpeakerExtracter(Processor):
                 if sample['uploader'] == 'truyenhinhnhandantv':
                     self.start = 0.
                     self.duration = 15.
-
-            if sample['uploader'] == 'truyenhinhnhandantv':
-                self.start = 0
-                self.duration = 20
-            if self.duration == 0:
-                command = ("ffmpeg -y -i %s -c:v libx264 -c:a pcm_s16le -b:v 3000k -b:a 192k -qscale:v 0 -qscale:a 0 "
-                            "-r 25 -ar 16000 -threads %d -async 1 %s -loglevel panic " %
-                            (videoPath, self.nDataLoaderThread, self.videoFilePath))
-            else:
-                command = (
-                            "ffmpeg -y -i %s -qscale:v 0 -threads %d -ss %.3f -to %.3f -async 1 -r 25 %s -loglevel panic" %
-                            (videoPath, self.nDataLoaderThread, self.start, self.start + self.duration,
-                                self.videoFilePath))
-                subprocess.call(command, shell=True, stdout=None)
+                if self.duration == 0:
+                    command = ("ffmpeg -y -i %s -c:v libx264 -c:a pcm_s16le -b:v 3000k -b:a 192k -qscale:v 0 -qscale:a 0 "
+                                "-r 25 -ar 16000 -threads %d -async 1 %s -loglevel panic " %
+                                (videoPath, self.nDataLoaderThread, self.videoFilePath))
+                    subprocess.call(command, shell=True, stdout=None)
+                else:
+                    command = (
+                                "ffmpeg -y -i %s -qscale:v 0 -threads %d -ss %.3f -to %.3f -async 1 -r 25 -ar 16000 %s -loglevel panic" %
+                                (videoPath, self.nDataLoaderThread, self.start, self.start + self.duration,self.videoFilePath))
+                    subprocess.call(command, shell=True, stdout=None)
 
             # Extract audio
             self.audioFilePath = os.path.join(self.pyaviPath, 'audio.wav')
