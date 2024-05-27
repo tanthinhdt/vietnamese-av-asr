@@ -74,9 +74,8 @@ class SpeakerDetectTaskConfig(TaskConfig):
     src_repo_id: str = 'GSU24AI03-SU24AI21/downloaded-vietnamese-video'
     dest_repo_id: str = 'GSU24AI03-SU24AI21/detected-speaker-clip'
     schemas: list = field(default_factory=lambda: ['visual', 'audio'])
-    remove_columns_loading: list = field(default_factory=lambda: [])
-    remove_columns_mapping: list = field(default_factory=
-                                         lambda: ["duration", "video_path", "video_num_frames", "video_fps", "uploader", "video_id"])
+    remove_columns_loading: list = field(default_factory=lambda: ["video_num_frames", "video_fps", "audio_num_frames", "audio_fps", "duration"])
+    remove_columns_mapping: list = field(default_factory=lambda: ["video_path", "video_id", "uploader"])
 
     def get_task_kwargs(self) -> dict:
         """
@@ -106,31 +105,9 @@ class VietnameseDetectTaskConfig(TaskConfig):
         :return:
         """
         task_kwargs = super().get_task_kwargs()
-        task_kwargs["fn_kwargs"].update({
-
-        })
+        task_kwargs["fn_kwargs"].update({})
         return task_kwargs
 
-@dataclass
-class VietnameseTranscribeTaskConfig(TaskConfig):
-    task: str = 'trans'
-    src_repo_id: str = 'GSU24AI03-SU24AI21/detected-vietnamese-clip'
-    dest_repo_id: str = 'GSU24AI03-SU24AI21/transcribed-vietnamese-audio'
-    schemas: list = field(default_factory=lambda: ['audio'])
-    remove_columns_loading: list = field(default_factory=lambda: [])
-    remove_columns_mapping: list = field(default_factory=lambda: ["audio_path"])
-
-    def get_task_kwargs(self) -> dict:
-        """
-        Get task keyword arguments.
-        :return:
-        """
-        task_kwargs = super().get_task_kwargs()
-        task_kwargs["fn_kwargs"].update({
-
-        })
-        return task_kwargs
-    
 
 @dataclass
 class TranscribingTaskConfig(TaskConfig):

@@ -67,7 +67,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--cache-dir",
         type=str,
-        default=os.path.join(os.getcwd(), "data/external/"),
+        default=os.path.join(os.getcwd(), "data", "external"),
         help="Cache directory.",
     )
     return parser.parse_args()
