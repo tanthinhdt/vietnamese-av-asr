@@ -6,10 +6,10 @@ from .vietnamese_detector import VietnameseDetector
 from .transcriber import Transcriber
 from .cropper import Cropper
 from .uploader import Uploader
-from datasets import (Dataset, disable_progress_bar, enable_progress_bar,
+from datasets import (Dataset, disable_progress_bar, enable_progress_bar, # type: ignore
                       get_dataset_config_names, load_dataset)
-from huggingface_hub import HfFileSystem
-from src.data.utils import TaskConfig, check_num_samples_in_dir, prepare_dir
+from huggingface_hub import HfFileSystem # type: ignore
+from src.data.utils import TaskConfig, prepare_dir, check_num_samples_in_dir
 
 
 class Executor(Processor):
@@ -20,6 +20,7 @@ class Executor(Processor):
         "asd": ActiveSpeakerExtracter,
         "vndetect": VietnameseDetector,
         "transcribe": Transcriber,
+        
         "crop": Cropper,
     }
 
@@ -44,12 +45,10 @@ class Executor(Processor):
         """
         # Get available channel names.
         available_channels = set(get_dataset_config_names(self.configs.src_repo_id)) - {"all"}
-
         upload_only = not self.configs.overwrite and self.configs.upload_to_hub
         if not self.configs.overwrite or upload_only:
             existing_channels = set(get_dataset_config_names(self.configs.dest_repo_id)) - {"all"}
             available_channels -= existing_channels
-
         # Get channel names to process.
         if self.configs.channel_names:
             if os.path.isfile(self.configs.channel_names):
@@ -81,6 +80,7 @@ class Executor(Processor):
             self.configs.src_repo_id, channel,
             split="train",
             cache_dir=self.configs.cache_dir,
+            trust_remote_code=True,
             trust_remote_code=True,
         )
         if self.configs.remove_columns_loading:
@@ -115,6 +115,7 @@ class Executor(Processor):
             num_proc=os.cpu_count(),
             load_from_cache_file=not self.configs.overwrite,
         )
+
         enable_progress_bar()
         self.num_samples_after = self.dataset.num_rows
         return self

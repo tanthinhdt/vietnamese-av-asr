@@ -8,7 +8,6 @@ from src.data.processors.executor import Executor
 from src.data.utils import TaskConfig, SpeakerDetectTaskConfig, VietnameseDetectTaskConfig
 from src.data.utils import TaskConfig, TranscribingTaskConfig, CroppingTaskConfig
 
-
 def parse_args() -> argparse.Namespace:
     """
     Get arguments from command line.
@@ -25,14 +24,14 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--output-dir",
         type=str,
-        default=None,
+        default='data/processed',
         required=True,
         help="Path to data directory.",
     )
     parser.add_argument(
         "--channel-names",
         type=str,
-        default=None,
+        default="batch_99999",
         help="A channel name or path to file containing channel names.",
     )
     parser.add_argument(
@@ -89,6 +88,14 @@ def get_task_configs(args: argparse.Namespace) -> TaskConfig:
             "config": VietnameseDetectTaskConfig,
             "dir": "detected-vietnamese-clip",
         },
+        "asd": {
+            "config": SpeakerDetectTaskConfig,
+            "dir": "detected-speaker-clip",
+        },
+        "vndetect": {
+            "config": VietnameseDetectTaskConfig,
+            "dir": "detected-vietnamese-clip",
+        },
         "transcribe": {
             "config": TranscribingTaskConfig,
             "dir": "transcribed-vietnamese-audio",
@@ -98,6 +105,7 @@ def get_task_configs(args: argparse.Namespace) -> TaskConfig:
             "dir": "vietnamese-speaker-lip-clip",
         },
     }
+
     task_configs = task_dict[args.task]["config"](
         output_dir=os.path.join(args.output_dir, task_dict[args.task]["dir"]),
         channel_names=args.channel_names,
