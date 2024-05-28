@@ -421,7 +421,7 @@ class ActiveSpeakerExtracter(Processor):
             flist.sort()
             out_path = os.path.join(self.pyworkPath, 'faces.pckl')
             if not os.path.isfile(out_path):
-                faces = self.inference_video(flist=flist, video_path=self.videoFilePath, conf_th=0.99)
+                faces = self.inference_video(flist=flist, conf_th=0.99)
             else:
                 with open(out_path, mode='rb') as f:
                     faces = pickle.load(f)
@@ -435,8 +435,7 @@ class ActiveSpeakerExtracter(Processor):
                         allTracks.extend(self.track_shot(faces[shot[0].frame_num:shot[1].frame_num]))
                 # Face clips cropping
                 for ii, track in enumerate(allTracks):
-                    vidTracks.append(self.crop_video(video_path=self.videoFilePath,
-                        flist=flist, track=track, cropFile=os.path.join(self.pycropPath, '%05d' % ii)))
+                    vidTracks.append(self.crop_video(flist=flist, track=track, cropFile=os.path.join(self.pycropPath, '%05d' % ii)))
                 if self.save:
                     with open(os.path.join(self.pyworkPath, 'tracks.pckl'), 'wb') as fil:
                         pickle.dump(vidTracks, fil)
