@@ -356,12 +356,14 @@ class ActiveSpeakerExtracter(Processor):
         video_file_name = videoPath.split('/')[-1]
         channel = video_file_name.split('@')[0]
         video_id = video_file_name.split('@')[-1][:-4]
+
         self.outputPath = output_dir
         self.network_dir = os.path.join(tmp_dir, channel, f"{channel}@{video_id}@network_results")
         self.pyaviPath = os.path.join(self.network_dir, 'pyavi')
         self.pyframesPath = os.path.join(self.network_dir, 'pyframes')
         self.pyworkPath = os.path.join(self.network_dir, 'pywork')
         self.pycropPath = os.path.join(self.network_dir, 'pycrop')
+        up = True
         chunk_visual_list = glob.glob(os.path.join(visual_output_dir,f"chunk@visual@{channel}@{video_id}@*.mp4"), recursive=False)
         chunk_audio_list = glob.glob(os.path.join(audio_output_dir,f"chunk@audio@{channel}@{video_id}@*.wav"), recursive=False)
         if chunk_visual_list and chunk_audio_list and len(chunk_visual_list) == len(chunk_audio_list):
@@ -373,6 +375,7 @@ class ActiveSpeakerExtracter(Processor):
                 local_zip_file_network = self.network_dir + ".zip"
                 fs.get(rpath=repo_zip_file_network,lpath=local_zip_file_network)
                 shutil.unpack_archive(filename=local_zip_file_network,extract_dir=os.path.join(tmp_dir,channel),format='zip')
+                up = False
                 os.remove(local_zip_file_network)
             else:
                 os.makedirs(self.pyaviPath, exist_ok=True)
@@ -425,7 +428,6 @@ class ActiveSpeakerExtracter(Processor):
             else:
                 with open(out_path, mode='rb') as f:
                     faces = pickle.load(f)
-
             out_path = os.path.join(self.pyworkPath, 'tracks.pckl')
             if not os.path.isfile(out_path):
                 allTracks, vidTracks = [], []
@@ -456,15 +458,16 @@ class ActiveSpeakerExtracter(Processor):
                 sample['id'] = [None]
                 visual_ids = ['No id']
                 audio_ids = ['No id']
-        
-        if os.path.isdir(self.network_dir):
-            Uploader().zip_and_upload_dir(
-                dir_path=self.network_dir,
-                path_in_repo=os.path.join(channel,f"{channel}@{video_id}@network_results.zip"),
-                repo_id=self.network_repo_id,
-                overwrite=False,
-            )
-            shutil.rmtree(self.network_dir)
+
+            if os.path.isdir(self.network_dir):
+                if up:
+                    Uploader().zip_and_upload_dir(
+                        dir_path=self.network_dir,
+                        path_in_repo=os.path.join(channel,f"{channel}@{video_id}@network_results.zip"),
+                        repo_id=self.network_repo_id,
+                        overwrite=False,
+                    )
+                shutil.rmtree(self.network_dir)
 
         out_sample =  {
             "id": sample["id"] * len(visual_ids),
