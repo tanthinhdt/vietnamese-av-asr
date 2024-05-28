@@ -3,7 +3,6 @@ import tempfile
 from glob import glob
 from logging import Logger
 from huggingface_hub import HfApi, HfFileSystem, CommitScheduler
-from huggingface_hub.utils._errors import HfHubHTTPError
 from .zipping import zip_dir
 
 

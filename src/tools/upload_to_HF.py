@@ -4,7 +4,6 @@ import sys
 sys.path.append(os.getcwd())
 
 import argparse
-from glob import glob
 from logging import Logger
 from src.utils import (
     get_default_arg_parser,
