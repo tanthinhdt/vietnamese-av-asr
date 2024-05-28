@@ -465,7 +465,6 @@ class ActiveSpeakerExtracter(Processor):
                 overwrite=False,
             )
             shutil.rmtree(self.network_dir)
-            shutil.rmtree(self.network_dir)
 
         out_sample =  {
             "id": sample["id"] * len(visual_ids),
