@@ -66,14 +66,23 @@ def get_args() -> argparse.Namespace:
 
 def main(args: argparse.Namespace, logger: Logger) -> None:
     logger.info("Uploading files to HuggingFace Hub")
+
+    if '*' in os.path.basename(args.path):
+        folder_path = os.path.dirname(args.path)
+        glob_pattern = os.path.basename(args.path)
+    else:
+        folder_path = args.path
+        glob_pattern = None
+
     try:
         upload_scheduler = UploadScheduler(
             repo_id=args.repo_id,
-            folder_path=args.path,
+            folder_path=folder_path,
             every=args.every,
             path_in_repo=args.dir_in_repo,
             repo_type=args.repo_type,
             logger=logger,
+            glob_pattern=glob_pattern,
             delete_after_upload=args.delete_after_upload,
             overwrite=args.overwrite,
             zip=args.zip,

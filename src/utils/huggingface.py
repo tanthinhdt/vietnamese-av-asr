@@ -15,6 +15,7 @@ class UploadScheduler(CommitScheduler):
         self,
         *,
         logger: Logger,
+        glob_pattern: str = None,
         delete_after_upload: bool = False,
         overwrite: bool = False,
         zip: bool = False,
@@ -22,6 +23,8 @@ class UploadScheduler(CommitScheduler):
     ) -> None:
         super().__init__(**kwargs)
         self.folder_path = str(self.folder_path)
+        if glob_pattern is not None:
+            self.folder_path = os.path.join(self.folder_path, glob_pattern)
         self.path_in_repo = str(self.path_in_repo)
         self.logger = logger
         self.delete_after_upload = delete_after_upload
