@@ -30,6 +30,7 @@ from ..utils.Light_ASD.model.faceDetector import S3FD
 
 fs = HfFileSystem()
 
+
 class ActiveSpeakerExtracter(Processor):
     def __init__(self,
                  minTrack: int = 10,
@@ -93,7 +94,6 @@ class ActiveSpeakerExtracter(Processor):
         self.savePath = None
         self.network_repo_id = "GSU24AI03-SU24AI21/network-result-asd"
         
-
     def scene_detect(self) -> list:
         # CPU: Scene detection, output is the list of each shot's time duration
         videoManager = VideoManager([self.videoFilePath])
@@ -180,7 +180,7 @@ class ActiveSpeakerExtracter(Processor):
                     tracks.append({'frame': frameI, 'bbox': bboxesI})
         return tracks
 
-    def crop_video(self, flist: list, video_path: str, track: dict, cropFile: str) -> dict:
+    def crop_video(self, flist: list, track: dict, cropFile: str) -> dict:
         # CPU: crop the face clips
         vOut = cv2.VideoWriter(
             cropFile + 't.avi', cv2.VideoWriter_fourcc(*'XVID'), 25, (224, 224))  # Write video
@@ -385,7 +385,7 @@ class ActiveSpeakerExtracter(Processor):
             if not os.path.isfile(self.videoFilePath):
                 if sample['uploader'] == 'truyenhinhnhandantv':
                     self.start = 0.
-                    self.duration = 15.
+                    self.duration = 25.
                 if self.duration == 0:
                     command = ("ffmpeg -y -i %s -c:v libx264 -c:a pcm_s16le -b:v 3000k -b:a 192k -qscale:v 0 -qscale:a 0 "
                                 "-r 25 -ar 16000 -threads %d -async 1 %s -loglevel panic " %
@@ -397,6 +397,12 @@ class ActiveSpeakerExtracter(Processor):
                                 (videoPath, self.nDataLoaderThread, self.start, self.start + self.duration,self.videoFilePath))
                     subprocess.call(command, shell=True, stdout=None)
 
+            # Extract the video frames
+            if not os.listdir(self.pyframesPath):
+                command = ("ffmpeg -y -i %s -qscale:v 0 -threads %d -f image2 %s -loglevel panic" %
+                            (self.videoFilePath, self.nDataLoaderThread, os.path.join(self.pyframesPath, '%06d.jpg')))
+                subprocess.call(command, shell=True, stdout=None)
+
             # Extract audio
             self.audioFilePath = os.path.join(self.pyaviPath, 'audio.wav')
             if not os.path.isfile(self.audioFilePath):
@@ -404,13 +410,6 @@ class ActiveSpeakerExtracter(Processor):
                             (self.videoFilePath, self.nDataLoaderThread, self.audioFilePath))
                 subprocess.call(command, shell=True, stdout=None)
 
-            if not os.listdir(self.pyframesPath):
-                # Extract the video frames
-                command = ("ffmpeg -y -i %s -qscale:v 0 -threads %d -f image2 %s -loglevel panic" %
-                            (self.videoFilePath, self.nDataLoaderThread, os.path.join(self.pyframesPath, '%06d.jpg')))
-                subprocess.call(command, shell=True, stdout=None)
-
-            # Scene detection for the video frames
             out_path = os.path.join(self.pyworkPath, 'scene.pckl')
             if not os.path.isfile(out_path):
                 scene = self.scene_detect()
@@ -418,9 +417,8 @@ class ActiveSpeakerExtracter(Processor):
                 with open(out_path,mode='rb') as f:
                     scene = pickle.load(f)
 
-            flist = glob.glob(os.path.join(self.pyframesPath, '*.jpg'))
+            flist = []
             flist.sort()
-
             out_path = os.path.join(self.pyworkPath, 'faces.pckl')
             if not os.path.isfile(out_path):
                 faces = self.inference_video(flist=flist, video_path=self.videoFilePath, conf_th=0.99)
@@ -435,12 +433,10 @@ class ActiveSpeakerExtracter(Processor):
                     # Discard the shot frames less than minTrack frames
                     if shot[1].frame_num - shot[0].frame_num >= self.minTrack:
                         allTracks.extend(self.track_shot(faces[shot[0].frame_num:shot[1].frame_num]))
-
                 # Face clips cropping
                 for ii, track in enumerate(allTracks):
                     vidTracks.append(self.crop_video(video_path=self.videoFilePath,
                         flist=flist, track=track, cropFile=os.path.join(self.pycropPath, '%05d' % ii)))
-
                 if self.save:
                     with open(os.path.join(self.pyworkPath, 'tracks.pckl'), 'wb') as fil:
                         pickle.dump(vidTracks, fil)
@@ -461,7 +457,6 @@ class ActiveSpeakerExtracter(Processor):
                 sample['id'] = [None]
                 visual_ids = ['No id']
                 audio_ids = ['No id']
-
         
         if os.path.isdir(self.network_dir):
             Uploader().zip_and_upload_dir(
@@ -470,8 +465,7 @@ class ActiveSpeakerExtracter(Processor):
                 repo_id=self.network_repo_id,
                 overwrite=False,
             )
-            prefix, _ = os.path.split(self.network_dir)
-            #shutil.rmtree(prefix)
+            shutil.rmtree(self.network_dir)
 
         out_sample =  {
             "id": sample["id"] * len(visual_ids),
