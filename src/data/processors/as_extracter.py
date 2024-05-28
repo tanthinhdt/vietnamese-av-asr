@@ -114,7 +114,7 @@ class ActiveSpeakerExtracter(Processor):
 
         return sceneList
 
-    def inference_video(self, flist: list, video_path: str, conf_th: float) -> list:
+    def inference_video(self, flist: list, conf_th: float) -> list:
         # GPU: Face detection, output is the list contains the face location and score in this frame
         dets = []
         n_f = len(flist)
@@ -358,27 +358,27 @@ class ActiveSpeakerExtracter(Processor):
         video_id = video_file_name.split('@')[-1][:-4]
         self.outputPath = output_dir
         self.network_dir = os.path.join(tmp_dir, channel, f"{channel}@{video_id}@network_results")
+        self.pyaviPath = os.path.join(self.network_dir, 'pyavi')
+        self.pyframesPath = os.path.join(self.network_dir, 'pyframes')
+        self.pyworkPath = os.path.join(self.network_dir, 'pywork')
+        self.pycropPath = os.path.join(self.network_dir, 'pycrop')
         chunk_visual_list = glob.glob(os.path.join(visual_output_dir,f"chunk@visual@{channel}@{video_id}@*.mp4"), recursive=False)
         chunk_audio_list = glob.glob(os.path.join(audio_output_dir,f"chunk@audio@{channel}@{video_id}@*.wav"), recursive=False)
         if chunk_visual_list and chunk_audio_list and len(chunk_visual_list) == len(chunk_audio_list):
             visual_ids = [os.path.basename(pa)[:-4] for pa in chunk_visual_list]
             audio_ids = [os.path.basename(pa)[:-4] for pa in chunk_audio_list]
         else:
-            repo_zip_file_network = os.path.join(f"{self.network_repo_id}@main",channel,f"{channel}@{video_id}@network_results.zip")
+            repo_zip_file_network = os.path.join(f"datasets/{self.network_repo_id}@main",channel,f"{channel}@{video_id}@network_results.zip")
             if fs.isfile(repo_zip_file_network):
                 local_zip_file_network = self.network_dir + ".zip"
                 fs.get(rpath=repo_zip_file_network,lpath=local_zip_file_network)
                 shutil.unpack_archive(filename=local_zip_file_network,extract_dir=os.path.join(tmp_dir,channel),format='zip')
                 os.remove(local_zip_file_network)
-            self.pyaviPath = os.path.join(self.network_dir, 'pyavi')
-            self.pyframesPath = os.path.join(self.network_dir, 'pyframes')
-            self.pyworkPath = os.path.join(self.network_dir, 'pywork')
-            self.pycropPath = os.path.join(self.network_dir, 'pycrop')
-
-            os.makedirs(self.pyaviPath, exist_ok=True)
-            os.makedirs(self.pyframesPath, exist_ok=True)
-            os.makedirs(self.pyworkPath, exist_ok=True)
-            os.makedirs(self.pycropPath, exist_ok=True)
+            else:
+                os.makedirs(self.pyaviPath, exist_ok=True)
+                os.makedirs(self.pyframesPath, exist_ok=True)
+                os.makedirs(self.pyworkPath, exist_ok=True)
+                os.makedirs(self.pycropPath, exist_ok=True)
 
             # Extract video
             self.videoFilePath = os.path.join(self.pyaviPath, 'video.avi')
@@ -417,7 +417,7 @@ class ActiveSpeakerExtracter(Processor):
                 with open(out_path,mode='rb') as f:
                     scene = pickle.load(f)
 
-            flist = []
+            flist = glob.glob("%s/*.jpg" % self.pyframesPath)
             flist.sort()
             out_path = os.path.join(self.pyworkPath, 'faces.pckl')
             if not os.path.isfile(out_path):
@@ -465,6 +465,7 @@ class ActiveSpeakerExtracter(Processor):
                 repo_id=self.network_repo_id,
                 overwrite=False,
             )
+            shutil.rmtree(self.network_dir)
             shutil.rmtree(self.network_dir)
 
         out_sample =  {
