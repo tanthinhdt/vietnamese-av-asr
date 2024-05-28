@@ -20,7 +20,6 @@ class Executor(Processor):
         "asd": ActiveSpeakerExtracter,
         "vndetect": VietnameseDetector,
         "transcribe": Transcriber,
-        
         "crop": Cropper,
     }
 

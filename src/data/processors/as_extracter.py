@@ -15,6 +15,7 @@ from scipy import signal
 from scipy.io import wavfile
 from scipy.interpolate import interp1d
 from typing import Tuple
+from huggingface_hub import HfFileSystem
 
 from scenedetect.video_manager import VideoManager
 from scenedetect.scene_manager import SceneManager
@@ -22,10 +23,12 @@ from scenedetect.stats_manager import StatsManager
 from scenedetect.detectors import ContentDetector
 
 from src.data.processors.processor import Processor
+from src.data.processors.uploader import Uploader
 
 from ..utils.Light_ASD.model.ASD import ASD
 from ..utils.Light_ASD.model.faceDetector import S3FD
 
+fs = HfFileSystem()
 
 class ActiveSpeakerExtracter(Processor):
     def __init__(self,
@@ -88,6 +91,8 @@ class ActiveSpeakerExtracter(Processor):
         self.network_dir = None
         self.outputPath = None
         self.savePath = None
+        self.network_repo_id = "GSU24AI03-SU24AI21/network-result-asd"
+        
 
     def scene_detect(self) -> list:
         # CPU: Scene detection, output is the list of each shot's time duration
@@ -351,14 +356,20 @@ class ActiveSpeakerExtracter(Processor):
         video_file_name = videoPath.split('/')[-1]
         channel = video_file_name.split('@')[0]
         video_id = video_file_name.split('@')[-1][:-4]
+        self.outputPath = output_dir
+        self.network_dir = os.path.join(tmp_dir, channel, f"{channel}@{video_id}@network_results")
         chunk_visual_list = glob.glob(os.path.join(visual_output_dir,f"chunk@visual@{channel}@{video_id}@*.mp4"), recursive=False)
         chunk_audio_list = glob.glob(os.path.join(audio_output_dir,f"chunk@audio@{channel}@{video_id}@*.wav"), recursive=False)
         if chunk_visual_list and chunk_audio_list and len(chunk_visual_list) == len(chunk_audio_list):
             visual_ids = [os.path.basename(pa)[:-4] for pa in chunk_visual_list]
             audio_ids = [os.path.basename(pa)[:-4] for pa in chunk_audio_list]
         else:
-            self.outputPath = output_dir
-            self.network_dir = os.path.join(tmp_dir, channel, f"{channel}@{video_id}@network_results")
+            repo_zip_file_network = os.path.join(f"{self.network_repo_id}@main",channel,f"{channel}@{video_id}@network_results.zip")
+            if fs.isfile(repo_zip_file_network):
+                local_zip_file_network = self.network_dir + ".zip"
+                fs.get(rpath=repo_zip_file_network,lpath=local_zip_file_network)
+                shutil.unpack_archive(filename=local_zip_file_network,extract_dir=os.path.join(tmp_dir,channel),format='zip')
+                os.remove(local_zip_file_network)
             self.pyaviPath = os.path.join(self.network_dir, 'pyavi')
             self.pyframesPath = os.path.join(self.network_dir, 'pyframes')
             self.pyworkPath = os.path.join(self.network_dir, 'pywork')
@@ -451,10 +462,17 @@ class ActiveSpeakerExtracter(Processor):
                 visual_ids = ['No id']
                 audio_ids = ['No id']
 
-            if False:
-                if os.path.isdir(self.network_dir):
-                    prefix, _ = os.path.split(self.network_dir)
-                    shutil.rmtree(prefix)
+        
+        if os.path.isdir(self.network_dir):
+            Uploader().zip_and_upload_dir(
+                dir_path=self.network_dir,
+                path_in_repo=os.path.join(channel,f"{channel}@{video_id}@network_results.zip"),
+                repo_id=self.network_repo_id,
+                overwrite=False,
+            )
+            prefix, _ = os.path.split(self.network_dir)
+            #shutil.rmtree(prefix)
+
         out_sample =  {
             "id": sample["id"] * len(visual_ids),
             "channel": sample["channel"] * len(visual_ids),
