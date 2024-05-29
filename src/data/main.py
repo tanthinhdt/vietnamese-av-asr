@@ -53,10 +53,4 @@ from datasets import get_dataset_config_names
 #     with open('split_id.pckl', 'wb') as f:
 #         pickle.dump(obj=result_d,file=f)
 
-with open('./databases/split_id.pckl','rb') as f:
-    split_id: dict = pickle.load(f)
-
-tmp = []
-for v in split_id.values():
-    tmp.extend(v)
-print(len(tmp))
+print(get_dataset_config_names('GSU24AI03-SU24AI21/tracked-url-video', trust_remote_code=True))

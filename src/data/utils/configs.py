@@ -66,8 +66,28 @@ class TaskConfig:
         :param num_samples_change:  Number of samples change.
         """
         print(f"\tNumber of samples lost: {num_samples_change}")
-    
-    
+
+
+@dataclass
+class VideoDownloadTaskConfig(TaskConfig):
+    task: str = 'download'
+    src_repo_id: str = 'GSU24AI03-SU24AI21/tracked-url-video'
+    dest_repo_id: str = 'GSU24AI03-SU24AI21/downloaded-vietnamese-video'
+    schemas: list = field(default_factory=lambda: ['video'])
+    remove_columns_loading: list = field(default_factory=lambda: [])
+    remove_columns_mapping: list = field(default_factory=lambda: ['url'])
+
+    def get_task_kwargs(self) -> dict:
+        """
+        Get task keyword arguments.
+        :return:
+        """
+        task_kwargs = super().get_task_kwargs()
+        task_kwargs["fn_kwargs"].update({
+
+        })
+        return task_kwargs
+
 @dataclass
 class SpeakerDetectTaskConfig(TaskConfig):
     task: str = 'asd'

@@ -1,6 +1,7 @@
 import os
 import shutil
 from .processor import Processor
+from .youtube_downloader import YoutTubeDownloader
 from .as_extracter import ActiveSpeakerExtracter
 from .vietnamese_detector import VietnameseDetector
 from .transcriber import Transcriber
@@ -17,6 +18,7 @@ class Executor(Processor):
     This processor is used to execute other processors.
     """
     PROCESSORS = {
+        "download": YoutTubeDownloader,
         "asd": ActiveSpeakerExtracter,
         "vndetect": VietnameseDetector,
         "transcribe": Transcriber,

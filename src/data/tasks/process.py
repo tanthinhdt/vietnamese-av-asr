@@ -6,7 +6,7 @@ import argparse
 from tqdm import tqdm
 from src.data.processors.executor import Executor
 from src.data.utils import TaskConfig, SpeakerDetectTaskConfig, VietnameseDetectTaskConfig
-from src.data.utils import TaskConfig, TranscribingTaskConfig, CroppingTaskConfig
+from src.data.utils import TranscribingTaskConfig, CroppingTaskConfig, VideoDownloadTaskConfig
 
 def parse_args() -> argparse.Namespace:
     """
@@ -19,7 +19,7 @@ def parse_args() -> argparse.Namespace:
         type=str,
         default=None,
         required=True,
-        help="Available tasks: asd, vndetect, transcribe, crop",
+        help="Available tasks: download, asd, vndetect, transcribe, crop",
     )
     parser.add_argument(
         "--output-dir",
@@ -80,13 +80,9 @@ def get_task_configs(args: argparse.Namespace) -> TaskConfig:
     :return:        Task config.
     """
     task_dict = {
-        "asd": {
-            "config": SpeakerDetectTaskConfig,
-            "dir": "detected-speaker-clip",
-        },
-        "vndetect": {
-            "config": VietnameseDetectTaskConfig,
-            "dir": "detected-vietnamese-clip",
+        "download": {
+            "config": VideoDownloadTaskConfig,
+            "dir": "downloaded-vietnamese-video",
         },
         "asd": {
             "config": SpeakerDetectTaskConfig,
