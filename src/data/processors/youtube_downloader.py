@@ -43,7 +43,7 @@ class YoutTubeDownloader(Processor):
             ).stdout.decode('utf-8').strip('\n')
         )
         channel = sample['channel'][0]
-        video_path = os.path.join(video_output_dir,f"video@{channel}@{sample['id'][0]}.%(ext)s")
+        video_path = os.path.join(video_output_dir,f"video@{channel}@{sample['id'][0]}.mp4")
         command_download = copy(self._command_download_temp)
         command_download[2] = video_path
         command_download[-2] = self._config_file
@@ -60,7 +60,7 @@ class YoutTubeDownloader(Processor):
             "fps": [metadata['fps']],
             "asr": [metadata['asr']],    
         }
-        if os.path.isfile(video_path) and os.path.splitext(video_path)[-1] == 'mp4':
+        if os.path.isfile(video_path) and os.path.splitext(video_path)[-1] == '.mp4':
             output_sample['id'] = sample['id']
 
         return output_sample
