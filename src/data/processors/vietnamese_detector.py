@@ -68,12 +68,8 @@ class VietnameseDetector(Processor):
             *torchaudio.load(audio_path)
         )
         if is_vietnamese:
-            shutil.copy(src=visual_path,dst=visual_output_dir)
+            shutil.copy(src=visual_path, dst=visual_output_dir)
             shutil.copy(src=audio_path, dst=audio_output_dir)
         else:
             sample['id'][0] = None
         return sample
-
-
-
-

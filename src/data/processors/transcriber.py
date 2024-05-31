@@ -38,6 +38,8 @@ class Transcriber(Processor):
     def process(
         self, sample: dict,
         beam_width: int = 500,
+        *args,
+        **kwargs,
     ) -> dict:
         """
         Transcribe for a sample.
@@ -46,27 +48,25 @@ class Transcriber(Processor):
         :return:                        Sample with path to transcript and audio array.
         """
         try:
-            audio_array, sampling_rate = torchaudio.load(sample["audio"][0])
+            audio_array, sampling_rate = torchaudio.load(sample["audio_path"][0])
 
             transcript = self.transcribe(
                 audio_array=audio_array,
                 sampling_rate=sampling_rate,
                 beam_width=beam_width,
             )
-
+            print(transcript)
             if not self.check_output(transcript=transcript):
                 raise Exception("Transcript is invalid.")
-        except Exception:
+        except Exception as e:
             sample["id"][0] = None
             transcript = None
+
         return {
             "id": sample["id"],
             "channel": sample["channel"],
-            "chunk_visual_id": sample["chunk_visual_id"],
             "chunk_audio_id": sample["chunk_audio_id"],
-            "visual_num_frames": sample["visual_num_frames"],
             "audio_num_frames": sample["audio_num_frames"],
-            "visual_fps": sample["visual_fps"],
             "audio_fps": sample["audio_fps"],
             "transcript": [transcript.strip() if transcript else None],
         }

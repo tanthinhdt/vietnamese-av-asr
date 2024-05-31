@@ -1,56 +1,37 @@
-import pickle
-from copy import copy
+import os
+import sys
+sys.path.append(os.getcwd())
+import time
+import pandas as pd
+
+from pyarrow import parquet as pq
+from huggingface_hub import HfFileSystem
 from datasets import get_dataset_config_names
 
-# def update_split_id():
-#     with open('split_id_55.pckl', 'rb') as f:
-#         split_id: dict = pickle.load(f)
-#     with open('split_id_54.pckl', 'rb') as f:
-#         split_id1 = pickle.load(f)
-#         print(end='')
-#     with open('split_id_56.pckl', 'rb') as f:
-#         split_id2 = pickle.load(f)
-#         print(end='')
+from tasks.track_urls import *
+from tasks.divide_urls import divide_urls
 
-#     id_path = []
-#     id_path1 = []
-#     id_path2 = []
-#     tmp_split_id = dict()
-#     tmp_split_id1 = dict()
-#     tmp_split_id2 = dict()
+fs = HfFileSystem()
 
-#     result_d = dict()
+_PLAYLIST_URLS = [
+    "https://www.youtube.com/playlist?list=PLWrhnsc6Cvcrp7HmEWu8q0p95pRyGmpHi",
+    "https://www.youtube.com/playlist?list=PL1Vi4Nt_Cpb5oCuSpvekBr9SKkQZkH9TQ",
+]
 
-#     for k,v in split_id2.items():
-#         if len(v) == 50 and k != "batch_99999":
-#             id_path2.extend(v)
-#     new_metadata_volume = len(id_path2)
-#     for idx_batch, i in enumerate(range(0, new_metadata_volume, 50),start=0):
-#         tmp_split_id2[f"batch_%.5d" % (idx_batch,)] = id_path2[i:i + 50]
-#     result_d.update(tmp_split_id2)
 
-#     for k,v in split_id1.items():
-#         if len(v) == 50 and k != "batch_99999":
-#             id_path1.extend(v)
-#     new_metadata_volume = len(id_path1)
-#     for idx_batch, i in enumerate(range(0, new_metadata_volume, 50),start=len(tmp_split_id2)):
-#         tmp_split_id1[f"batch_%.5d" % (idx_batch,)] = id_path1[i:i + 50]
-#     result_d.update(tmp_split_id1)
+@filter_metadata
+def base_duration(meta: dict, threshold: int = 4000):
+    return meta['duration'] > 3000 and meta['duration'] < 6000
 
-#     for k,v in split_id.items():
-#         if len(v) == 50 and k != "batch_99999":
-#             id_path.extend(v)
-#     new_metadata_volume = len(id_path)
-#     for idx_batch, i in enumerate(range(0, new_metadata_volume, 50),start=len(tmp_split_id1)+len(tmp_split_id2)):
-#         tmp_split_id[f"batch_%.5d" % (idx_batch,)] = id_path[i:i + 50]
-#     result_d.update(tmp_split_id)
-#     result_d['batch_99999'] = split_id['batch_99999']
-#     tmp = []
-#     for v in result_d.values():
-#         tmp.extend(v)
+@filter_metadata
+def base_title(meta: dict):
+    return "BÍ MẬT ĐỒNG TIỀN" in meta['title'] or "Tự do tài chính" in meta['title']
 
-#     assert 1150 + 6350 + 18700 + 2 == len(set(tmp))
-#     with open('split_id.pckl', 'wb') as f:
-#         pickle.dump(obj=result_d,file=f)
+# metadatas = []
+# [metadatas.extend(get_metadatas(url=url,start=1,end=-1)) for url in _PLAYLIST_URLS]
+# metadatas = base_duration(metadatas=metadatas)
+# divide_urls(metadatas,volume=5,redivide=True)
 
-print(get_dataset_config_names('GSU24AI03-SU24AI21/tracked-url-video', trust_remote_code=True))
+# df = pd.DataFrame({'video_id': ["5tTiD5rtVwY"],'channel':['batch_99999']},)
+# df.to_parquet(path="src/data/databases/metadata/batch_99999.parquet")
+print(pq.read_table('/Users/minhnguyen/home/vietnamese-av-asr/data/processed/detected-speaker-clip/metadata/batch_99999.parquet'))

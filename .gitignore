@@ -89,5 +89,6 @@ target/
 
 /data/
 /tmp/
-#/src/data/utils/Light_ASD/
+/src/data/utils/Light_ASD/
 src/data/id_youtube.txt
+src/data/databases

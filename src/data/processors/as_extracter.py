@@ -10,11 +10,12 @@ import pickle
 import cv2
 import python_speech_features
 import torch
+import logging
 
 from scipy import signal
 from scipy.io import wavfile
 from scipy.interpolate import interp1d
-from typing import Tuple
+from typing import Any, List, Tuple
 from huggingface_hub import HfFileSystem
 
 from scenedetect.video_manager import VideoManager
@@ -40,12 +41,6 @@ class ActiveSpeakerExtracter(Processor):
                  minFaceSize: int = 1,
                  nDataLoaderThread: int = 10,
                  pretrainModel: str = "src/data/utils/Light_ASD/weight/pretrain_AVA_CVPR.model",
-                 videoFolderPath: str = None,
-                 start: int = 0,
-                 duration: int = 0,
-                 save: bool = True,  # False
-                 clear: bool = False,  # False
-                 extract: str = 'origin',
                  ) -> None:
 
         super().__init__()
@@ -57,20 +52,21 @@ class ActiveSpeakerExtracter(Processor):
         self.minFaceSize = minFaceSize
         self.nDataLoaderThread = nDataLoaderThread
         self.pretrainModel = pretrainModel
-        self.videoFolderPath = videoFolderPath
-        self.start = start
-        self.duration = duration
-        self.save = save
-        self.clear = clear
-        self.speaking_frame_count_threshold = 70
-        self.speaking_score_threshold = 0.8
-        self.frame_window_length = 4
-
-        if extract not in ['origin', 'sample']:
-            raise ValueError('extract must be origin or sample')
-        self.extract = extract
-
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
+
+        # threshold
+        self.speaking_frame_count_threshold = 50
+        self.speaking_score_threshold = 0.5
+        self.frame_window_length = 4
+        self.time_interval = 3
+
+        # hyper data
+        self.V_FPS = 25
+        self.A_FPS = 16000
+        self.DURATION = 3
+        self.V_FRAMES = self.V_FPS * self.DURATION
+        self.A_FRAMES = self.A_FPS * self.DURATION
+
 
         self.facedetScale = facedetScale
         self.DET = S3FD(device=self.device)
@@ -86,12 +82,10 @@ class ActiveSpeakerExtracter(Processor):
         self.pyframesPath = None
         self.pyworkPath = None
         self.pycropPath = None
-        self.pyactivePath = None
         self.videoFilePath = None
-        self.AudioFilePath = None
+        self.audioFilePath = None
         self.network_dir = None
         self.outputPath = None
-        self.savePath = None
         self.network_repo_id = "GSU24AI03-SU24AI21/network-result-asd"
         
     def scene_detect(self) -> list:
@@ -108,9 +102,8 @@ class ActiveSpeakerExtracter(Processor):
         if sceneList == []:
             sceneList = [(videoManager.get_base_timecode(),
                           videoManager.get_current_timecode())]
-        if self.save:
-            with open(os.path.join(self.pyworkPath, 'scene.pckl'), 'wb') as fil:
-                pickle.dump(sceneList, fil)
+        with open(os.path.join(self.pyworkPath, 'scene.pckl'), 'wb') as fil:
+            pickle.dump(sceneList, fil)
 
         return sceneList
 
@@ -126,13 +119,12 @@ class ActiveSpeakerExtracter(Processor):
             dets.append([])
             for bbox in bboxes:
                 dets[-1].append({'frame': fidx, 'bbox': (bbox[:-1]).tolist(), 'conf': bbox[-1]})
-            print('\rframe: %0.5d/%d' % (fidx, n_f),end='')
+            print('\rInfering frame: %0.5d/%d' % (fidx, n_f),end='')
         print()
-        if self.save:
-            with open(os.path.join(self.pyworkPath, 'faces.pckl'), 'wb') as fil:
-                pickle.dump(dets, fil)
+        with open(os.path.join(self.pyworkPath, 'faces.pckl'), 'wb') as fil:
+            pickle.dump(dets, fil)
         return dets
-
+    
     def bb_intersection_over_union(self, boxA: list, boxB: list) -> float:
         # CPU: IOU Function to calculate overlap between two image
         xA = max(boxA[0], boxB[0])
@@ -269,80 +261,153 @@ class ActiveSpeakerExtracter(Processor):
                 allScore.append(scores)
             allScore = np.round(np.mean(np.array(allScore), axis=0), 1).astype(float)
             allScores.append(allScore)
-        if self.save:
             with open(os.path.join(self.pyworkPath, 'scores.pckl'), 'wb') as fil:
                 pickle.dump(allScores, fil)
-        return allScores
 
-    def _get_active_speaker(self, network_dir: str,) -> int:
-        work_path: str = os.path.join(network_dir, 'pywork')
-        with open(os.path.join(work_path, 'scores.pckl'), mode='rb') as f:
+    def _get_active_speaker(self) -> int:
+        with open(os.path.join(self.pyworkPath, 'scores.pckl'), mode='rb') as f:
             scores = pickle.load(f)
-
-        speaking_track_paths = []
+        _crop_paths = []
         for tidx, score in enumerate(scores):
-            n_speaking_score = 0
+            n_speaking_frame = 0
+            scs = []
             for idx in range(len(score)):
                 sc = score[max(idx - self.frame_window_length, 0): min(idx + self.frame_window_length,len(score) - 1)]
                 sc = np.mean(sc)
                 if sc > self.speaking_score_threshold:
-                    n_speaking_score += 1
-            if n_speaking_score > self.speaking_frame_count_threshold:
-                track_path = os.path.join('pycrop', '%0.5d.avi' % tidx)
-                speaking_track_paths.append(track_path)
-        if speaking_track_paths:
-            with open(os.path.join(network_dir, 'join_active.txt'), mode='w') as f:
-                for track_path in speaking_track_paths:
-                    line = 'file {}\n'.format(track_path)
-                    f.write(line)
-            return 1
-        else:
-            return 0
+                    n_speaking_frame += 1
+                    scs.append(sc)
+            if n_speaking_frame > self.speaking_frame_count_threshold:
+                _crop_path = os.path.join(self.pycropPath, '%0.5d.avi' % tidx)
+                _crop_paths.append(_crop_path)
+        return _crop_paths
 
-    def _merge_videos(self, network_dir: str) -> None:
-        join_file = os.path.join(network_dir, 'join_active.txt')
-        output_path = os.path.join(network_dir, 'active.avi')
-        command = \
-            "ffmpeg -y -f concat -safe 0 -i %s -qscale:v 0 -qscale:a 0 -threads %d -r 25 -ar 16000 -c:a copy -c:v copy -f avi %s -loglevel panic" % \
-            (join_file, self.nDataLoaderThread,output_path)
-        subprocess.call(command, shell=True, stdout=None)
-
-    def _split_into_equally(self, network_dir: str, time_interval: int,) -> Tuple[list,list]:
-        active_video = os.path.join(network_dir, 'active.avi')
+    def _split_into_equally(self, network_dir: str, crop_paths: list,) -> Tuple[list,list]:
         network_name = os.path.basename(network_dir)
         channel = network_name.split('@')[0]
         video_id = network_name.split('@')[1]
         chunk_visual_dir = os.path.join(self.outputPath, 'visual', channel)
         chunk_audio_dir = os.path.join(self.outputPath, 'audio', channel)
-
         os.makedirs(chunk_visual_dir, exist_ok=True)
         os.makedirs(chunk_audio_dir, exist_ok=True)
-
-        command = "ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 %s" % \
-                  (active_video,)
-
-        duration = int(float(subprocess.run(command, shell=True, capture_output=True).stdout.decode('utf-8').strip())//3*3)
-        if duration < time_interval:
-            return [], []
         chunk_visual_ids = []
         chunk_audio_ids = []
-        for i, timestamp in enumerate(range(0, duration, time_interval)):
-            chunk_visual_id = 'chunk@visual@%s@%s@%05d' % (channel, video_id, i)
-            chunk_visual_ids.append(chunk_visual_id)
-            chunk_visual_path = os.path.join(chunk_visual_dir, chunk_visual_id + '.mp4')
-            command = "ffmpeg -y -i %s -an -c:v copy -r 25 -ss %s -t %d -map 0 -f mp4 %s -loglevel panic" % \
-                      (active_video, time.strftime("%H:%M:%S", time.gmtime(timestamp)), time_interval, chunk_visual_path)
-            subprocess.run(command, shell=True, stdout=None)
+        i = 0
+        for _crop_path in crop_paths:
+            if not os.path.isfile(_crop_path):
+                continue
+            command = "ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 %s" % (_crop_path,)
+            try:
+                duration = int(float(subprocess.run(command, shell=True, capture_output=True).stdout.strip())//3*3)
+                if duration < self.time_interval:
+                    continue
+                for timestamp in range(0, duration, self.time_interval):
+                    start_time = time.strftime("%H:%M:%S",time.gmtime(timestamp)) + ".00000"
+                    end_time =  time.strftime("%H:%M:%S",time.gmtime(timestamp+self.time_interval)) + ".00000"
 
-            chunk_audio_id = 'chunk@audio@%s@%s@%05d' % (channel, video_id, i)
-            chunk_audio_ids.append(chunk_audio_id)
-            chunk_audio_path = os.path.join(chunk_audio_dir, chunk_audio_id + '.wav')
-            command = "ffmpeg -y -i %s -vn -ac 1 -c:a pcm_s16le -ar 16000 -ss %s -t %f -f wav %s -loglevel panic" % \
-                      (active_video, time.strftime("%H:%M:%S", time.gmtime(timestamp)), time_interval, chunk_audio_path)
-            subprocess.run(command, shell=True, stdout=None)
+                    chunk_visual_id = 'chunk@visual@%s@%s@%05d' % (channel, video_id, i)
+                    chunk_visual_path = os.path.join(chunk_visual_dir, chunk_visual_id + '.mp4')
+                    command = "ffmpeg -y -i %s -an -c:v libx264 -ss %s -to %s -map 0 -f mp4 %s -loglevel panic" % \
+                            (_crop_path, start_time, end_time,chunk_visual_path)
+                    subprocess.run(command, shell=True, stdout=None)
+                    
+                    chunk_audio_id = 'chunk@audio@%s@%s@%05d' % (channel, video_id, i)
+                    chunk_audio_path = os.path.join(chunk_audio_dir, chunk_audio_id + '.wav')
+                    command = "ffmpeg -y -i %s -vn -ac 1 -c:a pcm_s16le -ss %s -to %s -f wav %s -loglevel panic" % \
+                            (_crop_path, start_time, end_time, chunk_audio_path)
+                    subprocess.run(command, shell=True, stdout=None)
+                    if self._check_output(
+                        visual_path=chunk_visual_path,
+                        audio_path=chunk_audio_path
+                    ):
+                        chunk_visual_ids.append(chunk_visual_id)
+                        chunk_audio_ids.append(chunk_audio_id)
+                    i += 1
+            except ValueError as e:
+                continue
+        
+        return chunk_visual_ids, chunk_audio_ids,
+    
+    def _get_scene(self) -> List[dict]:
+        out_path = os.path.join(self.pyworkPath, 'scene.pckl')
+        if not os.path.isfile(out_path):
+                scene = self.scene_detect()
+        else:
+            with open(out_path,mode='rb') as f:
+                scene = pickle.load(f)
+        return scene
 
-        return chunk_visual_ids, chunk_audio_ids
+    def _get_faces(self) -> List[dict]:
+        flist = glob.glob("%s/*.jpg" % self.pyframesPath)
+        flist.sort()
+        out_path = os.path.join(self.pyworkPath, 'faces.pckl')
+        if not os.path.isfile(out_path):
+            faces = self.inference_video(flist=flist, conf_th=0.99)
+        else:
+            with open(out_path, mode='rb') as f:
+                faces = pickle.load(f)
+        return faces
+    
+    def _crop_face(self, scene: list, faces: list) -> List[dict]:
+        flist = glob.glob("%s/*.jpg" % self.pyframesPath)
+        flist.sort()
+        out_path = os.path.join(self.pyworkPath, 'tracks.pckl')
+        if not os.path.isfile(out_path):
+            allTracks, vidTracks = [], []
+            for shot in scene:
+                if shot[1].frame_num - shot[0].frame_num >= self.minTrack:
+                    allTracks.extend(self.track_shot(faces[shot[0].frame_num:shot[1].frame_num]))
+            for ii, track in enumerate(allTracks):
+                vidTracks.append(self.crop_video(flist=flist, track=track, cropFile=os.path.join(self.pycropPath, '%05d' % ii)))
 
+            with open(os.path.join(self.pyworkPath, 'tracks.pckl'), 'wb') as fil:
+                pickle.dump(vidTracks, fil)
+
+    def _compute_scores(self) -> None:
+        out_path = os.path.join(self.pyworkPath, 'scores.pckl')
+        if not os.path.isfile(out_path):
+            files = glob.glob("%s/*.avi" % self.pycropPath)
+            files.sort()
+            self.evaluate_network(files=files)
+
+    def _make_network_result(self, tmp_dir: str, channel: str, video_id: str) -> bool:
+        _up = True
+        repo_zip_file_network = os.path.join(f"datasets/{self.network_repo_id}@main","network_results",channel,f"network_results@{channel}@{video_id}.zip")
+        if fs.isfile(repo_zip_file_network):
+            print("Downloading network results...")
+            local_zip_file_network = self.network_dir + ".zip"
+            fs.get(rpath=repo_zip_file_network,lpath=local_zip_file_network)
+            shutil.unpack_archive(filename=local_zip_file_network,extract_dir=os.path.join(tmp_dir,channel),format='zip')
+            _up = False
+            os.remove(local_zip_file_network)
+        else:
+            os.makedirs(self.pyaviPath, exist_ok=True)
+            os.makedirs(self.pyframesPath, exist_ok=True)
+            os.makedirs(self.pyworkPath, exist_ok=True)
+            os.makedirs(self.pycropPath, exist_ok=True)
+        return _up
+
+    def _extract_video(self, origin_video_path: str) -> None:
+        self.videoFilePath = os.path.join(self.pyaviPath, 'video.avi')
+        if not os.path.isfile(self.videoFilePath):
+            command = ("ffmpeg -y -i %s -c:v libx264 -c:a pcm_s16le -b:v 3000k -b:a 192k -qscale:v 0 -qscale:a 0 "
+                        "-r 25 -ar 16000 -threads %d -async 1 %s -loglevel panic " %
+                        (origin_video_path, self.nDataLoaderThread, self.videoFilePath))
+            subprocess.call(command, shell=True, stdout=None)
+
+    def _extract_frames(self) -> None:
+        if not os.listdir(self.pyframesPath):
+            command = ("ffmpeg -y -i %s -qscale:v 0 -threads %d -f image2 %s -loglevel panic" %
+                        (self.videoFilePath, self.nDataLoaderThread, os.path.join(self.pyframesPath, '%06d.jpg')))
+            subprocess.call(command, shell=True, stdout=None)
+
+    def _extract_audio(self) -> None:
+        self.audioFilePath = os.path.join(self.pyaviPath, 'audio.wav')
+        if not os.path.isfile(self.audioFilePath):
+            command = ("ffmpeg -y -i %s -qscale:a 0 -ac 1 -c:a copy -vn -threads %d -ar 16000 %s -loglevel panic" %
+                        (self.videoFilePath, self.nDataLoaderThread, self.audioFilePath))
+            subprocess.call(command, shell=True, stdout=None)        
+        
     def process(
             self,
             sample: dict,
@@ -353,9 +418,8 @@ class ActiveSpeakerExtracter(Processor):
             **kwargs
     ) -> dict:
         videoPath = sample['video_path'][0]
-        video_file_name = videoPath.split('/')[-1]
-        channel = video_file_name.split('@')[0]
-        video_id = video_file_name.split('@')[-1][:-4]
+        channel = sample['channel'][0]
+        video_id = sample['video_id'][0]
 
         self.outputPath = output_dir
         self.network_dir = os.path.join(tmp_dir, channel, f"{channel}@{video_id}@network_results")
@@ -363,121 +427,78 @@ class ActiveSpeakerExtracter(Processor):
         self.pyframesPath = os.path.join(self.network_dir, 'pyframes')
         self.pyworkPath = os.path.join(self.network_dir, 'pywork')
         self.pycropPath = os.path.join(self.network_dir, 'pycrop')
-        up = True
+
         chunk_visual_list = glob.glob(os.path.join(visual_output_dir,f"chunk@visual@{channel}@{video_id}@*.mp4"), recursive=False)
         chunk_audio_list = glob.glob(os.path.join(audio_output_dir,f"chunk@audio@{channel}@{video_id}@*.wav"), recursive=False)
         if chunk_visual_list and chunk_audio_list and len(chunk_visual_list) == len(chunk_audio_list):
             visual_ids = [os.path.basename(pa)[:-4] for pa in chunk_visual_list]
             audio_ids = [os.path.basename(pa)[:-4] for pa in chunk_audio_list]
         else:
-            repo_zip_file_network = os.path.join(f"datasets/{self.network_repo_id}@main",channel,f"{channel}@{video_id}@network_results.zip")
-            if fs.isfile(repo_zip_file_network):
-                local_zip_file_network = self.network_dir + ".zip"
-                fs.get(rpath=repo_zip_file_network,lpath=local_zip_file_network)
-                shutil.unpack_archive(filename=local_zip_file_network,extract_dir=os.path.join(tmp_dir,channel),format='zip')
-                up = False
-                os.remove(local_zip_file_network)
-            else:
-                os.makedirs(self.pyaviPath, exist_ok=True)
-                os.makedirs(self.pyframesPath, exist_ok=True)
-                os.makedirs(self.pyworkPath, exist_ok=True)
-                os.makedirs(self.pycropPath, exist_ok=True)
+            up = self._make_network_result(tmp_dir=tmp_dir,channel=channel,video_id=video_id)
+            
+            self._extract_video(origin_video_path=videoPath)
+            self._extract_frames()
+            self._extract_audio()
+        
+            scene = self._get_scene()
+            faces = self._get_faces()
+            self._crop_face(scene=scene,faces=faces)
+            self._compute_scores()
 
-            # Extract video
-            self.videoFilePath = os.path.join(self.pyaviPath, 'video.avi')
-            if not os.path.isfile(self.videoFilePath):
-                if sample['uploader'] == 'truyenhinhnhandantv':
-                    self.start = 0.
-                    self.duration = 25.
-                if self.duration == 0:
-                    command = ("ffmpeg -y -i %s -c:v libx264 -c:a pcm_s16le -b:v 3000k -b:a 192k -qscale:v 0 -qscale:a 0 "
-                                "-r 25 -ar 16000 -threads %d -async 1 %s -loglevel panic " %
-                                (videoPath, self.nDataLoaderThread, self.videoFilePath))
-                    subprocess.call(command, shell=True, stdout=None)
-                else:
-                    command = (
-                                "ffmpeg -y -i %s -qscale:v 0 -threads %d -ss %.3f -to %.3f -async 1 -r 25 -ar 16000 %s -loglevel panic" %
-                                (videoPath, self.nDataLoaderThread, self.start, self.start + self.duration,self.videoFilePath))
-                    subprocess.call(command, shell=True, stdout=None)
-
-            # Extract the video frames
-            if not os.listdir(self.pyframesPath):
-                command = ("ffmpeg -y -i %s -qscale:v 0 -threads %d -f image2 %s -loglevel panic" %
-                            (self.videoFilePath, self.nDataLoaderThread, os.path.join(self.pyframesPath, '%06d.jpg')))
-                subprocess.call(command, shell=True, stdout=None)
-
-            # Extract audio
-            self.audioFilePath = os.path.join(self.pyaviPath, 'audio.wav')
-            if not os.path.isfile(self.audioFilePath):
-                command = ("ffmpeg -y -i %s -qscale:a 0 -ac 1 -c:a copy -vn -threads %d -ar 16000 %s -loglevel panic" %
-                            (self.videoFilePath, self.nDataLoaderThread, self.audioFilePath))
-                subprocess.call(command, shell=True, stdout=None)
-
-            out_path = os.path.join(self.pyworkPath, 'scene.pckl')
-            if not os.path.isfile(out_path):
-                scene = self.scene_detect()
-            else:
-                with open(out_path,mode='rb') as f:
-                    scene = pickle.load(f)
-
-            flist = glob.glob("%s/*.jpg" % self.pyframesPath)
-            flist.sort()
-            out_path = os.path.join(self.pyworkPath, 'faces.pckl')
-            if not os.path.isfile(out_path):
-                faces = self.inference_video(flist=flist, conf_th=0.99)
-            else:
-                with open(out_path, mode='rb') as f:
-                    faces = pickle.load(f)
-            out_path = os.path.join(self.pyworkPath, 'tracks.pckl')
-            if not os.path.isfile(out_path):
-                allTracks, vidTracks = [], []
-                for shot in scene:
-                    # Discard the shot frames less than minTrack frames
-                    if shot[1].frame_num - shot[0].frame_num >= self.minTrack:
-                        allTracks.extend(self.track_shot(faces[shot[0].frame_num:shot[1].frame_num]))
-                # Face clips cropping
-                for ii, track in enumerate(allTracks):
-                    vidTracks.append(self.crop_video(flist=flist, track=track, cropFile=os.path.join(self.pycropPath, '%05d' % ii)))
-                if self.save:
-                    with open(os.path.join(self.pyworkPath, 'tracks.pckl'), 'wb') as fil:
-                        pickle.dump(vidTracks, fil)
-
-            out_path = os.path.join(self.pyworkPath, 'scores.pckl')
-            if not os.path.isfile(out_path):
-                files = glob.glob("%s/*.avi" % self.pycropPath)
-                files.sort()
-                self.evaluate_network(files=files)
-
-            return_code = self._get_active_speaker(self.network_dir)
+            crop_paths = self._get_active_speaker()
             visual_ids = []
             audio_ids = []
-            if return_code:
-                self._merge_videos(self.network_dir)
-                visual_ids, audio_ids = self._split_into_equally(self.network_dir, time_interval=3)
+            if crop_paths:
+                visual_ids, audio_ids = self._split_into_equally(self.network_dir, crop_paths=crop_paths)
             if not visual_ids:
                 sample['id'] = [None]
-                visual_ids = ['No id']
-                audio_ids = ['No id']
-
+                visual_ids = [None]
+                audio_ids = [None]
+   
             if os.path.isdir(self.network_dir):
                 if up:
                     Uploader().zip_and_upload_dir(
                         dir_path=self.network_dir,
-                        path_in_repo=os.path.join(channel,f"{channel}@{video_id}@network_results.zip"),
+                        path_in_repo=os.path.join("network_results",channel,f"network_results@{channel}@{video_id}.zip"),
                         repo_id=self.network_repo_id,
                         overwrite=False,
                     )
-                shutil.rmtree(self.network_dir)
+                prefix, _ = os.path.split(self.network_dir.rstrip('/'))
+                shutil.rmtree(prefix)
 
         out_sample =  {
             "id": sample["id"] * len(visual_ids),
             "channel": sample["channel"] * len(visual_ids),
             "chunk_visual_id": visual_ids,
             "chunk_audio_id": audio_ids,
-            "visual_num_frames": [25*3] * len(visual_ids),
-            "audio_num_frames": [16000*3] * len(visual_ids),
-            "visual_fps": [25] * len(visual_ids),
-            "audio_fps": [16000] * len(visual_ids),
+            "visual_num_frames": [self.V_FRAMES] * len(visual_ids),
+            "audio_num_frames": [self.A_FRAMES] * len(visual_ids),
+            "visual_fps": [self.V_FPS] * len(visual_ids),
+            "audio_fps": [self.A_FPS] * len(visual_ids),
         }
 
         return out_sample
+    
+    def _check_output(self,visual_path: str,audio_path: str,) -> bool:
+        
+        _duration_cmd = "ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 %s"
+        _visual_frame_cmd = "ffprobe -v error -select_streams v:0 -count_frames -show_entries stream=nb_read_frames -of csv=p=0 %s"
+        _visual_fps_cmd = "ffprobe -v error -select_streams v:0 -show_entries stream=avg_frame_rate -of default=noprint_wrappers=1:nokey=1 %s"
+        _audio_fps_cmd = "ffprobe -v error -select_streams a -of default=noprint_wrappers=1:nokey=1 -show_entries stream=sample_rate %s"
+        
+        _v_dur = float(subprocess.run(_duration_cmd % (visual_path,), shell=True, capture_output=True).stdout)
+        _a_dur = float(subprocess.run(_duration_cmd % (audio_path,),shell=True, capture_output=True).stdout)
+
+        _v_fra = float(subprocess.run(_visual_frame_cmd % (visual_path,),shell=True, capture_output=True).stdout)
+
+        _v_fps = float(subprocess.run(_visual_fps_cmd % (visual_path,),shell=True, capture_output=True).stdout[:2])
+        _a_fps = float(subprocess.run(_audio_fps_cmd % (audio_path,),shell=True, capture_output=True).stdout)
+        
+        check_true = _v_dur == self.DURATION and _a_dur == self.DURATION \
+                     and _v_fra == self.V_FRAMES and _a_fps == self.A_FPS and _v_fps == self.V_FPS
+        if not check_true:
+            os.remove(visual_path)
+            os.remove(audio_path)
+        return check_true
+
+

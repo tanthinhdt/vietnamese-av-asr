@@ -3,6 +3,7 @@ import os
 import datasets
 from huggingface_hub import HfFileSystem
 from typing import Tuple, List
+from colorama import Fore
 
 logger = datasets.logging.get_logger(__name__)
 fs = HfFileSystem()
@@ -10,7 +11,7 @@ fs = HfFileSystem()
 _CITATION = """
 """
 _DESCRIPTION = """
-    This dataset contain raw video of Vietnamese speakers.
+    This dataset contain url of video to download.
 """
 _HOMEPAGE = "https://github.com/tanthinhdt/vietnamese-av-asr"
 _REPO_PATH = "datasets/GSU24AI03-SU24AI21/tracked-url-video"
@@ -23,15 +24,16 @@ _URLS = {
 }
 
 _CONFIGS = ["all"]
-_CONFIGS.extend([
-    os.path.basename(file)[:-8]
-    for file in fs.ls(f"{_REPO_PATH_BRANCH}/metadata/", detail=False)
-    if file.endswith('.parquet')
-])
+if fs.isdir(f"{_REPO_PATH_BRANCH}/metadata/"):
+    _CONFIGS.extend([
+        os.path.basename(file)[:-8]
+        for file in fs.listdir(f"{_REPO_PATH_BRANCH}/metadata/", detail=False)
+        if file.endswith('.parquet')
+    ])
 
 
 class TrackedUrlVideoConfig(datasets.BuilderConfig):
-    """Raw Vietnamese Clip configuration."""
+    """Tracked video url configuration."""
 
     def __init__(self, name: str, **kwargs):
         """
@@ -47,16 +49,17 @@ class TrackedUrlVideoConfig(datasets.BuilderConfig):
 
 
 class TrackedUrlVideo(datasets.GeneratorBasedBuilder):
-    """Raw Vietnamese Clip dataset."""
+    """Tracked video url dataset."""
 
     BUILDER_CONFIGS = [TrackedUrlVideoConfig(name) for name in _CONFIGS]
     DEFAULT_CONFIG_NAME = "all"
 
     def _info(self) -> datasets.DatasetInfo:
         features = datasets.Features({
-            "channel": datasets.Value("string"),
             "id": datasets.Value("string"),
-            "url": datasets.Value("string")
+            "channel": datasets.Value("string"),
+            "video_id": datasets.Value("string"),
+            "url": datasets.Value("string"),
         })
 
         return datasets.DatasetInfo(
@@ -92,7 +95,7 @@ class TrackedUrlVideo(datasets.GeneratorBasedBuilder):
     def _generate_examples(
             self,
             metadata_paths: List[str],
-    ) -> Tuple[int, dict]:
+    ) -> Tuple[int, dict]: # type: ignore        
         """
         Generate examples from metadata.
         :param metadata_paths:      Paths to metadata.
@@ -104,11 +107,14 @@ class TrackedUrlVideo(datasets.GeneratorBasedBuilder):
             data_files=metadata_paths,
             split="train",
         )
+
         for i, sample in enumerate(dataset):
-            video_id = sample['id']
+            video_id = sample['video_id']
             url = f'https://www.youtube.com/watch?v={video_id}'
+
             yield i, {
+                "id": video_id,
                 "channel": sample['channel'],
-                "id": sample['id'],
+                "video_id": video_id,
                 "url": url,
             }

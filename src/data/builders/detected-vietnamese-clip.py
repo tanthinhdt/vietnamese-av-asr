@@ -10,7 +10,7 @@ fs = HfFileSystem()
 _CITATION = """
 """
 _DESCRIPTION = """
-    This dataset contain raw video of Vietnamese speakers.
+    This dataset contains Vietnamese speakers's cropped mouth clip.
 """
 _HOMEPAGE = "https://github.com/tanthinhdt/vietnamese-av-asr"
 _REPO_PATH = "datasets/GSU24AI03-SU24AI21/detected-vietnamese-clip"
@@ -19,21 +19,21 @@ _REPO_PATH_BRANCH = f"{_REPO_PATH}@{_BRANCH}"
 _REPO_URL = f"https://huggingface.co/{_REPO_PATH}/resolve/{_BRANCH}"
 
 _URLS = {
-    "visual": f"{_REPO_URL}" + "/visual/{channel}.zip",
     "audio": f"{_REPO_URL}" + "/audio/{channel}.zip",
     "metadata": f"{_REPO_URL}" + "/metadata/{channel}.parquet",
 }
 
 _CONFIGS = ["all"]
-_CONFIGS.extend([
-    os.path.basename(file)[:-8]
-    for file in fs.ls(f"{_REPO_PATH_BRANCH}/metadata/", detail=False)
-    if file.endswith('.parquet')
-])
+if fs.exists(f"{_REPO_PATH_BRANCH}/metadata/"):
+    _CONFIGS.extend([
+        os.path.basename(file)[:-8]
+        for file in fs.ls(f"{_REPO_PATH_BRANCH}/metadata/", detail=False)
+        if file.endswith('.parquet')
+    ])
 
 
 class VietnameseDetectedClipConfig(datasets.BuilderConfig):
-    """Raw Vietnamese Clip configuration."""
+    """Vietnamese speakers's cropped mouth configuration."""
 
     def __init__(self, name: str, **kwargs):
         """
@@ -49,7 +49,7 @@ class VietnameseDetectedClipConfig(datasets.BuilderConfig):
 
 
 class VietnameseDetectedClip(datasets.GeneratorBasedBuilder):
-    """Raw Vietnamese Clip dataset."""
+    """Vietnamese speakers's cropped mouth configuration dataset."""
 
     BUILDER_CONFIGS = [VietnameseDetectedClipConfig(name) for name in _CONFIGS]
     DEFAULT_CONFIG_NAME = "all"
@@ -58,13 +58,9 @@ class VietnameseDetectedClip(datasets.GeneratorBasedBuilder):
         features = datasets.Features({
             "id": datasets.Value("string"),
             "channel": datasets.Value("string"),
-            "chunk_visual_id": datasets.Value("string"),
             "chunk_audio_id": datasets.Value("string"),
-            "visual": datasets.Value("string"),
-            "audio": datasets.Value("string"),
-            "visual_num_frames": datasets.Value("float64"),
+            "audio_path": datasets.Value("string"),
             "audio_num_frames": datasets.Value("float64"),
-            "visual_fps": datasets.Value("int64"),
             "audio_fps": datasets.Value("int64"),
         })
         return datasets.DatasetInfo(
@@ -88,17 +84,13 @@ class VietnameseDetectedClip(datasets.GeneratorBasedBuilder):
             [_URLS["metadata"].format(channel=channel) for channel in config_names]
         )
 
-        visual_paths = dl_manager.download_and_extract(
-            [_URLS["visual"].format(channel=channel) for channel in config_names]
-        )
-
-        audio_paths = dl_manager.download_and_extract(
+        audio_dirs = dl_manager.download_and_extract(
             [_URLS["audio"].format(channel=channel) for channel in config_names]
         )
 
-        data_dict = {
-            channel: (visual_path, audio_path)
-            for channel, visual_path, audio_path in zip(config_names, visual_paths, audio_paths)
+        audio_dict = {
+            channel: audio_dir
+            for channel, audio_dir in zip(config_names, audio_dirs)
         }
 
         return [
@@ -106,7 +98,7 @@ class VietnameseDetectedClip(datasets.GeneratorBasedBuilder):
                 name=datasets.Split.TRAIN,
                 gen_kwargs={
                     'metadata_paths': metadata_paths,
-                    'data_dict': data_dict
+                    'audio_dict': audio_dict
                 },
             ),
         ]
@@ -114,8 +106,8 @@ class VietnameseDetectedClip(datasets.GeneratorBasedBuilder):
     def _generate_examples(
             self,
             metadata_paths: List[str],
-            data_dict: dict
-    ) -> Tuple[int, dict]:
+            audio_dict: dict
+    ) -> Tuple[int, dict]: # type: ignore
         """
         Generate examples from metadata.
         :param metadata_paths:      Paths to metadata.
@@ -128,23 +120,15 @@ class VietnameseDetectedClip(datasets.GeneratorBasedBuilder):
             split="train",
         )
         for i, sample in enumerate(dataset):
-            visual_path = os.path.join(
-                data_dict[sample['channel']][0], sample['channel'], sample['chunk_visual_id'] + ".mp4"
-            )
-
             audio_path = os.path.join(
-                data_dict[sample['channel']][1], sample['channel'], sample['chunk_audio_id'] + ".wav"
+                audio_dict[sample['channel']], sample['channel'], sample['chunk_audio_id'] + ".wav"
             )
 
             yield i, {
                 'id': sample['id'],
                 'channel': sample['channel'],
-                'chunk_visual_id': sample['chunk_visual_id'],
                 'chunk_audio_id': sample['chunk_audio_id'],
-                'visual': visual_path,
-                'audio': audio_path,
-                'visual_num_frames': sample['visual_num_frames'],
+                'audio_path': audio_path,
                 'audio_num_frames': sample['audio_num_frames'],
-                'visual_fps': sample['visual_fps'],
                 'audio_fps': sample['audio_fps']
             }

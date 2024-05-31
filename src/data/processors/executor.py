@@ -20,9 +20,9 @@ class Executor(Processor):
     PROCESSORS = {
         "download": YoutTubeDownloader,
         "asd": ActiveSpeakerExtracter,
+        "crop": Cropper,
         "vndetect": VietnameseDetector,
         "transcribe": Transcriber,
-        "crop": Cropper,
     }
 
     def __init__(self, configs: TaskConfig) -> None:

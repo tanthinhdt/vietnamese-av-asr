@@ -88,14 +88,15 @@ class VideoDownloadTaskConfig(TaskConfig):
         })
         return task_kwargs
 
+
 @dataclass
 class SpeakerDetectTaskConfig(TaskConfig):
     task: str = 'asd'
     src_repo_id: str = 'GSU24AI03-SU24AI21/downloaded-vietnamese-video'
     dest_repo_id: str = 'GSU24AI03-SU24AI21/detected-speaker-clip'
     schemas: list = field(default_factory=lambda: ['visual', 'audio'])
-    remove_columns_loading: list = field(default_factory=lambda: ["video_num_frames", "video_fps", "audio_num_frames", "audio_fps", "duration"])
-    remove_columns_mapping: list = field(default_factory=lambda: ["video_path", "video_id", "uploader"])
+    remove_columns_loading: list = field(default_factory=lambda: ["duration", "video_fps", "audio_fps"])
+    remove_columns_mapping: list = field(default_factory=lambda: ["video_path", "video_id"])
 
     def get_task_kwargs(self) -> dict:
         """
@@ -111,9 +112,32 @@ class SpeakerDetectTaskConfig(TaskConfig):
 
 
 @dataclass
+class MouthCropTaskConfig(TaskConfig):
+    """
+    This config is used to crop mouth region in video.
+    """
+    task: str = "crop"
+    src_repo_id: str = "GSU24AI03-SU24AI21/detected-speaker-clip"
+    dest_repo_id: str = "GSU24AI03-SU24AI21/cropped-mouth-clip"
+    schemas: list = field(default_factory=lambda: ["visual", "audio"])
+    remove_columns_loading: list = field(default_factory=lambda: [])
+    remove_columns_mapping: list = field(default_factory=lambda: ["visual_path", "audio_path"])
+
+    def get_task_kwargs(self) -> dict:
+        """
+        Get task kwargs.
+        :return:            Task kwargs.
+        """
+        task_kwargs = super().get_task_kwargs()
+        task_kwargs["fn_kwargs"].update({
+            "padding": 96,
+        })
+        return task_kwargs
+
+@dataclass
 class VietnameseDetectTaskConfig(TaskConfig):
     task: str = 'vndetect'
-    src_repo_id: str = 'GSU24AI03-SU24AI21/detected-speaker-clip'
+    src_repo_id: str = 'GSU24AI03-SU24AI21/cropped-mouth-clip'
     dest_repo_id: str = 'GSU24AI03-SU24AI21/detected-vietnamese-clip'
     schemas: list = field(default_factory=lambda: ['visual', 'audio'])
     remove_columns_loading: list = field(default_factory=lambda: [])
@@ -125,20 +149,23 @@ class VietnameseDetectTaskConfig(TaskConfig):
         :return:
         """
         task_kwargs = super().get_task_kwargs()
-        task_kwargs["fn_kwargs"].update({})
+        task_kwargs["fn_kwargs"].update({
+            
+        })
         return task_kwargs
 
 
 @dataclass
-class TranscribingTaskConfig(TaskConfig):
+class TranscribeTaskConfig(TaskConfig):
     """
     This config is used to transcribe audio.
     """
     task: str = "transcribe"
     src_repo_id: str = "GSU24AI03-SU24AI21/detected-vietnamese-clip"
     dest_repo_id: str = "GSU24AI03-SU24AI21/transcribed-vietnamese-audio"
-    remove_columns_loading: list = field(default_factory=lambda: ["visual"])
-    remove_columns_mapping: list = field(default_factory=lambda: ["audio"])
+    schemas: list = field(default_factory=lambda: [])
+    remove_columns_loading: list = field(default_factory=lambda: [])
+    remove_columns_mapping: list = field(default_factory=lambda: ["audio_path"])
 
     def get_task_kwargs(self) -> dict:
         """
@@ -148,28 +175,5 @@ class TranscribingTaskConfig(TaskConfig):
         task_kwargs = super().get_task_kwargs()
         task_kwargs["fn_kwargs"].update({
             "beam_width": 500,
-        })
-        return task_kwargs
-
-
-@dataclass
-class CroppingTaskConfig(TaskConfig):
-    """
-    This config is used to crop mouth region in video.
-    """
-    task: str = "crop"
-    src_repo_id: str = "GSU24AI03-SU24AI21/transcribed-vietnamese-audio"
-    dest_repo_id: str = "GSU24AI03-SU24AI21/vietnamese-speaker-lip-clip"
-    schemas: list = field(default_factory=lambda: ["visual"])
-    remove_columns_mapping: list = field(default_factory=lambda: ["visual"])
-
-    def get_task_kwargs(self) -> dict:
-        """
-        Get task kwargs.
-        :return:            Task kwargs.
-        """
-        task_kwargs = super().get_task_kwargs()
-        task_kwargs["fn_kwargs"].update({
-            "padding": 96,
         })
         return task_kwargs

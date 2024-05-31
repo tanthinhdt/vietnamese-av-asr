@@ -6,7 +6,7 @@ import argparse
 from tqdm import tqdm
 from src.data.processors.executor import Executor
 from src.data.utils import TaskConfig, SpeakerDetectTaskConfig, VietnameseDetectTaskConfig
-from src.data.utils import TranscribingTaskConfig, CroppingTaskConfig, VideoDownloadTaskConfig
+from src.data.utils import TranscribeTaskConfig, MouthCropTaskConfig, VideoDownloadTaskConfig
 
 def parse_args() -> argparse.Namespace:
     """
@@ -19,12 +19,11 @@ def parse_args() -> argparse.Namespace:
         type=str,
         default=None,
         required=True,
-        help="Available tasks: download, asd, vndetect, transcribe, crop",
+        help="Available tasks: download, asd, crop, vndetect, transcribe",
     )
     parser.add_argument(
         "--output-dir",
         type=str,
-        default='data/processed',
         required=True,
         help="Path to data directory.",
     )
@@ -88,17 +87,17 @@ def get_task_configs(args: argparse.Namespace) -> TaskConfig:
             "config": SpeakerDetectTaskConfig,
             "dir": "detected-speaker-clip",
         },
+        "crop": {
+            "config": MouthCropTaskConfig,
+            "dir": "cropped-mouth-clip",
+        },
         "vndetect": {
             "config": VietnameseDetectTaskConfig,
             "dir": "detected-vietnamese-clip",
         },
         "transcribe": {
-            "config": TranscribingTaskConfig,
+            "config": TranscribeTaskConfig,
             "dir": "transcribed-vietnamese-audio",
-        },
-        "crop": {
-            "config": CroppingTaskConfig,
-            "dir": "vietnamese-speaker-lip-clip",
         },
     }
 

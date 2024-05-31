@@ -1,8 +1,10 @@
 import os
 import cv2
+import shutil
 import numpy as np
 import mediapipe as mp
 import moviepy.editor as mpe
+
 from .processor import Processor
 
 
@@ -20,6 +22,7 @@ class Cropper(Processor):
     def process(
         self, sample: dict,
         visual_output_dir: str,
+        audio_output_dir: str,
         padding: int = 96,
     ) -> dict:
         """
@@ -30,11 +33,12 @@ class Cropper(Processor):
         :return:                    Sample with path to video of cropped mouth region.
         """
         visual_output_path = os.path.join(visual_output_dir, sample["chunk_visual_id"][0] + ".mp4")
+        audio_output_path = os.path.join(audio_output_dir, sample["chunk_audio_id"][0] + ".wav")
 
         if not os.path.exists(visual_output_path):
             mouths = []
             max_width, max_height = 0, 0
-            for frame in mpe.VideoFileClip(sample["visual"][0]).iter_frames():
+            for frame in mpe.VideoFileClip(sample["visual_path"][0]).iter_frames(fps=25):
                 mouth = self.crop_mouth(frame, padding)
                 if mouth is None or mouth.shape[0] == 0 or mouth.shape[1] == 0:
                     continue
@@ -46,7 +50,7 @@ class Cropper(Processor):
                 num_cropped=len(mouths),
                 sample_fps=sample["visual_fps"][0],
                 sample_duration=sample["visual_num_frames"][0] / sample["visual_fps"][0],
-            ):
+            ):                
                 self.write_video(
                     video_path=visual_output_path,
                     frames=mouths,
@@ -54,6 +58,11 @@ class Cropper(Processor):
                     frame_height=max_height,
                     fps=sample["visual_fps"][0],
                 )
+                shutil.copy(
+                    src=sample['audio_path'][0],
+                    dst=audio_output_path,
+                )
+
             else:
                 sample["id"][0] = None
 
@@ -129,11 +138,7 @@ class Cropper(Processor):
         :param frame_height:    Frame height.
         :param fps:             FPS.
         """
-        mpe.VideoFileClip.write_videofile(
-            mpe.ImageSequenceClip(
-                [cv2.resize(frame, (frame_width, frame_height)) for frame in frames],
-                fps=fps,
-            ),
-            video_path,
-            logger=None,
-        )
+        mpe.ImageSequenceClip(
+            sequence=[cv2.resize(frame, (frame_width, frame_height)) for frame in frames],
+            fps=fps
+        ).write_videofile(video_path,fps)
