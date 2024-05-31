@@ -1,10 +1,5 @@
 #! /bin/bash
 
-
-# Clone repo
-git clone -b data_collection https://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@github.com/tanthinhdt/vietnamese-av-asr.git
-
-
 # Download and set up miniconda
 MINICONDA_INSTALLER_SCRIPT=Miniconda3-py39_23.11.0-2-Linux-x86_64.sh
 MINICONDA_PREFIX=/usr/local
