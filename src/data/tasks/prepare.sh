@@ -1,5 +1,6 @@
 #! /bin/bash
 
+
 # Download and set up miniconda
 MINICONDA_INSTALLER_SCRIPT=Miniconda3-py39_23.11.0-2-Linux-x86_64.sh
 MINICONDA_PREFIX=/usr/local
@@ -37,7 +38,7 @@ conda list | grep coccoctokenizer   # should show coccoctokenizer 1.4
 
 # Install requirements
 cd /content/vietnamese-av-asr/
-pip install -r src/data/requirements.txt
+pip install -r ./src/data/databases/requirements.txt
 pip install -U datasets
 pip install fsspec
 cd /content/vietnamese-av-asr/

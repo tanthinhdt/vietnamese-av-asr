@@ -20,7 +20,7 @@ _PLAYLIST_URLS = [
 
 
 @filter_metadata
-def base_duration(meta: dict, threshold: int = 4000):
+def base_duration(meta: dict):
     return meta['duration'] > 3000 and meta['duration'] < 6000
 
 @filter_metadata
@@ -34,4 +34,3 @@ def base_title(meta: dict):
 
 # df = pd.DataFrame({'video_id': ["5tTiD5rtVwY"],'channel':['batch_99999']},)
 # df.to_parquet(path="src/data/databases/metadata/batch_99999.parquet")
-print(pq.read_table('/Users/minhnguyen/home/vietnamese-av-asr/data/processed/detected-speaker-clip/metadata/batch_99999.parquet'))
