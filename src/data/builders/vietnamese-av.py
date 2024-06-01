@@ -9,20 +9,22 @@ fs = HfFileSystem()
 _CITATION = """
 """
 _DESCRIPTION = """
-    This dataset contains the mouth region of speakers.
+        This dataset contains Vietnamese speakers clip along transcripts.
 """
 _HOMEPAGE = "https://github.com/tanthinhdt/vietnamese-av-asr"
 
-_METADATA_REPO_PATH = "datasets/GSU24AI03-SU24AI21/cropped-mouth-clip"
-_AUDIO_REPO_PATH = "datasets/GSU24AI03-SU24AI21/detected-speaker-clip"
+_METADATA_REPO_PATH = "datasets/GSU24AI03-SU24AI21/transcribed-vietnamese-audio"
+_VISUAL_REPO_PATH = "datasets/GSU24AI03-SU24AI21/cropped-mouth-clip"
+_AUDIO_REPO_PATH = "datasets/GSU24AI03-SU24AI21/detected-vietnamese-clip"
 
-_BRANCH = 'main'
+_BRANCH = "main"
 _REPO_BRANCH_PATH = f"{_METADATA_REPO_PATH}@{_BRANCH}"
 
 _REPO_URL = "https://huggingface.co/{}/resolve/{}"
 _URLS = {
     "metadata": _REPO_URL.format(_METADATA_REPO_PATH,_BRANCH) + "/metadata/{channel}.parquet",
-    "audio": _REPO_URL.format(_AUDIO_REPO_PATH,_BRANCH) + "/audio/{channel}.zip",
+    "visual": _REPO_URL.format(_VISUAL_REPO_PATH,_BRANCH) + "/visual/{channel}.zip",
+    "audio": _REPO_URL.format(_AUDIO_REPO_PATH,_BRANCH)+ "/audio/{channel}.zip",
 }
 
 _CONFIGS = ["all"]
@@ -34,15 +36,15 @@ if fs.exists(_REPO_BRANCH_PATH + "/metadata"):
     ])
 
 
-class CroppedMouthClipConfig(datasets.BuilderConfig):
-    """Cropped mouth of speaker clip configuration."""
+class VietnameseAVConfig(datasets.BuilderConfig):
+    """VietnameseAV configuration."""
 
     def __init__(self, name, **kwargs):
         """
         :param name:    Name of subset.
         :param kwargs:  Arguments.
         """
-        super(CroppedMouthClipConfig, self).__init__(
+        super().__init__(
             name=name,
             version=datasets.Version("1.0.0"),
             description=_DESCRIPTION,
@@ -50,23 +52,24 @@ class CroppedMouthClipConfig(datasets.BuilderConfig):
         )
 
 
-class CroppedMouthClip(datasets.GeneratorBasedBuilder):
-    """Cropped mouth of speaker clip dataset."""
+class VietnameseAV(datasets.GeneratorBasedBuilder):
+    """VietnameseAV dataset."""
 
-    BUILDER_CONFIGS = [CroppedMouthClipConfig(name) for name in _CONFIGS]
-    DEFAULT_CONFIG_NAME = "all"
+    BUILDER_CONFIGS = [VietnameseAVConfig(name) for name in _CONFIGS]
 
     def _info(self) -> datasets.DatasetInfo:
         features = datasets.Features({
             "id": datasets.Value("string"),
             "channel": datasets.Value("string"),
-            "audio_path": datasets.Value("string"),
+            "visual": datasets.Value("binary"),
+            "audio": datasets.Value("binary"),
             "chunk_visual_id": datasets.Value("string"),
             "chunk_audio_id": datasets.Value("string"),
             "visual_num_frames": datasets.Value("float64"),
             "audio_num_frames": datasets.Value("float64"),
             "visual_fps": datasets.Value("int64"),
             "audio_fps": datasets.Value("int64"),
+            "transcript": datasets.Value("string"),
         })
 
         return datasets.DatasetInfo(
@@ -90,6 +93,33 @@ class CroppedMouthClip(datasets.GeneratorBasedBuilder):
             [_URLS["metadata"].format(channel=channel) for channel in config_names]
         )
 
+        dataset = datasets.load_dataset(
+            "parquet",
+            data_files=metadata_paths,
+            split="train",
+        )
+
+        dataset = dataset.train_test_split(test_size=0.2, shuffle=True, seed=42)
+        train_set = dataset["train"]
+        val_test_set = dataset["test"].train_test_split(test_size=0.5)
+        val_set = val_test_set["train"]
+        test_set = val_test_set["test"]
+
+        split_dict = {
+            datasets.Split.TRAIN: train_set,
+            datasets.Split.VALIDATION: val_set,
+            datasets.Split.TEST: test_set,
+        }
+
+        visual_dirs = dl_manager.download_and_extract(
+            [_URLS["visual"].format(channel=channel) for channel in config_names]
+        )
+
+        visual_dict = {
+            channel: visual_dir
+            for channel, visual_dir in zip(config_names, visual_dirs)
+        }
+
         audio_dirs = dl_manager.download_and_extract(
             [_URLS["audio"].format(channel=channel) for channel in config_names]
         )
@@ -101,42 +131,56 @@ class CroppedMouthClip(datasets.GeneratorBasedBuilder):
 
         return [
             datasets.SplitGenerator(
-                name=datasets.Split.TRAIN,
+                name=name,
                 gen_kwargs={
-                    "metadata_paths": metadata_paths,
+                    "split": split,
+                    "visual_dict": visual_dict,
                     "audio_dict": audio_dict,
                 },
-            ),
+            )
+            for name, split in split_dict.items()
         ]
 
     def _generate_examples(
-        self, metadata_paths: List[str],
+        self, split: datasets.Dataset,
+        visual_dict: dict,
         audio_dict: dict,
     ) -> Tuple[int, dict]: # type: ignore
-        """ 
-        Generate examples from metadata.
-        :param metadata_paths:      Paths to metadata.
-        :param visual_dict:         Paths to directory containing videos.
-        :yield:                     Example.
         """
-        dataset = datasets.load_dataset(
-            "parquet",
-            data_files=metadata_paths,
-            split="train",
-        )
-        for i, sample in enumerate(dataset):
+        Generate examples.
+        :param split:                   Split.
+        :param visual_dict:             Paths to directory containing visual files.
+        :param audio_dict:              Paths to directory containing audio files.
+        :return:                        Example.
+        """
+        for i, sample in enumerate(split):
+            channel = sample["channel"]
+            visual_path = os.path.join(
+                visual_dict[channel], channel, sample["chunk_visual_id"] + ".mp4"
+            )
             audio_path = os.path.join(
-                audio_dict[sample["channel"]], sample["channel"], sample["chunk_audio_id"] + ".wav"
+                audio_dict[channel], channel, sample["chunk_audio_id"] + ".wav"
             )
 
             yield i, {
                 "id": sample["id"],
-                "channel": sample["channel"],
-                "audio_path": audio_path,
+                "channel": channel,
+                "visual": self.__get_binary_data(visual_path),
+                "audio": self.__get_binary_data(audio_path),
                 "chunk_visual_id": sample["chunk_visual_id"],
                 "chunk_audio_id": sample["chunk_audio_id"],
                 "visual_num_frames": sample["visual_num_frames"],
                 "audio_num_frames": sample["audio_num_frames"],
                 "visual_fps": sample["visual_fps"],
                 "audio_fps": sample["audio_fps"],
+                "transcript": sample["transcript"],
             }
+
+    def __get_binary_data(self, path: str) -> bytes:
+        """
+        Get binary data from path.
+        :param path:    Path to file.
+        :return:        Binary data.
+        """
+        with open(path, "rb") as f:
+            return f.read()

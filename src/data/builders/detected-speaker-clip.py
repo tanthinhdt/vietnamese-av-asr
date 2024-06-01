@@ -13,15 +13,17 @@ _DESCRIPTION = """
     This dataset contains clip active speaker (cropped face).
 """
 _HOMEPAGE = "https://github.com/tanthinhdt/vietnamese-av-asr"
-_REPO_PATH = "datasets/GSU24AI03-SU24AI21/detected-speaker-clip"
-_BRANCH = 'main'
-_REPO_PATH_BRANCH = f"{_REPO_PATH}@{_BRANCH}"
-_REPO_URL = f"https://huggingface.co/{_REPO_PATH}/resolve/{_BRANCH}"
 
+_METADATA_REPO_PATH = "datasets/GSU24AI03-SU24AI21/detected-speaker-clip"
+_VISUAL_REPO_PATH = "datasets/GSU24AI03-SU24AI21/detected-speaker-clip"
+
+_BRANCH = 'main'
+_REPO_PATH_BRANCH = f"{_METADATA_REPO_PATH}@{_BRANCH}"
+
+_REPO_URL = "https://huggingface.co/{}/resolve/{}"
 _URLS = {
-    "visual": f"{_REPO_URL}" + "/visual/{channel}.zip",
-    "audio": f"{_REPO_URL}" + "/audio/{channel}.zip",
-    "metadata": f"{_REPO_URL}" + "/metadata/{channel}.parquet",
+    "metadata": _REPO_URL.format(_METADATA_REPO_PATH,_BRANCH) + "/metadata/{channel}.parquet",
+    "visual": _REPO_URL.format(_VISUAL_REPO_PATH,_BRANCH) + "/visual/{channel}.zip",
 }
 
 _CONFIGS = ["all"]
@@ -60,7 +62,6 @@ class DetectdSpeakerClip(datasets.GeneratorBasedBuilder):
             "id": datasets.Value("string"),
             "channel": datasets.Value("string"),
             "visual_path": datasets.Value("string"),
-            "audio_path": datasets.Value("string"),
             "chunk_visual_id": datasets.Value("string"),
             "chunk_audio_id": datasets.Value("string"),
             "visual_num_frames": datasets.Value("float64"),
@@ -94,13 +95,9 @@ class DetectdSpeakerClip(datasets.GeneratorBasedBuilder):
             [_URLS["visual"].format(channel=channel) for channel in config_names]
         )
 
-        audio_dirs = dl_manager.download_and_extract(
-            [_URLS["audio"].format(channel=channel) for channel in config_names]
-        )
-
-        clip_dict = {
-            channel: (visual_dir, audio_dir)
-            for channel, visual_dir, audio_dir in zip(config_names, visual_dirs, audio_dirs)
+        visual_dict = {
+            channel: visual_dir
+            for channel, visual_dir in zip(config_names, visual_dirs)
         }
 
         return [
@@ -108,7 +105,7 @@ class DetectdSpeakerClip(datasets.GeneratorBasedBuilder):
                 name=datasets.Split.TRAIN,
                 gen_kwargs={
                     'metadata_paths': metadata_paths,
-                    'clip_dict': clip_dict
+                    'visual_dict': visual_dict
                 },
             ),
         ]
@@ -116,7 +113,7 @@ class DetectdSpeakerClip(datasets.GeneratorBasedBuilder):
     def _generate_examples(
             self,
             metadata_paths: List[str],
-            clip_dict: dict
+            visual_dict: dict
     ) -> Tuple[int, dict]: # type: ignore
         """
         Generate examples from metadata.
@@ -131,18 +128,13 @@ class DetectdSpeakerClip(datasets.GeneratorBasedBuilder):
         )
         for i, sample in enumerate(dataset):
             visual_path = os.path.join(
-                clip_dict[sample['channel']][0], sample['channel'], sample['chunk_visual_id'] + ".mp4"
-            )
-
-            audio_path = os.path.join(
-                clip_dict[sample['channel']][1], sample['channel'], sample['chunk_audio_id'] + ".wav"
+                visual_dict[sample['channel']], sample['channel'], sample['chunk_visual_id'] + ".mp4"
             )
 
             yield i, {
                 'id': sample['id'],
                 'channel': sample['channel'],
                 'visual_path': visual_path,
-                'audio_path': audio_path,
                 'chunk_visual_id': sample['chunk_visual_id'],
                 'chunk_audio_id': sample['chunk_audio_id'],
                 'visual_num_frames': sample['visual_num_frames'],

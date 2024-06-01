@@ -13,14 +13,18 @@ _DESCRIPTION = """
     This dataset contains Vietnamese speakers's cropped mouth clip.
 """
 _HOMEPAGE = "https://github.com/tanthinhdt/vietnamese-av-asr"
-_REPO_PATH = "datasets/GSU24AI03-SU24AI21/detected-vietnamese-clip"
+
+_MEATADATA_REPO_PATH = "datasets/GSU24AI03-SU24AI21/detected-vietnamese-clip"
+_AUDIO_REPO_PATH = "datasets/GSU24AI03-SU24AI21/detected-speaker-clip"
+
 _BRANCH = 'main'
-_REPO_PATH_BRANCH = f"{_REPO_PATH}@{_BRANCH}"
-_REPO_URL = f"https://huggingface.co/{_REPO_PATH}/resolve/{_BRANCH}"
+_REPO_PATH_BRANCH = f"{_MEATADATA_REPO_PATH}@{_BRANCH}"
+
+_REPO_URL = "https://huggingface.co/{}/resolve/{}"
 
 _URLS = {
-    "audio": f"{_REPO_URL}" + "/audio/{channel}.zip",
-    "metadata": f"{_REPO_URL}" + "/metadata/{channel}.parquet",
+    "metadata": _REPO_URL.format(_MEATADATA_REPO_PATH,_BRANCH) + "/metadata/{channel}.parquet",
+    "audio": _REPO_URL.format(_AUDIO_REPO_PATH,_BRANCH) + "/audio/{channel}.zip",
 }
 
 _CONFIGS = ["all"]
@@ -58,9 +62,12 @@ class VietnameseDetectedClip(datasets.GeneratorBasedBuilder):
         features = datasets.Features({
             "id": datasets.Value("string"),
             "channel": datasets.Value("string"),
-            "chunk_audio_id": datasets.Value("string"),
             "audio_path": datasets.Value("string"),
+            "chunk_visual_id": datasets.Value("string"),
+            "chunk_audio_id": datasets.Value("string"),
+            "visual_num_frames": datasets.Value("float64"),
             "audio_num_frames": datasets.Value("float64"),
+            "visual_fps": datasets.Value("int64"),
             "audio_fps": datasets.Value("int64"),
         })
         return datasets.DatasetInfo(
@@ -127,8 +134,11 @@ class VietnameseDetectedClip(datasets.GeneratorBasedBuilder):
             yield i, {
                 'id': sample['id'],
                 'channel': sample['channel'],
-                'chunk_audio_id': sample['chunk_audio_id'],
                 'audio_path': audio_path,
+                'chunk_visual_id': sample['chunk_visual_id'],
+                'chunk_audio_id': sample['chunk_audio_id'],
+                'visual_num_frames': sample['visual_num_frames'],
                 'audio_num_frames': sample['audio_num_frames'],
-                'audio_fps': sample['audio_fps']
+                'audio_fps': sample['audio_fps'],
+                'visual_fps': sample['visual_fps']
             }

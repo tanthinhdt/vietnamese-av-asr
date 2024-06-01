@@ -4,8 +4,6 @@ import datasets
 from huggingface_hub import HfFileSystem
 from typing import List, Tuple
 
-import pickle
-
 logger = datasets.logging.get_logger(__name__)
 fs = HfFileSystem()
 
@@ -15,14 +13,17 @@ _DESCRIPTION = """
     This dataset contains raw vietnamese sources video.
 """
 _HOMEPAGE = "https://github.com/tanthinhdt/vietnamese-av-asr"
-_REPO_PATH = "datasets/GSU24AI03-SU24AI21/downloaded-vietnamese-video"
-_BRANCH = 'main'
-_REPO_PATH_BRANCH = f"{_REPO_PATH}@{_BRANCH}"
-_REPO_URL = f"https://huggingface.co/{_REPO_PATH}/resolve/{_BRANCH}"
 
+_METADATA_REPO_PATH = "datasets/GSU24AI03-SU24AI21/downloaded-vietnamese-video"
+_VIDEO_REPO_PATH = "datasets/GSU24AI03-SU24AI21/downloaded-vietnamese-video"
+
+_BRANCH = 'main'
+_REPO_PATH_BRANCH = f"{_METADATA_REPO_PATH}@{_BRANCH}"
+
+_REPO_URL = "https://huggingface.co/{}/resolve/{}"
 _URLS = {
-    "metadata": f"{_REPO_URL}" + "/metadata/{channel}.parquet",
-    "video": f"{_REPO_URL}" + "/video/{channel}.zip",
+    "metadata": _REPO_URL.format(_METADATA_REPO_PATH,_BRANCH) + "/metadata/{channel}.parquet",
+    "video": _REPO_URL.format(_VIDEO_REPO_PATH,_BRANCH)  + "/video/{channel}.zip",
 }
 
 _CONFIGS = ["all"]
@@ -124,15 +125,13 @@ class DownloadedVietnameseVideo(datasets.GeneratorBasedBuilder):
             trust_remote_code=False,
         )
         for i, sample in enumerate(dataset):
-            channel = sample['channel']
-
             video_path = os.path.join(
-                video_dict[channel], channel, sample['video_name'] + ".mp4"
+                video_dict[sample['channel']], sample['channel'], sample['video_name'] + ".mp4"
             )
 
             yield i, {
                 'id': sample['video_id'],
-                'channel': channel,
+                'channel': sample['channel'],
                 'video_id': sample['video_id'],
                 'video_path': video_path,
                 'duration': sample['duration'],

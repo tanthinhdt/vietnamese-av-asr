@@ -3,7 +3,6 @@ import os
 import datasets
 from huggingface_hub import HfFileSystem
 from typing import Tuple, List
-from colorama import Fore
 
 logger = datasets.logging.get_logger(__name__)
 fs = HfFileSystem()
@@ -14,13 +13,15 @@ _DESCRIPTION = """
     This dataset contain url of video to download.
 """
 _HOMEPAGE = "https://github.com/tanthinhdt/vietnamese-av-asr"
-_REPO_PATH = "datasets/GSU24AI03-SU24AI21/tracked-url-video"
-_BRANCH = 'main'
-_REPO_PATH_BRANCH = f"{_REPO_PATH}@{_BRANCH}"
-_REPO_URL = f"https://huggingface.co/{_REPO_PATH}/resolve/{_BRANCH}"
 
+_METADATA_REPO_PATH = "datasets/GSU24AI03-SU24AI21/tracked-url-video"
+
+_BRANCH = 'main'
+_REPO_PATH_BRANCH = f"{_METADATA_REPO_PATH}@{_BRANCH}"
+
+_REPO_URL = "https://huggingface.co/{}/resolve/{}"
 _URLS = {
-    "metadata": f"{_REPO_URL}" + "/metadata/{channel}.parquet",
+    "metadata": _REPO_URL.format(_METADATA_REPO_PATH,_BRANCH) + "/metadata/{channel}.parquet",
 }
 
 _CONFIGS = ["all"]
