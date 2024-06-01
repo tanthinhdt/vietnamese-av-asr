@@ -58,17 +58,14 @@ class VietnameseDetector(Processor):
     def process(
             self,
             sample: dict,
-            visual_output_dir: str,
             audio_output_dir: str,
             *args,
             **kwargs) -> dict:
-        visual_path = sample['visual_path'][0]
         audio_path = sample['audio_path'][0]
         is_vietnamese = self.is_vietnamese(
             *torchaudio.load(audio_path)
         )
         if is_vietnamese:
-            shutil.copy(src=visual_path, dst=visual_output_dir)
             shutil.copy(src=audio_path, dst=audio_output_dir)
         else:
             sample['id'][0] = None

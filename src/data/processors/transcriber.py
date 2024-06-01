@@ -55,7 +55,6 @@ class Transcriber(Processor):
                 sampling_rate=sampling_rate,
                 beam_width=beam_width,
             )
-            print(transcript)
             if not self.check_output(transcript=transcript):
                 raise Exception("Transcript is invalid.")
         except Exception as e:

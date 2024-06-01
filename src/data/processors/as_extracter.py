@@ -400,6 +400,16 @@ class ActiveSpeakerExtracter(Processor):
             command = ("ffmpeg -y -i %s -qscale:v 0 -threads %d -f image2 %s -loglevel panic" %
                         (self.videoFilePath, self.nDataLoaderThread, os.path.join(self.pyframesPath, '%06d.jpg')))
             subprocess.call(command, shell=True, stdout=None)
+            # cap = cv2.VideoCapture(filename=self.videoFilePath)
+            # if cap.isOpened():
+            #     i = 0
+            #     while True:
+            #         ret, frame = cap.read()
+            #         if not ret:
+            #             break
+            #         imge_path = os.path.join(self.pyframesPath,"%.5d.jpg" % i)
+            #         cv2.imwrite(filename=imge_path,img=frame)
+            #         i += 1
 
     def _extract_audio(self) -> None:
         self.audioFilePath = os.path.join(self.pyaviPath, 'audio.wav')
@@ -437,9 +447,9 @@ class ActiveSpeakerExtracter(Processor):
             up = self._make_network_result(tmp_dir=tmp_dir,channel=channel,video_id=video_id)
             
             self._extract_video(origin_video_path=videoPath)
-            self._extract_frames()
             self._extract_audio()
-        
+            self._extract_frames()
+
             scene = self._get_scene()
             faces = self._get_faces()
             self._crop_face(scene=scene,faces=faces)
