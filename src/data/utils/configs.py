@@ -119,9 +119,9 @@ class MouthCropTaskConfig(TaskConfig):
     task: str = "crop"
     src_repo_id: str = "GSU24AI03-SU24AI21/detected-speaker-clip"
     dest_repo_id: str = "GSU24AI03-SU24AI21/cropped-mouth-clip"
-    schemas: list = field(default_factory=lambda: ["visual", "audio"])
+    schemas: list = field(default_factory=lambda: ["visual"])
     remove_columns_loading: list = field(default_factory=lambda: [])
-    remove_columns_mapping: list = field(default_factory=lambda: ["visual_path", "audio_path"])
+    remove_columns_mapping: list = field(default_factory=lambda: ["visual_path"])
 
     def get_task_kwargs(self) -> dict:
         """
@@ -139,9 +139,9 @@ class VietnameseDetectTaskConfig(TaskConfig):
     task: str = 'vndetect'
     src_repo_id: str = 'GSU24AI03-SU24AI21/cropped-mouth-clip'
     dest_repo_id: str = 'GSU24AI03-SU24AI21/detected-vietnamese-clip'
-    schemas: list = field(default_factory=lambda: ['visual', 'audio'])
+    schemas: list = field(default_factory=lambda: ['audio'])
     remove_columns_loading: list = field(default_factory=lambda: [])
-    remove_columns_mapping: list = field(default_factory=lambda: ["visual_path", "audio_path"])
+    remove_columns_mapping: list = field(default_factory=lambda: ["audio_path"])
 
     def get_task_kwargs(self) -> dict:
         """
