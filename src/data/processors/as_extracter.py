@@ -45,31 +45,31 @@ class ActiveSpeakerExtracter(Processor):
 
         super().__init__()
 
-        self.minTrack = minTrack
-        self.numFailedDet = numFailedDet
-        self.facedetScale = facedetScale
-        self.cropScale = cropScale
-        self.minFaceSize = minFaceSize
-        self.nDataLoaderThread = nDataLoaderThread
-        self.pretrainModel = pretrainModel
-        self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        self.minTrack               = minTrack
+        self.numFailedDet           = numFailedDet
+        self.facedetScale           = facedetScale
+        self.cropScale              = cropScale
+        self.minFaceSize            = minFaceSize
+        self.nDataLoaderThread      = nDataLoaderThread
+        self.pretrainModel          = pretrainModel
+        self.device                 = "cuda" if torch.cuda.is_available() else "cpu"
 
         # threshold
-        self.speaking_frame_count_threshold = 50
-        self.speaking_score_threshold = 0.5
-        self.frame_window_length = 4
-        self.time_interval = 3
+        self.speaking_frame_count_threshold     = 50
+        self.speaking_score_threshold           = 0.5
+        self.frame_window_length                = 4
+        self.time_interval                      = 3
 
         # hyper data
-        self.V_FPS = 25
-        self.A_FPS = 16000
-        self.DURATION = 3
-        self.V_FRAMES = self.V_FPS * self.DURATION
-        self.A_FRAMES = self.A_FPS * self.DURATION
+        self.V_FPS      = 25
+        self.A_FPS      = 16000
+        self.DURATION   = 3
+        self.V_FRAMES   = self.V_FPS * self.DURATION
+        self.A_FRAMES   = self.A_FPS * self.DURATION
 
 
-        self.facedetScale = facedetScale
-        self.DET = S3FD(device=self.device)
+        self.facedetScale   = facedetScale
+        self.DET            = S3FD(device=self.device)
 
         # init for face trạcking
         self.iouThres = 0.5  # Minimum IOU between consecutive face detections
@@ -78,15 +78,15 @@ class ActiveSpeakerExtracter(Processor):
         self.asd.loadParameters(self.pretrainModel)
 
         # init path
-        self.pyaviPath = None
-        self.pyframesPath = None
-        self.pyworkPath = None
-        self.pycropPath = None
-        self.videoFilePath = None
-        self.audioFilePath = None
-        self.network_dir = None
-        self.outputPath = None
-        self.network_repo_id = "GSU24AI03-SU24AI21/network-result-asd"
+        self.pyaviPath          = None
+        self.pyframesPath       = None
+        self.pyworkPath         = None
+        self.pycropPath         = None
+        self.videoFilePath      = None
+        self.audioFilePath      = None
+        self.network_dir        = None
+        self.outputPath         = None
+        self.network_repo_id    = "GSU24AI03-SU24AI21/network-result-asd"
         
     def scene_detect(self) -> list:
         # CPU: Scene detection, output is the list of each shot's time duration

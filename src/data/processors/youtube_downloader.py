@@ -33,7 +33,7 @@ class YoutTubeDownloader(Processor):
         channel = sample['channel'][0]
         video_path = os.path.join(video_output_dir,f"video@{channel}@{sample['id'][0]}.mp4")
         try:
-            command_meta = copy(self._command_meta_temp)
+            command_meta = copy.copy(self._command_meta_temp)
             command_meta[-1] = sample['url'][0]
             metadata = dict()
             metadata = json.loads(
@@ -43,7 +43,7 @@ class YoutTubeDownloader(Processor):
                     capture_output=True,
                 ).stdout.decode('utf-8').strip('\n')
             )
-            command_download = copy(self._command_download_temp)
+            command_download = copy.copy(self._command_download_temp)
             command_download[2] = video_path
             command_download[-2] = self._config_file
             command_download[-1] = sample['url'][0]
@@ -51,17 +51,17 @@ class YoutTubeDownloader(Processor):
         except json.decoder.JSONDecodeError:
             pass
         output_sample = copy.copy(sample)
-        for k in sample.keys:
+        for k in sample.keys():
             if k not in ('id','channel'):
                 output_sample.pop(k)
 
-        output_sample["id"]                    = [None]
-        output_sample["channel"]               = sample["channel"]
-        output_sample["video_id"]              = [metadata.get('id','no video id')]
-        output_sample["video_name"]            = [os.path.basename(os.path.splitext(video_path)[0])]
-        output_sample["duration"]              = [metadata.get('duration',-1)]
-        output_sample["visual_fps"]            = [metadata.get('fps',-1)]
-        output_sample["audio_fps"]             = [metadata.get('asr',-1)]
+        output_sample["id"]             = [None]
+        output_sample["channel"]        = sample["channel"]
+        output_sample["video_id"]       = [metadata.get('id','no video id')]
+        output_sample["video_name"]     = [os.path.basename(os.path.splitext(video_path)[0])]
+        output_sample["duration"]       = [metadata.get('duration',-1)]
+        output_sample["video_fps"]      = [metadata.get('fps',-1)]
+        output_sample["audio_fps"]      = [metadata.get('asr',-1)]
         
         if os.path.isfile(video_path) and os.path.splitext(video_path)[-1] == '.mp4':
             output_sample['id'] = sample['id']
