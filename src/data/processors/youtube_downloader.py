@@ -1,8 +1,7 @@
 import os
 import subprocess
 import json
-
-from copy import copy
+import copy
 
 from src.data.processors.processor import Processor
 
@@ -51,16 +50,19 @@ class YoutTubeDownloader(Processor):
             subprocess.run(command_download, shell=False, capture_output=False, stdout=None)
         except json.decoder.JSONDecodeError:
             pass
+        output_sample = copy.copy(sample)
+        for k in sample.keys:
+            if k not in ('id','channel'):
+                output_sample.pop(k)
+
+        output_sample["id"]                    = [None]
+        output_sample["channel"]               = sample["channel"]
+        output_sample["video_id"]              = [metadata.get('id','no video id')]
+        output_sample["video_name"]            = [os.path.basename(os.path.splitext(video_path)[0])]
+        output_sample["duration"]              = [metadata.get('duration',-1)]
+        output_sample["visual_fps"]            = [metadata.get('fps',-1)]
+        output_sample["audio_fps"]             = [metadata.get('asr',-1)]
         
-        output_sample = {
-            "id": [None],
-            "channel": sample['channel'],
-            "video_id": [metadata.get('id','no video id')],
-            "video_name": [os.path.basename(os.path.splitext(video_path)[0])],
-            "duration": [metadata.get('duration',-1)],
-            "video_fps": [metadata.get('fps',-1)],
-            "audio_fps": [metadata.get('asr',-1)],    
-        }
         if os.path.isfile(video_path) and os.path.splitext(video_path)[-1] == '.mp4':
             output_sample['id'] = sample['id']
         
