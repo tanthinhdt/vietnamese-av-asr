@@ -23,11 +23,12 @@ Try our VSP-LLM demo using colab
 ## Preparation
 
 ```
-conda create -n vsp-llm python=3.9 -y
+conda create -n vsp-llm python=3.9.19 -y
 conda activate vsp-llm
 git clone https://github.com/Sally-SH/VSP-LLM.git
 cd VSP-LLM
 pip install -r requirements.txt
+pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
 ```
 
 - Download AV-HuBERT pre-trained model `AV-HuBERT Large (LSR3 + VoxCeleb2)` from [here](http://facebookresearch.github.io/av_hubert).
