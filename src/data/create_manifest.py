@@ -28,10 +28,10 @@ def get_args() -> argparse.Namespace:
         help='Split to create manifest for.'
     )
     parser.add_argument(
-        '--training-type',
-        type=str,
-        default='pretrain',
-        help='Type of training data to create manifest for.'
+        '--num-samples',
+        type=int,
+        default=-1,
+        help='Number of samples to get. Default is -1 to get all data.'
     )
     parser.add_argument(
         '--output-dir',
@@ -45,6 +45,7 @@ def get_args() -> argparse.Namespace:
 def create_manifest(
     split: str,
     split_df: pd.DataFrame,
+    num_samples: int,
     data_dir: str,
     output_dir: str,
 ) -> None:
@@ -52,7 +53,11 @@ def create_manifest(
 
     manifest = []
     texts = []
+    count = 0
     for i, sample in enumerate(split_df.itertuples()):
+        if count == num_samples:
+            logging.info(f'Get enough {num_samples}')
+            break
         logging.info(f'[{i+1}/{len(split_df)}] Processing {sample.id}')
 
         rel_visual_path = os.path.join(
@@ -85,6 +90,7 @@ def create_manifest(
             ])
         )
         texts.append(sample.transcript)
+        count += 1
 
     with open(os.path.join(output_dir, f'{split}.tsv'), 'w') as f:
         f.write(data_dir + '\n')
@@ -101,8 +107,7 @@ def main(args: argparse.Namespace) -> None:
         return
     metadata_path = os.path.join(
         args.data_dir,
-        args.training_type,
-        f'{args.split}_completed.parquet',
+        f'{args.split}.parquet',
     )
     if not os.path.exists(metadata_path):
         logging.error(f'File {metadata_path} does not exist.')
@@ -112,9 +117,14 @@ def main(args: argparse.Namespace) -> None:
     split_df = pd.read_parquet(metadata_path)
     logging.info(f'Found {len(split_df)} ids.')
 
+    if not (0 <= args.num_samples <= len(split_df)):
+        args.num_samples = len(split_df)
+    logging.info(f'Get {args.num_samples} samples')
+
     create_manifest(
         split=args.split,
         split_df=split_df,
+        num_samples=args.num_samples,
         data_dir=args.data_dir,
         output_dir=args.output_dir,
     )
