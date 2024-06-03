@@ -10,7 +10,6 @@ import os
 import sys
 
 import fairseq
-import soundfile as sf
 import torch
 import torch.nn.functional as F
 import tqdm
@@ -30,21 +29,29 @@ logger = logging.getLogger("dump_hubert_feature")
 
 class HubertFeatureReader(object):
     def __init__(self, ckpt_path, layer, max_chunk=1600000, custom_utils=None):
-        (
-            model,
-            cfg,
-            task,
-        ) = fairseq.checkpoint_utils.load_model_ensemble_and_task([ckpt_path])
+        print(ckpt_path)
+        model, cfg, task = (
+            fairseq
+            .checkpoint_utils
+            .load_model_ensemble_and_task([ckpt_path])
+        )
         self.model = model[0].eval().cuda()
         self.task = task
         self.layer = layer
         self.max_chunk = max_chunk
         self.stack_order_audio = self.task.cfg.stack_order_audio
-        image_crop_size, image_mean, image_std = self.task.cfg.image_crop_size, self.task.cfg.image_mean, self.task.cfg.image_std
-        self.transform = custom_utils.Compose([
-            custom_utils.Normalize( 0.0,255.0 ),
-            custom_utils.CenterCrop((image_crop_size, image_crop_size)),
-            custom_utils.Normalize(image_mean, image_std) ])
+        image_crop_size, image_mean, image_std = (
+            self.task.cfg.image_crop_size,
+            self.task.cfg.image_mean,
+            self.task.cfg.image_std,
+        )
+        self.transform = custom_utils.Compose(
+            [
+                custom_utils.Normalize(0.0, 255.0),
+                custom_utils.CenterCrop((image_crop_size, image_crop_size)),
+                custom_utils.Normalize(image_mean, image_std),
+            ]
+        )
 
         self.custom_utils = custom_utils
         logger.info(f"TASK CONFIG:\n{self.task.cfg}")
@@ -58,21 +65,32 @@ class HubertFeatureReader(object):
                 res = stack_order - len(feats) % stack_order
                 res = np.zeros([res, feat_dim]).astype(feats.dtype)
                 feats = np.concatenate([feats, res], axis=0)
-            feats = feats.reshape((-1, stack_order, feat_dim)).reshape(-1, stack_order*feat_dim)
+            feats = feats.reshape((-1, stack_order, feat_dim)).reshape(
+                -1, stack_order * feat_dim
+            )
             return feats
+
         video_fn, audio_fn = mix_name
         video_feats = self.load_image(video_fn)
 
-        audio_fn = audio_fn.split(':')[0]
-        
+        audio_fn = audio_fn.split(":")[0]
+
         sample_rate, wav_data = wavfile.read(audio_fn)
         assert sample_rate == 16_000 and len(wav_data.shape) == 1
-        audio_feats = logfbank(wav_data, samplerate=sample_rate).astype(np.float32)
+        audio_feats = logfbank(wav_data, sample_rate).astype(np.float32)
         audio_feats = stacker(audio_feats, self.stack_order_audio)
 
         diff = len(audio_feats) - len(video_feats)
         if diff < 0:
-            audio_feats = np.concatenate([audio_feats, np.zeros([-diff, audio_feats.shape[-1]], dtype=audio_feats.dtype)])
+            audio_feats = np.concatenate(
+                [
+                    audio_feats,
+                    np.zeros(
+                        [-diff, audio_feats.shape[-1]],
+                        dtype=audio_feats.dtype
+                    ),
+                ]
+            )
         elif diff > 0:
             audio_feats = audio_feats[:-diff]
         return video_feats, audio_feats
@@ -86,14 +104,22 @@ class HubertFeatureReader(object):
     def get_feats(self, path, ref_len=None):
         video_feats, audio_feats = self.load_feature(path, ref_len)
         with torch.no_grad():
-            audio_feats, video_feats = torch.from_numpy(audio_feats.astype(np.float32)).cuda(), torch.from_numpy(video_feats.astype(np.float32)).cuda()
+            audio_feats, video_feats = (
+                torch.from_numpy(audio_feats.astype(np.float32)).cuda(),
+                torch.from_numpy(video_feats.astype(np.float32)).cuda(),
+            )
             if self.task.cfg.normalize:
                 audio_feats = F.layer_norm(audio_feats, audio_feats.shape[1:])
-            video_feats = video_feats.unsqueeze(dim=0).permute((0, 4, 1, 2, 3)).contiguous()
+            video_feats = (
+                video_feats
+                .unsqueeze(dim=0)
+                .permute((0, 4, 1, 2, 3))
+                .contiguous()
+            )
             audio_feats = audio_feats.unsqueeze(dim=0).transpose(1, 2)
 
             audio_feats = audio_feats * 0
-            source = {'audio': audio_feats, 'video': video_feats}
+            source = {"audio": audio_feats, "video": video_feats}
             if self.layer == 0:
                 ret_conv, output_layer = True, None
             else:
@@ -103,7 +129,7 @@ class HubertFeatureReader(object):
                 padding_mask=None,
                 mask=False,
                 output_layer=output_layer,
-                ret_conv=ret_conv
+                ret_conv=ret_conv,
                 # output_layer=self.layer,
             )
             return feat.squeeze(dim=0)
@@ -127,16 +153,31 @@ def get_path_iterator(tsv, nshard, rank):
         def iterate():
             for line in lines:
                 items = line.strip().split("\t")
-                # audio_path = f"{items[1]}:{items[0]}"
-                yield (items[1], items[2]+':'+items[0]), int(items[3])
+                visual_path = f"{root}/{items[1]}"
+                audio_path = f"{root}/{items[2]}"
+                yield (visual_path, audio_path + ":" + items[0]), int(items[3])
 
         return iterate, len(lines)
 
 
 def dump_feature(
-        tsv_dir, split, ckpt_path, layer, nshard, rank, feat_dir, max_chunk, custom_utils=None, **kwargs
+    tsv_dir,
+    split,
+    ckpt_path,
+    layer,
+    nshard,
+    rank,
+    feat_dir,
+    max_chunk,
+    custom_utils=None,
+    **kwargs,
 ):
-    reader = HubertFeatureReader(ckpt_path, layer, max_chunk, custom_utils=custom_utils)
+    reader = HubertFeatureReader(
+        ckpt_path,
+        layer,
+        max_chunk,
+        custom_utils=custom_utils,
+    )
     generator, num = get_path_iterator(f"{tsv_dir}/{split}.tsv", nshard, rank)
     iterator = generator()
 
@@ -174,7 +215,8 @@ if __name__ == "__main__":
     logger.info(args)
     fairseq.utils.import_user_module(args)
     sys.path.append(args.user_dir)
-    import utils_vsp_llm as custom_utils
+    import src.utils.utils_vsp_llm as custom_utils
+
     kwargs = vars(args)
-    kwargs.update({'custom_utils': custom_utils})
+    kwargs.update({"custom_utils": custom_utils})
     dump_feature(**kwargs)
