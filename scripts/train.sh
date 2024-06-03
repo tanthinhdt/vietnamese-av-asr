@@ -7,19 +7,19 @@
 
 
 # set variables
-PRETRAINED_MODEL_PATH=???   # path to pretrained avhubert
 DATA_PATH=???   # path to train dataset dir
-LLM_PATH=???    # path to llama checkpoint
 OUT_PATH=???    # output path to save 
 
 ROOT=$(dirname "$(dirname "$(readlink -fm "$0")")")
 SRC=${ROOT}/src
+LLM_PATH=${ROOT}/checkpoints/Llama-2-7b-hf   # path to llama checkpoint
+PRETRAINED_MODEL_PATH=${ROOT}/checkpoints/large_vox_iter5.pt   # path to pretrained avhubert
 
 # start training
 export PYTHONPATH="${ROOT}/fairseq:$PYTHONPATH"
 fairseq-hydra-train \
-    --config-dir ./src/conf \
-    --config-name avhubert_llama_cluster_trans_train \
+    --config-dir ${SRC}/conf \
+    --config-name vsp-llm-433h-freeze \
         common.user_dir=${SRC} \
         task.data=${DATA_PATH} \
         task.label_dir=${DATA_PATH} \
@@ -28,9 +28,4 @@ fairseq-hydra-train \
         model.llm_ckpt_path=${LLM_PATH} \
         hydra.run.dir=${OUT_PATH} \
         distributed_training.distributed_world_size=1 \
-        distributed_training.nprocs_per_node=1 \
-        optimization.lr=[0.001] \
-        optimization.update_freq=[4] \
-        optimization.max_update=10000 \
-        lr_scheduler.warmup_steps=5000 \
-        lr_scheduler.decay_steps=10000
+        distributed_training.nprocs_per_node=1 
