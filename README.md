@@ -29,6 +29,8 @@ git clone https://github.com/Sally-SH/VSP-LLM.git
 cd VSP-LLM
 pip install -r requirements.txt
 pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+git submodule init
+git submodule update
 ```
 
 - Download AV-HuBERT pre-trained model `AV-HuBERT Large (LSR3 + VoxCeleb2)` from [here](http://facebookresearch.github.io/av_hubert).
