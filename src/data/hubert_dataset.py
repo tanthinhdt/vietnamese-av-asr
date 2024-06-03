@@ -19,7 +19,7 @@ from fairseq.data import data_utils
 from fairseq.data.fairseq_dataset import FairseqDataset
 from python_speech_features import logfbank
 from scipy.io import wavfile
-from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
+
 DBG=True if len(sys.argv) == 1 else False
 
 if DBG:
@@ -31,7 +31,7 @@ if DBG:
         stream=sys.stdout,
     )
 else:
-    from . import utils_acl as custom_utils
+    from . import utils_vsp_llm as custom_utils
 
 logger = logging.getLogger(__name__)
 
@@ -48,13 +48,7 @@ def load_audio_visual(manifest_path, max_keep, min_keep, frame_rate, label_paths
         label_lengths = [len(line.rstrip().split())/label_rate for line in open(label_path).readlines()]
         dur_from_label_list.append(label_lengths)
     dur_from_label_list = list(zip(*dur_from_label_list))
-    
-    manifest = manifest_path.split('/')[-1].split('.')[0]
-    cluster_counts_fn = manifest_path.replace('.tsv','.cluster_counts')
-    cluster_counts_list = open(cluster_counts_fn).readlines()
-    
-    
-    cluster_counts = []
+
     with open(manifest_path) as f:
         root = f.readline().strip()
         for ind, line in enumerate(f):
@@ -73,7 +67,6 @@ def load_audio_visual(manifest_path, max_keep, min_keep, frame_rate, label_paths
                 names.append((video_path, audio_path+':'+audio_id))
                 inds.append(ind)
                 sizes.append(sz)
-                cluster_counts.append(cluster_counts_list[ind].strip())
     tot = ind + 1
     logger.info(
         (
@@ -82,7 +75,7 @@ def load_audio_visual(manifest_path, max_keep, min_keep, frame_rate, label_paths
             f"longest-loaded={max(sizes)}, shortest-loaded={min(sizes)}"
         )
     )
-    return root, names, inds, tot, sizes, cluster_counts
+    return root, names, inds, tot, sizes
 
 def load_label(label_path, inds, tot):
     with open(label_path) as f:
@@ -144,14 +137,16 @@ def verify_label_lengths(
         )
 
 
-class VSP_LLM_dataset(FairseqDataset):
+class AVHubertDataset(FairseqDataset):
     def __init__(
             self,
             manifest_path: str,
             sample_rate: float,
-            llm_ckpt_path: str,
             label_paths: List[str],
             label_rates: Union[List[float], float],  # -1 for sequence labels
+            pad_list: List[str],
+            eos_list: List[str],
+            label_processors: Optional[List[Any]] = None,
             max_keep_sample_size: Optional[int] = None,
             min_keep_sample_size: Optional[int] = None,
             max_sample_size: Optional[int] = None,
@@ -180,18 +175,20 @@ class VSP_LLM_dataset(FairseqDataset):
             else label_rates
         )
         self.modalities = set(modalities)
-        self.audio_root, self.names, inds, tot, self.sizes, self.cluster_counts, = load_audio_visual(manifest_path, max_keep_sample_size, min_keep_sample_size, frame_rate=sample_rate, label_paths=label_paths, label_rates=self.label_rates)
+        self.audio_root, self.names, inds, tot, self.sizes = load_audio_visual(manifest_path, max_keep_sample_size, min_keep_sample_size, frame_rate=sample_rate, label_paths=label_paths, label_rates=self.label_rates)
         self.sample_rate = sample_rate
         self.stack_order_audio = stack_order_audio
         self.shuffle = shuffle
         self.random_crop = random_crop
-        self.llm_tokenizer = AutoTokenizer.from_pretrained(llm_ckpt_path)
+
         self.num_labels = len(label_paths)
+        self.pad_list = pad_list
+        self.eos_list = eos_list
+        self.label_processors = label_processors
         self.single_target = single_target
         self.store_labels = store_labels
         self.is_s2s = is_s2s
         self.noise_wav, self.noise_prob, self.noise_snr, self.noise_num = [ln.strip() for ln in open(noise_fn).readlines()] if noise_fn is not None else [], noise_prob, noise_snr, noise_num
-        self.lang_dict = {'en':"English", 'es':"Spanish", 'fr':"French", 'it':'Italian', 'pt':"Portuguese"}
 
         assert self.single_target == (self.label_rates[0] == -1), f"single target should be equivalent to sequence label (label_rate==-1)"
         if store_labels:
@@ -201,6 +198,10 @@ class VSP_LLM_dataset(FairseqDataset):
             self.label_offsets_list = [
                 load_label_offset(p, inds, tot) for p in label_paths
             ]
+        assert (
+            label_processors is None
+            or len(label_processors) == self.num_labels
+        )
         if not skip_verify:
             for label_path, label_rate in zip(label_paths, self.label_rates):
                 verify_label_lengths(self.sizes, self.sample_rate, label_path, label_rate, inds, tot)
@@ -233,15 +234,22 @@ class VSP_LLM_dataset(FairseqDataset):
             f"Noise wav: {noise_fn}->{len(self.noise_wav)} wav, Prob: {self.noise_prob}, SNR: {self.noise_snr}, Number of mixture: {self.noise_num}"
         )
 
+    def get_label(self, index, label_idx):
+        if self.store_labels:
+            label = self.label_list[label_idx][index]
+        else:
+            with open(self.label_paths[label_idx]) as f:
+                offset_s, offset_e = self.label_offsets_list[label_idx][index]
+                f.seek(offset_s)
+                label = f.read(offset_e - offset_s)
 
-    def load_units(self, index):
-        #assert('video' in self.modalities and 'audio' in self.modalities)
-        av_units = self.cluster_counts[index].strip().split(' ')
-        int_av_units = [int(x) for x in av_units]
-        av_units = torch.tensor(int_av_units, dtype=int)
+        if self.label_processors is not None:
+            label = self.label_processors[label_idx](label)
+        return label
 
-        return av_units
-        
+    def get_labels(self, index):
+        return [self.get_label(index, i) for i in range(self.num_labels)]
+
     def load_feature(self, mix_name):
         """
         Load image and audio feature
@@ -271,16 +279,12 @@ class VSP_LLM_dataset(FairseqDataset):
             video_feats = None
         if 'audio' in self.modalities:
             audio_fn = audio_fn.split(':')[0]
-            audio_npy = audio_fn.replace('.wav','.npy')
-            if os.path.exists(audio_npy) == False:
-                sample_rate, wav_data = wavfile.read(audio_fn)
-                assert sample_rate == 16_000 and len(wav_data.shape) == 1
-                audio_feats = logfbank(wav_data, samplerate=sample_rate).astype(np.float32) # [T, F]
-                audio_feats = stacker(audio_feats, self.stack_order_audio) # [T/stack_order_audio, F*stack_order_audio]
-                np.save(audio_npy[:-4], audio_feats)
-            else:
-                audio_feats = np.load(audio_npy)
-                
+            sample_rate, wav_data = wavfile.read(audio_fn)
+            assert sample_rate == 16_000 and len(wav_data.shape) == 1
+            if np.random.rand() < self.noise_prob:
+                wav_data = self.add_noise(wav_data)
+            audio_feats = logfbank(wav_data, samplerate=sample_rate).astype(np.float32) # [T, F]
+            audio_feats = stacker(audio_feats, self.stack_order_audio) # [T/stack_order_audio, F*stack_order_audio]
         else:
             audio_feats = None
         if audio_feats is not None and video_feats is not None:
@@ -341,25 +345,15 @@ class VSP_LLM_dataset(FairseqDataset):
         mixed = mixed.astype(np.int16)
         return mixed
 
-
     def __getitem__(self, index):
         video_feats, audio_feats = self.load_feature(self.names[index])
         audio_feats, video_feats = torch.from_numpy(audio_feats.astype(np.float32)) if audio_feats is not None else None, torch.from_numpy(video_feats.astype(np.float32)) if video_feats is not None else None
         if self.normalize and 'audio' in self.modalities:
             with torch.no_grad():
                 audio_feats = F.layer_norm(audio_feats, audio_feats.shape[1:])
-        cluster_counts = self.load_units(index)
-        labels = [self.llm_tokenizer(self.label_list[0][index], return_tensors="pt").input_ids[0]]
-        labels = [torch.cat((labels[0], torch.tensor([2]).long()))]
-        
+        labels = self.get_labels(index)
         fid = self.names[index][1].split(':')[1]
-        src_lang, tgt_lang = fid.split('/')[1].split('-')
-        if src_lang == tgt_lang:
-            txt_feats = self.llm_tokenizer(f"Recognize this speech in {self.lang_dict[src_lang]}. Input : ", return_tensors="pt").input_ids[0]
-        else:
-            txt_feats = self.llm_tokenizer(f"Translate this {self.lang_dict[src_lang]} speech to {self.lang_dict[tgt_lang]}. Input : ", return_tensors="pt").input_ids[0]
-        
-        return {"id": index, 'fid': fid, "video_source": video_feats, 'audio_source': audio_feats, "cluster_counts": cluster_counts, "label_list": labels, 'text_source':[txt_feats]}
+        return {"id": index, 'fid': fid, "video_source": video_feats, 'audio_source': audio_feats, "label_list": labels}
 
     def __len__(self):
         return len(self.sizes)
@@ -384,10 +378,6 @@ class VSP_LLM_dataset(FairseqDataset):
         if len(samples) == 0:
             return {}
 
-        ############# cluster_counts ############
-        cluster_counts_source = [s["cluster_counts"] for s in samples]
-
-        ############# av_hubert ############
         audio_source, video_source = [s["audio_source"] for s in samples], [s["video_source"] for s in samples]
         if audio_source[0] is None:
             audio_source = None
@@ -409,32 +399,15 @@ class VSP_LLM_dataset(FairseqDataset):
             collated_videos, padding_mask, audio_starts = self.collater_audio(video_source, audio_size, audio_starts)
         else:
             collated_videos = None
-
         targets_by_label = [
             [s["label_list"][i] for s in samples]
             for i in range(self.num_labels)
         ]
-        
-        text_instructions = [
-            [s["text_source"][i] for s in samples]
-            for i in range(self.num_labels)
-        ]
-        
-
-        collated_texts,_ ,_  = self.collater_label(
-           text_instructions, audio_size, audio_starts
-        )
-        
         targets_list, lengths_list, ntokens_list = self.collater_label(
             targets_by_label, audio_size, audio_starts
         )
-        text_attn_mask = collated_texts[0][0] != 0
-        target_attn_mask = targets_list[0][0] != 0
-
-        source = {"audio": collated_audios, "video": collated_videos, "cluster_counts": cluster_counts_source, "text": collated_texts[0][0]}
-
-        net_input = {"source": source, "padding_mask": padding_mask, 'text_attn_mask': text_attn_mask}
-
+        source = {"audio": collated_audios, "video": collated_videos}
+        net_input = {"source": source, "padding_mask": padding_mask}
         batch = {
             "id": torch.LongTensor([s["id"] for s in samples]),
             "net_input": net_input,
@@ -446,7 +419,6 @@ class VSP_LLM_dataset(FairseqDataset):
             batch["ntokens"] = ntokens_list[0]
             if self.is_s2s:
                 batch['target'], net_input['prev_output_tokens'] = targets_list[0][0], targets_list[0][1]
-                batch['target_attn_mask'] = target_attn_mask
             else:
                 batch["target"] = targets_list[0]
         else:
@@ -454,8 +426,7 @@ class VSP_LLM_dataset(FairseqDataset):
             batch["ntokens_list"] = ntokens_list
             batch["target_list"] = targets_list
         return batch
-        
-        
+
     def collater_audio(self, audios, audio_size, audio_starts=None):
         audio_feat_shape = list(audios[0].shape[1:])
         collated_audios = audios[0].new_zeros([len(audios), audio_size]+audio_feat_shape)
@@ -506,83 +477,39 @@ class VSP_LLM_dataset(FairseqDataset):
         )
         return targets, lengths, ntokens
 
-
-    def collater_seq_label_llm(self, targets):
+    def collater_seq_label(self, targets, pad):
         lengths = torch.LongTensor([len(t) for t in targets])
         ntokens = lengths.sum().item()
-        pad, eos = 0, self.llm_tokenizer.eos_token_id
+        targets = data_utils.collate_tokens(
+            targets, pad_idx=pad, left_pad=False
+        )
+        return targets, lengths, ntokens
+
+    def collater_seq_label_s2s(self, targets, pad):
+        lengths = torch.LongTensor([len(t) for t in targets])
+        ntokens = lengths.sum().item()
+        pad, eos = self.label_processors[0].dictionary.pad(), self.label_processors[0].dictionary.eos()
         targets_ = data_utils.collate_tokens(targets, pad_idx=pad, eos_idx=eos, left_pad=False)
-       
-        new_targets = []
-        for tar in targets:
-            new_targets.append(tar[1:])
-
-        prev_output_tokens = data_utils.collate_tokens(new_targets, pad_idx=pad, eos_idx=eos, left_pad=False, move_eos_to_beginning=False)
-        
-        
-        prev_list = []
-        for prev_tokens in prev_output_tokens:
-            padding_start_idx = torch.sum(prev_tokens == 0) * -1
-            if padding_start_idx == 0:
-                prev_list.append(torch.cat((prev_tokens, torch.tensor([2]).long())))
-            else:
-                prev_tokens[padding_start_idx] = 2
-                prev_list.append(torch.cat((prev_tokens, torch.tensor([0]).long())))
-        
-        prev_output_tokens = torch.stack(prev_list, dim=0)
+        prev_output_tokens = data_utils.collate_tokens(targets, pad_idx=pad, eos_idx=eos, left_pad=False, move_eos_to_beginning=True)
         return (targets_, prev_output_tokens), lengths, ntokens
-
 
     def collater_label(self, targets_by_label, audio_size, audio_starts):
         targets_list, lengths_list, ntokens_list = [], [], []
-        itr = zip(targets_by_label, self.label_rates)
-        for targets, label_rate in itr:
-            if label_rate == -1:  
-                targets, lengths, ntokens = self.collater_seq_label_llm(targets)
+        itr = zip(targets_by_label, self.label_rates, self.pad_list)
+        for targets, label_rate, pad in itr:
+            if label_rate == -1:
+                if self.is_s2s:
+                    targets, lengths, ntokens = self.collater_seq_label_s2s(targets, pad)
+                else:
+                    targets, lengths, ntokens = self.collater_seq_label(targets, pad)
             else:
-                raise NotImplementedError("not yet")
+                targets, lengths, ntokens = self.collater_frm_label(
+                    targets, audio_size, audio_starts, label_rate, pad
+                )
             targets_list.append(targets)
             lengths_list.append(lengths)
             ntokens_list.append(ntokens)
         return targets_list, lengths_list, ntokens_list
-
-
-    def collate_tokens(self,
-        values,
-        pad_idx,
-        eos_idxs,
-        left_pad=False,
-        move_eos_to_beginning=False,
-        pad_to_length=None,
-        pad_to_multiple=1,
-        pad_to_bsz=None,
-    ):
-        """Convert a list of 1d tensors into a padded 2d tensor."""
-        size = max(v.size(0) for v in values)
-        size = size if pad_to_length is None else max(size, pad_to_length)
-        if pad_to_multiple != 1 and size % pad_to_multiple != 0:
-            size = int(((size - 0.1) // pad_to_multiple + 1) * pad_to_multiple)
-
-        batch_size = len(values) if pad_to_bsz is None else max(len(values), pad_to_bsz)
-        res = values[0].new(batch_size, size).fill_(pad_idx)
-
-        def copy_tensor(src, dst, eos_idx):
-            assert dst.numel() == src.numel()
-            if move_eos_to_beginning:
-                if eos_idx is None:
-                    # if no eos_idx is specified, then use the last token in src
-                    dst[0] = src[-1]
-                else:
-                    dst[0] = eos_idx
-                dst[1:] = src[:-1]
-            else:
-                dst.copy_(src)
-
-        for i, v in enumerate(values):
-            copy_tensor(v, res[i][size - len(v) :] if left_pad else res[i][: len(v)], eos_idxs[i])
-        return res
-
-
 
     def num_tokens(self, index):
         return self.size(index)

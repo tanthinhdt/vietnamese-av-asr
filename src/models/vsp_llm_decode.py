@@ -4,7 +4,7 @@
 # This source code is licensed under the license found in the
 # LICENSE file in the root directory of this source tree.
 
-# ============================ 69 ============================
+#============================ 69 ============================
 
 import ast
 from itertools import chain
@@ -49,26 +49,16 @@ logger = logging.getLogger(__name__)
 
 config_path = Path(__file__).resolve().parent / "conf"
 
-
 @dataclass
 class OverrideConfig(FairseqDataclass):
-    noise_wav: Optional[str] = field(default=None, metadata={"help": "noise wav file"})
-    noise_prob: float = field(default=0, metadata={"help": "noise probability"})
-    noise_snr: float = field(default=0, metadata={"help": "noise SNR in audio"})
-    modalities: List[str] = field(
-        default_factory=lambda: ["video"], metadata={"help": "which modality to use"}
-    )
-    data: Optional[str] = field(
-        default=None, metadata={"help": "path to test data directory"}
-    )
-    label_dir: Optional[str] = field(
-        default=None, metadata={"help": "path to test label directory"}
-    )
-    eval_bleu: bool = field(default=False, metadata={"help": "evaluate bleu score"})
-    llm_ckpt_path: str = field(
-        default=MISSING, metadata={"help": "path to llama checkpoint"}
-    )
-
+    noise_wav: Optional[str] = field(default=None, metadata={'help': 'noise wav file'})
+    noise_prob: float = field(default=0, metadata={'help': 'noise probability'})
+    noise_snr: float = field(default=0, metadata={'help': 'noise SNR in audio'})
+    modalities: List[str] = field(default_factory=lambda: ["video"], metadata={'help': 'which modality to use'})
+    data: Optional[str] = field(default=None, metadata={'help': 'path to test data directory'})
+    label_dir: Optional[str] = field(default=None, metadata={'help': 'path to test label directory'})
+    eval_bleu: bool = field(default=False, metadata={'help': 'evaluate bleu score'})
+    llm_ckpt_path: str = field(default=MISSING, metadata={'help': 'path to llama checkpoint'})
 
 @dataclass
 class InferConfig(FairseqDataclass):
@@ -94,7 +84,7 @@ def main(cfg: DictConfig):
         cfg = convert_namespace_to_omegaconf(cfg)
 
     assert cfg.common_eval.path is not None, "--path required for recognition!"
-
+    
     if cfg.common_eval.results_path is not None:
         os.makedirs(cfg.common_eval.results_path, exist_ok=True)
         output_path = os.path.join(cfg.common_eval.results_path, "decode.log")
@@ -103,10 +93,8 @@ def main(cfg: DictConfig):
 
     return _main(cfg, sys.stdout)
 
-
 from fairseq import tasks
 from transformers import AutoTokenizer
-
 
 def _main(cfg, output_file):
     logging.basicConfig(
@@ -122,10 +110,8 @@ def _main(cfg, output_file):
     utils.import_user_module(cfg.common)
 
     tokenizer = AutoTokenizer.from_pretrained(cfg.override.llm_ckpt_path)
-    model_override_cfg = {"model": {"llm_ckpt_path": cfg.override.llm_ckpt_path}}
-    models, saved_cfg, task = checkpoint_utils.load_model_ensemble_and_task(
-        [cfg.common_eval.path], model_override_cfg, strict=False
-    )
+    model_override_cfg = {'model':{'llm_ckpt_path':cfg.override.llm_ckpt_path}}
+    models, saved_cfg, task = checkpoint_utils.load_model_ensemble_and_task([cfg.common_eval.path],model_override_cfg,strict=False)
     models = [model.eval() for model in models]
     saved_cfg.task.modalities = cfg.override.modalities
     task = tasks.setup_task(saved_cfg.task)
@@ -135,7 +121,7 @@ def _main(cfg, output_file):
     logger.info(cfg)
 
     # Fix seed for stochastic decoding
-    if cfg.common.seed is not None:
+    if cfg.common.seed is not None :
         np.random.seed(cfg.common.seed)
         utils.set_torch_seed(cfg.common.seed)
 
@@ -153,7 +139,7 @@ def _main(cfg, output_file):
         task.cfg.data = cfg.override.data
     if cfg.override.label_dir is not None:
         task.cfg.label_dir = cfg.override.label_dir
-    task.load_dataset("test", task_cfg=cfg.task)
+    task.load_dataset('test', task_cfg=cfg.task)
 
     lms = [None]
 
@@ -193,65 +179,54 @@ def _main(cfg, output_file):
     )
 
     gen_timer = StopwatchMeter()
-
     def decode_fn(x):
-        symbols_ignore = {"<unk>", "<mask>", "<pad>", "</s>"}
-        if hasattr(task.datasets[cfg.dataset.gen_subset].label_processors[0], "decode"):
+        symbols_ignore = {"<unk>", "<mask>","<pad>", "</s>"}
+        if hasattr(task.datasets[cfg.dataset.gen_subset].label_processors[0], 'decode'):
             return tokenizer.decode(x, skip_special_tokens=True)
         chars = dictionary.string(x, extra_symbols_to_ignore=symbols_ignore)
-        words = " ".join("".join(chars.split()).replace("|", " ").split())
+        words = " ".join("".join(chars.split()).replace('|', ' ').split())
         return words
 
     num_sentences = 0
     has_target = True
     wps_meter = TimeMeter()
-    result_dict = {"utt_id": [], "ref": [], "hypo": [], "instruction": []}
+    result_dict = {'utt_id': [], 'ref': [], 'hypo': [], 'instruction': []}
     model = models[0]
     for sample in progress:
         sample = utils.move_to_cuda(sample) if use_cuda else sample
         if "net_input" not in sample:
             continue
-
-        sample["net_input"]["source"]["video"] = sample["net_input"]["source"][
-            "video"
-        ].to(torch.half)
-        best_hypo = model.generate(
-            target_list=sample["target"],
-            num_beams=cfg.generation.beam,
-            length_penalty=cfg.generation.lenpen,
-            **sample["net_input"],
-        )
+        
+        sample['net_input']['source']['video'] = sample['net_input']['source']['video'].to(torch.half)
+        best_hypo = model.generate(target_list=sample["target"], 
+                                   num_beams=cfg.generation.beam, 
+                                   length_penalty=cfg.generation.lenpen,
+                                   **sample["net_input"])
         best_hypo = tokenizer.batch_decode(
-            best_hypo, skip_special_tokens=True, clean_up_tokenization_spaces=False
-        )
+                best_hypo, skip_special_tokens=True, clean_up_tokenization_spaces=False
+            )
         for i in range(len(sample["id"])):
-            result_dict["utt_id"].append(sample["utt_id"][i])
-            target = sample["target"][i].masked_fill(sample["target"][i] == -100, 0)
-            ref_sent = tokenizer.decode(
-                target.int().cpu(),
-                skip_special_tokens=True,
-                clean_up_tokenization_spaces=False,
+            result_dict['utt_id'].append(sample['utt_id'][i])
+            target = sample['target'][i].masked_fill(
+                sample['target'][i] == -100, 0
             )
-            result_dict["ref"].append(ref_sent)
+            ref_sent = tokenizer.decode(target.int().cpu(), skip_special_tokens=True, clean_up_tokenization_spaces=False)
+            result_dict['ref'].append(ref_sent)
             hypo_str = best_hypo[i]
-            instruction = tokenizer.decode(
-                sample["net_input"]["source"]["text"][i].int().cpu(),
-                skip_special_tokens=True,
-                clean_up_tokenization_spaces=False,
-            )
-            result_dict["instruction"].append(instruction)
-            result_dict["hypo"].append(hypo_str)
+            instruction = tokenizer.decode(sample['net_input']['source']['text'][i].int().cpu(), skip_special_tokens=True, clean_up_tokenization_spaces=False)
+            result_dict['instruction'].append(instruction)
+            result_dict['hypo'].append(hypo_str)
             logger.info(f"\nINST:{instruction}\nREF:{ref_sent}\nHYP:{hypo_str}\n")
 
     yaml_str = OmegaConf.to_yaml(cfg.generation)
     fid = int(hashlib.md5(yaml_str.encode("utf-8")).hexdigest(), 16)
     fid = fid % 1000000
     result_fn = f"{cfg.common_eval.results_path}/hypo-{fid}.json"
-    json.dump(result_dict, open(result_fn, "w"), indent=4)
+    json.dump(result_dict, open(result_fn, 'w'), indent=4)
     if not cfg.override.eval_bleu:
         n_err, n_total = 0, 0
-        assert len(result_dict["hypo"]) == len(result_dict["ref"])
-        for hypo, ref in zip(result_dict["hypo"], result_dict["ref"]):
+        assert len(result_dict['hypo']) == len(result_dict['ref'])
+        for hypo, ref in zip(result_dict['hypo'], result_dict['ref']):
             hypo, ref = hypo.strip().split(), ref.strip().split()
             n_err += editdistance.eval(hypo, ref)
             n_total += len(ref)
@@ -263,7 +238,7 @@ def _main(cfg, output_file):
             fo.write(f"{yaml_str}")
         logger.info(f"WER: {wer}%")
     else:
-        bleu = sacrebleu.corpus_bleu(result_dict["hypo"], [result_dict["ref"]])
+        bleu = sacrebleu.corpus_bleu(result_dict['hypo'], [result_dict['ref']])
         bleu_score = bleu.score
         bleu_fn = f"{cfg.common_eval.results_path}/bleu.{fid}"
         with open(bleu_fn, "w") as fo:
