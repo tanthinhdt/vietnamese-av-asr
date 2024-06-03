@@ -43,13 +43,13 @@ if DBG:
     from decoder import TransformerDecoder
 
 else:
-    from .hubert_pretraining import (
+    from ..models.hubert_pretraining import (
         AVHubertPretrainingConfig,
         AVHubertPretrainingTask,
     )
-    from .resnet import ResEncoder
+    from ..models.resnet import ResEncoder
     from .utils_vsp_llm import compute_mask_indices
-    from .decoder import TransformerDecoder
+    from ..models.decoder import TransformerDecoder
 
 from omegaconf import II
 
