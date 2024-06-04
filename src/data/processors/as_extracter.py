@@ -11,6 +11,7 @@ import pickle
 import cv2
 import python_speech_features
 import torch
+import threading
 
 from scipy              import signal
 from scipy.io           import wavfile
@@ -25,6 +26,7 @@ from scenedetect.detectors      import ContentDetector
 
 from src.data.processors.processor  import Processor
 from src.data.processors.uploader   import Uploader
+from src.data.utils.logger          import get_logger
 
 from ..utils.Light_ASD.model.ASD            import ASD
 from ..utils.Light_ASD.model.faceDetector   import S3FD
@@ -33,6 +35,7 @@ fs = HfFileSystem()
 
 
 class ActiveSpeakerExtracter(Processor):
+
     def __init__(self,
                  minTrack: int = 10,
                  numFailedDet: int = 10,
@@ -59,6 +62,8 @@ class ActiveSpeakerExtracter(Processor):
         self.speaking_score_threshold           = 0.5
         self.frame_window_length                = 4
         self.time_interval                      = 3
+        self.start                              = 0.0
+        self.duration                           = 10000.0
 
         # hyper data
         self.V_FPS      = 25
@@ -107,10 +112,39 @@ class ActiveSpeakerExtracter(Processor):
 
         return sceneList
 
+    def inference_video_1(self, flist: list, conf_th: float) -> list:
+        # GPU: Face detection, output is the list contains the face location and score in this frame
+        n_f = len(flist)
+        dets = [[]] * n_f
+        n_threads = 12
+        threads: List[threading.Thread] = []
+        for fidx, fname in enumerate(flist):
+            threads.append(threading.Thread(target=self._inference_frame,args=(fname,fidx,n_f,conf_th,dets,)))
+            threads[-1].start()
+            if len(threads) == n_threads or fidx == n_f-1:
+                for t in threads:
+                    t.join()
+                threads = []
+        print()
+        with open(os.path.join(self.pyworkPath, 'faces.pckl'), 'wb') as fil:
+            pickle.dump(dets, fil)
+        return dets
+    
+    def _inference_frame(self, fname: str, fidx: int, n_f: int, conf_th: float, dets: list) -> None:
+        image       = cv2.imread(fname)
+        imageNumpy  = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        bboxes = self.DET.detect_faces(
+            imageNumpy, conf_th=conf_th, scales=[self.facedetScale])
+        frame_det = []
+        for bbox in bboxes:
+            frame_det.append({'frame': fidx, 'bbox': (bbox[:-1]).tolist(), 'conf': bbox[-1]})
+        dets[fidx] = frame_det
+        print('\rInfering frame: %0.5d/%d' % (fidx, n_f),end='')
+    
     def inference_video(self, flist: list, conf_th: float) -> list:
         # GPU: Face detection, output is the list contains the face location and score in this frame
-        dets = []
         n_f = len(flist)
+        dets = []
         for fidx, fname in enumerate(flist):
             image       = cv2.imread(fname)
             imageNumpy  = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
@@ -124,7 +158,7 @@ class ActiveSpeakerExtracter(Processor):
         with open(os.path.join(self.pyworkPath, 'faces.pckl'), 'wb') as fil:
             pickle.dump(dets, fil)
         return dets
-    
+
     def bb_intersection_over_union(self, boxA: list, boxB: list) -> float:
         # CPU: IOU Function to calculate overlap between two image
         xA = max(boxA[0], boxB[0])
@@ -264,7 +298,7 @@ class ActiveSpeakerExtracter(Processor):
             with open(os.path.join(self.pyworkPath, 'scores.pckl'), 'wb') as fil:
                 pickle.dump(allScores, fil)
 
-    def _get_active_speaker(self) -> int:
+    def _detect_active_speaker(self) -> int:
         with open(os.path.join(self.pyworkPath, 'scores.pckl'), mode='rb') as f:
             scores = pickle.load(f)
         _crop_paths = []
@@ -396,8 +430,8 @@ class ActiveSpeakerExtracter(Processor):
         self.videoFilePath = os.path.join(self.pyaviPath, 'video.avi')
         if not os.path.isfile(self.videoFilePath):
             command = ("ffmpeg -y -i %s -c:v libx264 -c:a pcm_s16le -b:v 3000k -b:a 192k -qscale:v 0 -qscale:a 0 "
-                        "-r 25 -ar 16000 -threads %d -async 1 %s -loglevel panic " %
-                        (origin_video_path, self.nDataLoaderThread, self.videoFilePath))
+                        "-r 25 -ar 16000 -ss %.3f -t %.3f -threads %d -async 1 %s -loglevel panic " %
+                        (origin_video_path, self.start, self.duration, self.nDataLoaderThread, self.videoFilePath))
             subprocess.call(command, shell=True, stdout=None)
 
     def _extract_frames(self) -> None:
@@ -420,12 +454,26 @@ class ActiveSpeakerExtracter(Processor):
             visual_output_dir: str,
             audio_output_dir: str,
             tmp_dir: str,
+            log_path: str = None,
             **kwargs
     ) -> dict:
+        print()
+        logger = get_logger(
+            name=__name__,
+            log_path=log_path,
+            is_stream=False,
+        )
+        logger_ = get_logger(
+            log_path=log_path,
+            is_stream=False,
+            format="%(message)s"
+        )
+
         videoPath   = sample['video_path'][0]
         channel     = sample['channel'][0]
         video_id    = sample['video_id'][0]
         
+        logger_.info('-'*36 + f"AS-detector processing video id '{video_id}'" + '-'*36)
         self.outputPath     = output_dir
         self.network_dir    = os.path.join(tmp_dir, channel, f"network_results@{channel}@{video_id}")
         self.pyaviPath      = os.path.join(self.network_dir, 'pyavi')
@@ -439,21 +487,38 @@ class ActiveSpeakerExtracter(Processor):
             visual_ids      = [os.path.basename(pa)[:-4] for pa in chunk_visual_list]
             audio_ids       = [os.path.basename(pa)[:-4] for pa in chunk_audio_list]
         else:
+            logger.info("Check nw")
             up = self._make_network_result(tmp_dir=tmp_dir,channel=channel,video_id=video_id)
-            
+            if sample.get('uploader') == 'truyenhinhnhanhdantv':
+                self.duration = 24
+
+            logger.info("Extreact video")
             self._extract_video(origin_video_path=videoPath)
+
+            logger.info("Extreact audio")
             self._extract_audio()
+
+            logger.info("Extreact frames")
             self._extract_frames()
 
+            logger.info('Get scene')
             scene = self._get_scene()
+
+            logger.info('Get faces')
             faces = self._get_faces()
+
+            logger.info('Crop faces')
             self._crop_face(scene=scene,faces=faces)
+
+            logger.info('Evaluate scores')
             self._compute_scores()
 
-            crop_paths  = self._get_active_speaker()
+            logger.info('Detect active speake')
+            crop_paths  = self._detect_active_speaker()
             visual_ids  = []
             audio_ids   = []
             if crop_paths:
+                logger.info('Split into 3s segment')
                 visual_ids, audio_ids = self._split_into_equally(self.network_dir, crop_paths=crop_paths)
             if not visual_ids:
                 sample['id']    = [None]
@@ -462,6 +527,7 @@ class ActiveSpeakerExtracter(Processor):
 
             if os.path.isdir(self.network_dir):
                 if up:
+                    logger.info('Upload nw')
                     Uploader().zip_and_upload_dir(
                         dir_path=self.network_dir,
                         path_in_repo=os.path.join("network_results",channel,f"network_results@{channel}@{video_id}.zip"),
@@ -485,6 +551,7 @@ class ActiveSpeakerExtracter(Processor):
         output_sample["visual_fps"]            = [self.V_FPS] * len(visual_ids)
         output_sample["audio_fps"]             = [self.A_FPS] * len(audio_ids)
 
+        logger_.info('*'*50 + 'AS-detector done.' + '*'*50)
         return output_sample
     
     def _check_output(self,visual_path: str,audio_path: str,) -> bool:

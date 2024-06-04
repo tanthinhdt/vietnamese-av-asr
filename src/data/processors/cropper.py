@@ -6,6 +6,7 @@ import mediapipe as mp
 import moviepy.editor as mpe
 
 from .processor import Processor
+from src.data.utils.logger import get_logger
 
 
 class Cropper(Processor):
@@ -23,6 +24,7 @@ class Cropper(Processor):
         self, sample: dict,
         visual_output_dir: str,
         padding: int = 96,
+        log_path: str = None,
     ) -> dict:
         """
         Crop mouth region in video.
@@ -31,12 +33,27 @@ class Cropper(Processor):
         :param padding:             Padding.
         :return:                    Sample with path to video of cropped mouth region.
         """
+        print()
+        logger = get_logger(
+            name=__name__,
+            log_path=log_path,
+            is_stream=False,
+        )
+        logger_ = get_logger(
+            log_path=log_path,
+            is_stream=False,
+            format='%(message)s'
+        )
+
+        logger_.info('-'*35 + f"Cropper processing visual id '{sample['chunk_visual_id'][0]}'" + '-'*35)
         _visual_output_path = os.path.join(visual_output_dir, sample["chunk_visual_id"][0] + "tmp.mp4")
         visual_output_path = os.path.join(visual_output_dir, sample["chunk_visual_id"][0] + ".mp4")
 
         if not os.path.exists(_visual_output_path):
             mouths = []
             max_width, max_height = 0, 0
+
+            logger.info('Crop mouth')
             for frame in mpe.VideoFileClip(sample["visual_path"][0]).iter_frames(fps=25):
                 mouth = self.crop_mouth(frame, padding)
                 if mouth is None or mouth.shape[0] == 0 or mouth.shape[1] == 0:
@@ -44,12 +61,14 @@ class Cropper(Processor):
                 max_width = max(max_width, mouth.shape[1])
                 max_height = max(max_height, mouth.shape[0])
                 mouths.append(mouth)
-
+                
+            logger.info('Check output')
             if self.check_output(
                 num_cropped=len(mouths),
                 sample_fps=sample["visual_fps"][0],
                 sample_duration=sample["visual_num_frames"][0] / sample["visual_fps"][0],
             ):                
+                logger.info('Write cropped')
                 self.write_video(
                     video_path=_visual_output_path,
                     frames=mouths,
@@ -57,13 +76,16 @@ class Cropper(Processor):
                     frame_height=max_height,
                     fps=sample["visual_fps"][0],
                 )
+                logger.info('Normalize 3s')
                 command = "ffmpeg -y -i %s -an -c:v libx264 -ss %s -t %s -map 0 -f mp4 -loglevel panic %s" % \
                             (_visual_output_path, "00:00:00.00000", "00:00:03.00000", visual_output_path)
                 subprocess.run(command, shell=True, stdout=None)
                 os.remove(path=_visual_output_path)
             else:
+                logger.info('No cropped')
                 sample["id"][0] = None
 
+        logger_.info('*'*50 + 'Cropper done.' + '*'*50)
         return sample
 
     def check_output(

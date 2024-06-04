@@ -3,8 +3,10 @@ import shutil
 import torch
 import torchaudio
 from speechbrain.pretrained import EncoderClassifier
-from .processor import Processor
 from typing import Tuple
+
+from .processor import Processor
+from src.data.utils.logger import get_logger
 
 
 class VietnameseDetector(Processor):
@@ -59,9 +61,24 @@ class VietnameseDetector(Processor):
             self,
             sample: dict,
             audio_output_dir: str,
+            log_path: str = None,
             *args,
             **kwargs) -> dict:
+        print()
+        logger = get_logger(
+            name=__name__,
+            log_path=log_path,
+            is_stream=False,
+        )
+
+        logger_ = get_logger(
+            log_path=log_path,
+            is_stream=False,
+            format='%(message)s',
+        )
+        logger_.info('-'*35 + f"VN-detector processing auido id '{sample['chunk_audio_id'][0]}'" + '-'*35)
         audio_path = sample['audio_path'][0]
+        logger.info("Detect vietnamese")
         is_vietnamese = self.is_vietnamese(
             *torchaudio.load(audio_path)
         )
@@ -69,4 +86,5 @@ class VietnameseDetector(Processor):
             shutil.copy(src=audio_path, dst=audio_output_dir)
         else:
             sample['id'][0] = None
+        logger_.info('*'*50 + "VN-detector done." + '*'*50)
         return sample

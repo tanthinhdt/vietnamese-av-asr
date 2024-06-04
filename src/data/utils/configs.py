@@ -84,7 +84,7 @@ class VideoDownloadTaskConfig(TaskConfig):
         """
         task_kwargs = super().get_task_kwargs()
         task_kwargs["fn_kwargs"].update({
-
+            'log_path': 'src/data/databases/logs/yt-downloader.log',
         })
         return task_kwargs
 
@@ -107,6 +107,7 @@ class SpeakerDetectTaskConfig(TaskConfig):
         task_kwargs["fn_kwargs"].update({
             "output_dir": self.output_dir,
             "tmp_dir": os.path.join(os.getcwd(), "data", "interim"),
+            'log_path': 'src/data/databases/logs/as-detector.log',
         })
         return task_kwargs
 
@@ -131,6 +132,7 @@ class MouthCropTaskConfig(TaskConfig):
         task_kwargs = super().get_task_kwargs()
         task_kwargs["fn_kwargs"].update({
             "padding": 96,
+            "log_path": 'src/data/databases/logs/cropper.log',
         })
         return task_kwargs
 
@@ -150,7 +152,7 @@ class VietnameseDetectTaskConfig(TaskConfig):
         """
         task_kwargs = super().get_task_kwargs()
         task_kwargs["fn_kwargs"].update({
-            
+            "log_path": 'src/data/databases/logs/vn-detector.log',
         })
         return task_kwargs
 
@@ -175,5 +177,6 @@ class TranscribeTaskConfig(TaskConfig):
         task_kwargs = super().get_task_kwargs()
         task_kwargs["fn_kwargs"].update({
             "beam_width": 500,
+            "log_path": 'src/data/databases/logs/transcriber.log',
         })
         return task_kwargs

@@ -5,7 +5,9 @@ from CocCocTokenizer import PyTokenizer
 from huggingface_hub import hf_hub_download
 from importlib.machinery import SourceFileLoader
 from transformers import Wav2Vec2ProcessorWithLM
+
 from .processor import Processor
+from src.data.utils.logger import get_logger
 
 
 class Transcriber(Processor):
@@ -38,6 +40,7 @@ class Transcriber(Processor):
     def process(
         self, sample: dict,
         beam_width: int = 500,
+        log_path: str = None,
         *args,
         **kwargs,
     ) -> dict:
@@ -47,20 +50,36 @@ class Transcriber(Processor):
         :param beam_width:              Beam width.
         :return:                        Sample with path to transcript and audio array.
         """
+        print()
+        logger = get_logger(
+            name=__name__,
+            log_path=log_path,
+            is_stream=False,
+        )
+        logger_ = get_logger(
+            log_path=log_path,
+            is_stream=False,
+            format='%(message)s',
+        )
+
         try:
+            logger_.info('-'*35 + f"Transcriber processing audio id '{sample['chunk_audio_id'][0]}'" + '-'*35)
             audio_array, sampling_rate = torchaudio.load(sample["audio_path"][0])
 
+            logger.info('Transcribe audio')
             transcript = self.transcribe(
                 audio_array=audio_array,
                 sampling_rate=sampling_rate,
                 beam_width=beam_width,
             )
+            logger.info('Check output')
             if not self.check_output(transcript=transcript):
                 raise Exception("Transcript is invalid.")
         except Exception as e:
             sample["id"][0] = None
             transcript = None
 
+        logger_.info('*'*50 + 'Transcriber done.' + '*'*50)
         return {
             "id": sample["id"],
             "channel": sample["channel"],
