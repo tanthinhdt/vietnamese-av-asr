@@ -23,10 +23,15 @@ class Uploader(Processor):
     ) -> None:
         """
         Zip directory and upload it to the hub.
-        :param dir_path:        Path to directory.
-        :param repo_id:         Repository id.
-        :param path_in_repo:    Path to directory in repository.
-        :param repo_type:       Repository type.
+
+        dir_path:     
+            Path to directory.
+        repo_id:
+            Repository id.
+        path_in_repo:
+            Path to directory in repository.
+        repo_type:
+            Repository type.
         """
         if overwrite or not self.fs.exists(f"{repo_type}s/{repo_id}/{path_in_repo}"):
             self.api.upload_file(
@@ -47,10 +52,15 @@ class Uploader(Processor):
     ) -> None:
         """
         Upload file to the hub.
-        :param file_path:       Path to file.
-        :param repo_id:         Repository id.
-        :param path_in_repo:    Path to file in repository.
-        :param repo_type:       Repository type.
+
+        file_path:
+            Path to file.
+        repo_id:
+            Repository id.
+        path_in_repo:
+            Path to file in repository.
+        repo_type:
+            Repository type.
         """
         if overwrite or not self.fs.exists(f"{repo_type}s/{repo_id}/{path_in_repo}"):
             self.api.upload_file(

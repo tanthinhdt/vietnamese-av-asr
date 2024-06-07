@@ -8,29 +8,28 @@ def get_logger(
         log_path: str = None,
         is_stream: bool = False,
         format: str = None,
-        fmt_type: str = None,
+        *args,
         **kwargs,
 ) -> logging.Logger:
     """
-    Get logger to keep logs the flow\n
+    Get logger to keep logs the flow
+    
     name:
-        name of logger
+        Name of logger
     level:
-        nevel of logger
+        Level of logger
     log_path:
-        file contains logs
+        File contains logs
     is_stream:
-        log to console
+        Log to console
     format: 
-        format of message
-    fmt_type:
-        type of format ('normal', 'verbose')
-    Return: logger
+        Format of message        
+    return: logger
     """
     
     # refix name for logger
     if name is None:
-        name = 'noname'
+        name = 'no_name'
 
     if level is None:
         level = logging.DEBUG

@@ -39,8 +39,12 @@ class CroppedMouthClipConfig(datasets.BuilderConfig):
 
     def __init__(self, name, **kwargs):
         """
-        :param name:    Name of subset.
-        :param kwargs:  Arguments.
+        Config for subset.
+
+        name:
+            Name of subset.
+        kwargs:
+            Arguments.
         """
         super(CroppedMouthClipConfig, self).__init__(
             name=name,
@@ -58,15 +62,15 @@ class CroppedMouthClip(datasets.GeneratorBasedBuilder):
 
     def _info(self) -> datasets.DatasetInfo:
         features = datasets.Features({
-            "id": datasets.Value("string"),
-            "channel": datasets.Value("string"),
-            "audio_path": datasets.Value("string"),
-            "chunk_visual_id": datasets.Value("string"),
-            "chunk_audio_id": datasets.Value("string"),
-            "visual_num_frames": datasets.Value("float64"),
-            "audio_num_frames": datasets.Value("float64"),
-            "visual_fps": datasets.Value("int64"),
-            "audio_fps": datasets.Value("int64"),
+            "id":                   datasets.Value("string"),
+            "channel":              datasets.Value("string"),
+            "audio_path":           datasets.Value("string"),
+            "chunk_visual_id":      datasets.Value("string"),
+            "chunk_audio_id":       datasets.Value("string"),
+            "visual_num_frames":    datasets.Value("float64"),
+            "audio_num_frames":     datasets.Value("float64"),
+            "visual_fps":           datasets.Value("int64"),
+            "audio_fps":            datasets.Value("int64"),
         })
 
         return datasets.DatasetInfo(
@@ -81,8 +85,11 @@ class CroppedMouthClip(datasets.GeneratorBasedBuilder):
     ) -> List[datasets.SplitGenerator]:
         """
         Get splits.
-        :param dl_manager:  Download manager.
-        :return:            Splits.
+
+        dl_manager:
+            Download manager.
+        return:
+            Splits.
         """
         config_names = _CONFIGS[1:] if self.config.name == "all" else [self.config.name]
 
@@ -115,9 +122,13 @@ class CroppedMouthClip(datasets.GeneratorBasedBuilder):
     ) -> Tuple[int, dict]: # type: ignore
         """ 
         Generate examples from metadata.
-        :param metadata_paths:      Paths to metadata.
-        :param visual_dict:         Paths to directory containing videos.
-        :yield:                     Example.
+
+        metadata_paths:    
+            Paths to metadata.
+        audio_dict:       
+            Paths to directory containing videos.
+        yield:
+            Example.
         """
         dataset = datasets.load_dataset(
             "parquet",
@@ -130,13 +141,13 @@ class CroppedMouthClip(datasets.GeneratorBasedBuilder):
             )
 
             yield i, {
-                "id": sample["id"],
-                "channel": sample["channel"],
-                "audio_path": audio_path,
-                "chunk_visual_id": sample["chunk_visual_id"],
-                "chunk_audio_id": sample["chunk_audio_id"],
-                "visual_num_frames": sample["visual_num_frames"],
-                "audio_num_frames": sample["audio_num_frames"],
-                "visual_fps": sample["visual_fps"],
-                "audio_fps": sample["audio_fps"],
+                "id":                   sample["id"],
+                "channel":              sample["channel"],
+                "audio_path":           audio_path,
+                "chunk_visual_id":      sample["chunk_visual_id"],
+                "chunk_audio_id":       sample["chunk_audio_id"],
+                "visual_num_frames":    sample["visual_num_frames"],
+                "audio_num_frames":     sample["audio_num_frames"],
+                "visual_fps":           sample["visual_fps"],
+                "audio_fps":            sample["audio_fps"],
             }

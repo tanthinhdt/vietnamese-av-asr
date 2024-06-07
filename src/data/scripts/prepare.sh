@@ -41,4 +41,3 @@ cd /content/vietnamese-av-asr/
 pip install -r ./src/data/databases/requirements.txt
 pip install -U datasets
 pip install fsspec
-cd /content/vietnamese-av-asr/

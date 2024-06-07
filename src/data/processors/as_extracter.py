@@ -11,7 +11,7 @@ import pickle
 import cv2
 import python_speech_features
 import torch
-import threading
+import multiprocessing as mp
 
 from scipy              import signal
 from scipy.io           import wavfile
@@ -35,6 +35,7 @@ fs = HfFileSystem()
 
 
 class ActiveSpeakerExtracter(Processor):
+    """This class used to detect active speaker in video."""
 
     def __init__(self,
                  minTrack: int = 10,
@@ -59,8 +60,8 @@ class ActiveSpeakerExtracter(Processor):
 
         # threshold
         self.speaking_frame_count_threshold     = 50
-        self.speaking_score_threshold           = 0.5
-        self.frame_window_length                = 4
+        self.speaking_score_threshold           = 0.7
+        self.frame_window_length                = 7
         self.time_interval                      = 3
         self.start                              = 0.0
         self.duration                           = 10000.0
@@ -112,34 +113,45 @@ class ActiveSpeakerExtracter(Processor):
 
         return sceneList
 
-    def inference_video_1(self, flist: list, conf_th: float) -> list:
+    def inference_video_v1(self, flist: list, conf_th: float) -> list:
         # GPU: Face detection, output is the list contains the face location and score in this frame
         n_f = len(flist)
         dets = [[]] * n_f
-        n_threads = 12
-        threads: List[threading.Thread] = []
-        for fidx, fname in enumerate(flist):
-            threads.append(threading.Thread(target=self._inference_frame,args=(fname,fidx,n_f,conf_th,dets,)))
-            threads[-1].start()
-            if len(threads) == n_threads or fidx == n_f-1:
-                for t in threads:
-                    t.join()
-                threads = []
+        n_processes = 2
+        _chunk_size = math.ceil(n_f/n_processes)
+        _chunks_f = [flist[i:i+_chunk_size] for i in range(0,n_f,_chunk_size)]
+        _chunks_fidx = [range(i,i+_chunk_size) for i in range(0,n_f,_chunk_size)]
+        processes: List[mp.Process] = []
+        queue = mp.Queue()
+        for _chunk_f, _chunk_fidx in zip(_chunks_f, _chunks_fidx):
+            processes.append(
+                mp.Process(
+                    target=self._inference_frames,
+                    args=(_chunk_f,_chunk_fidx,n_f,conf_th,queue,),
+                )
+            )
+        for p in processes:
+            p.start()
+        for p in processes:
+            print(mp.current_process())
+            p.join()
+
         print()
         with open(os.path.join(self.pyworkPath, 'faces.pckl'), 'wb') as fil:
             pickle.dump(dets, fil)
         return dets
     
-    def _inference_frame(self, fname: str, fidx: int, n_f: int, conf_th: float, dets: list) -> None:
-        image       = cv2.imread(fname)
-        imageNumpy  = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        bboxes = self.DET.detect_faces(
-            imageNumpy, conf_th=conf_th, scales=[self.facedetScale])
-        frame_det = []
-        for bbox in bboxes:
-            frame_det.append({'frame': fidx, 'bbox': (bbox[:-1]).tolist(), 'conf': bbox[-1]})
-        dets[fidx] = frame_det
-        print('\rInfering frame: %0.5d/%d' % (fidx, n_f),end='')
+    def _inference_frames(self, fnames: str, fidxs: int, n_f: int, conf_th: float, queue: mp.Queue) -> None:
+        for fidx, fname in zip(fidxs, fnames):
+            image       = cv2.imread(fname)
+            imageNumpy  = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+            bboxes = self.DET.detect_faces(
+                imageNumpy, conf_th=conf_th, scales=[self.facedetScale])
+            frame_det = []
+            for bbox in bboxes:
+                frame_det.append({'frame': fidx, 'bbox': (bbox[:-1]).tolist(), 'conf': bbox[-1]})
+            queue.put(frame_det)
+            print('\rInfering frame: %0.5d/%d' % (fidx, n_f),end='')
     
     def inference_video(self, flist: list, conf_th: float) -> list:
         # GPU: Face detection, output is the list contains the face location and score in this frame
@@ -295,8 +307,8 @@ class ActiveSpeakerExtracter(Processor):
                 allScore.append(scores)
             allScore = np.round(np.mean(np.array(allScore), axis=0), 1).astype(float)
             allScores.append(allScore)
-            with open(os.path.join(self.pyworkPath, 'scores.pckl'), 'wb') as fil:
-                pickle.dump(allScores, fil)
+        with open(os.path.join(self.pyworkPath, 'scores.pckl'), 'wb') as fil:
+            pickle.dump(allScores, fil)
 
     def _detect_active_speaker(self) -> int:
         with open(os.path.join(self.pyworkPath, 'scores.pckl'), mode='rb') as f:
@@ -404,10 +416,10 @@ class ActiveSpeakerExtracter(Processor):
             files.sort()
             self.evaluate_network(files=files)
 
-    def _make_network_result(self, tmp_dir: str, channel: str, video_id: str) -> bool:
+    def _make_network_result(self, tmp_dir: str, channel: str, video_id: str, demo: bool = False) -> bool:
         _up = True
         repo_zip_file_network = os.path.join(f"datasets/{self.network_repo_id}@main","network_results",channel,f"network_results@{channel}@{video_id}.zip")
-        if fs.isfile(repo_zip_file_network):
+        if fs.isfile(repo_zip_file_network) and not demo:
             print("Downloading network results...")
             local_zip_file_network = self.network_dir + ".zip"
             fs.get(rpath=repo_zip_file_network,lpath=local_zip_file_network)
@@ -424,6 +436,7 @@ class ActiveSpeakerExtracter(Processor):
             os.makedirs(self.pyframesPath, exist_ok=True)
             os.makedirs(self.pyworkPath, exist_ok=True)
             os.makedirs(self.pycropPath, exist_ok=True)
+            _up = False if demo else _up
         return _up
 
     def _extract_video(self, origin_video_path: str) -> None:
@@ -457,6 +470,24 @@ class ActiveSpeakerExtracter(Processor):
             log_path: str = None,
             **kwargs
     ) -> dict:
+        """
+        Detect speaker in video.
+
+        sample:
+            Dict contains metadata.
+        output_dir:
+            Directory container processed clip.
+        visual_output_dir:
+            Directory container processed visual.
+        visual_output_dir:
+            Directory container processed audio.
+        tmp_dir:
+            Directory contains asd network result.
+        log_path:
+            Path of log file.
+        return:
+            Metadat of processed sample.
+        """
         print()
         logger = get_logger(
             name=__name__,
@@ -487,10 +518,12 @@ class ActiveSpeakerExtracter(Processor):
             visual_ids      = [os.path.basename(pa)[:-4] for pa in chunk_visual_list]
             audio_ids       = [os.path.basename(pa)[:-4] for pa in chunk_audio_list]
         else:
+            if not sample['demo'][0]:
+                if sample['uploader'] == 'truyenhinhnhandantv':
+                    self.duration = 17
+
             logger.info("Check nw")
-            up = self._make_network_result(tmp_dir=tmp_dir,channel=channel,video_id=video_id)
-            if sample.get('uploader') == 'truyenhinhnhanhdantv':
-                self.duration = 24
+            up = self._make_network_result(tmp_dir=tmp_dir,channel=channel,video_id=video_id,demo=sample['demo'][0])
 
             logger.info("Extreact video")
             self._extract_video(origin_video_path=videoPath)
@@ -537,7 +570,7 @@ class ActiveSpeakerExtracter(Processor):
                 prefix, _ = os.path.split(self.network_dir.rstrip('/'))
                 shutil.rmtree(prefix)
 
-        output_sample:dict = copy.copy(sample)
+        output_sample: dict = copy.copy(sample)
         for k in sample.keys():
             if k != 'id':
                 output_sample.pop(k)
@@ -574,4 +607,5 @@ class ActiveSpeakerExtracter(Processor):
         if not check_true:
             os.remove(visual_path)
             os.remove(audio_path)
+
         return check_true

@@ -24,7 +24,7 @@ _REPO_URL = "https://huggingface.co/{}/resolve/{}"
 _URLS = {
     "metadata": _REPO_URL.format(_METADATA_REPO_PATH,_BRANCH) + "/metadata/{channel}.parquet",
     "visual": _REPO_URL.format(_VISUAL_REPO_PATH,_BRANCH) + "/visual/{channel}.zip",
-    "audio": _REPO_URL.format(_AUDIO_REPO_PATH,_BRANCH)+ "/audio/{channel}.zip",
+    "audio": _REPO_URL.format(_AUDIO_REPO_PATH,_BRANCH) + "/audio/{channel}.zip",
 }
 
 _CONFIGS = ["all"]
@@ -32,7 +32,7 @@ if fs.exists(_REPO_BRANCH_PATH + "/metadata"):
     _CONFIGS.extend([
         os.path.basename(file_name)[:-8]
         for file_name in fs.listdir(_REPO_BRANCH_PATH + "/metadata", detail=False)
-        if file_name.endswith(".parquet")
+        if file_name.endswith(".parquet") and "88888" not in file_name
     ])
 
 
@@ -41,8 +41,12 @@ class VietnameseAVConfig(datasets.BuilderConfig):
 
     def __init__(self, name, **kwargs):
         """
-        :param name:    Name of subset.
-        :param kwargs:  Arguments.
+        Config for subset.
+
+        name:   
+            Name of subset.
+        kwargs:
+            Arguments.
         """
         super().__init__(
             name=name,
@@ -59,17 +63,17 @@ class VietnameseAV(datasets.GeneratorBasedBuilder):
 
     def _info(self) -> datasets.DatasetInfo:
         features = datasets.Features({
-            "id": datasets.Value("string"),
-            "channel": datasets.Value("string"),
-            "visual": datasets.Value("binary"),
-            "audio": datasets.Value("binary"),
-            "chunk_visual_id": datasets.Value("string"),
-            "chunk_audio_id": datasets.Value("string"),
-            "visual_num_frames": datasets.Value("float64"),
-            "audio_num_frames": datasets.Value("float64"),
-            "visual_fps": datasets.Value("int64"),
-            "audio_fps": datasets.Value("int64"),
-            "transcript": datasets.Value("string"),
+            "id":                   datasets.Value("string"),
+            "channel":              datasets.Value("string"),
+            "visual":               datasets.Value("binary"),
+            "audio":                datasets.Value("binary"),
+            "chunk_visual_id":      datasets.Value("string"),
+            "chunk_audio_id":       datasets.Value("string"),
+            "visual_num_frames":    datasets.Value("float64"),
+            "audio_num_frames":     datasets.Value("float64"),
+            "visual_fps":           datasets.Value("int64"),
+            "audio_fps":            datasets.Value("int64"),
+            "transcript":           datasets.Value("string"),
         })
 
         return datasets.DatasetInfo(
@@ -84,8 +88,11 @@ class VietnameseAV(datasets.GeneratorBasedBuilder):
     ) -> List[datasets.SplitGenerator]:
         """
         Get splits.
-        :param dl_manager:  Download manager.
-        :return:            Splits.
+
+        dl_manager:
+            Download manager.
+        return:
+            Splits.
         """
         config_names = _CONFIGS[1:] if self.config.name == "all" else [self.config.name]
 
@@ -145,13 +152,18 @@ class VietnameseAV(datasets.GeneratorBasedBuilder):
         self, split: datasets.Dataset,
         visual_dict: dict,
         audio_dict: dict,
-    ) -> Tuple[int, dict]: # type: ignore
+    ) -> Tuple[int, dict]:  # type: ignore
         """
         Generate examples.
-        :param split:                   Split.
-        :param visual_dict:             Paths to directory containing visual files.
-        :param audio_dict:              Paths to directory containing audio files.
-        :return:                        Example.
+
+        split:
+            Split.
+        visual_dict:    
+            Paths to directory containing visual files.
+        audio_dict:
+            Paths to directory containing audio files.
+        yield:
+            Example.
         """
         for i, sample in enumerate(split):
             channel = sample["channel"]
@@ -163,24 +175,27 @@ class VietnameseAV(datasets.GeneratorBasedBuilder):
             )
 
             yield i, {
-                "id": sample["id"],
-                "channel": channel,
-                "visual": self.__get_binary_data(visual_path),
-                "audio": self.__get_binary_data(audio_path),
-                "chunk_visual_id": sample["chunk_visual_id"],
-                "chunk_audio_id": sample["chunk_audio_id"],
-                "visual_num_frames": sample["visual_num_frames"],
-                "audio_num_frames": sample["audio_num_frames"],
-                "visual_fps": sample["visual_fps"],
-                "audio_fps": sample["audio_fps"],
-                "transcript": sample["transcript"],
+                "id":                   sample["id"],
+                "channel":              channel,
+                "visual":               self.__get_binary_data(visual_path),
+                "audio":                self.__get_binary_data(audio_path),
+                "chunk_visual_id":      sample["chunk_visual_id"],
+                "chunk_audio_id":       sample["chunk_audio_id"],
+                "visual_num_frames":    sample["visual_num_frames"],
+                "audio_num_frames":     sample["audio_num_frames"],
+                "visual_fps":           sample["visual_fps"],
+                "audio_fps":            sample["audio_fps"],
+                "transcript":           sample["transcript"],
             }
 
     def __get_binary_data(self, path: str) -> bytes:
         """
         Get binary data from path.
-        :param path:    Path to file.
-        :return:        Binary data.
+
+        path:
+            Path to file.
+        return:
+            Binary data.
         """
         with open(path, "rb") as f:
             return f.read()

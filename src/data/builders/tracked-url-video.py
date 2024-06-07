@@ -27,9 +27,9 @@ _URLS = {
 _CONFIGS = ["all"]
 if fs.isdir(f"{_REPO_PATH_BRANCH}/metadata/"):
     _CONFIGS.extend([
-        os.path.basename(file)[:-8]
-        for file in fs.listdir(f"{_REPO_PATH_BRANCH}/metadata/", detail=False)
-        if file.endswith('.parquet')
+        os.path.basename(file_name)[:-8]
+        for file_name in fs.listdir(f"{_REPO_PATH_BRANCH}/metadata/", detail=False)
+        if file_name.endswith('.parquet')
     ])
 
 
@@ -38,8 +38,12 @@ class TrackedUrlVideoConfig(datasets.BuilderConfig):
 
     def __init__(self, name: str, **kwargs):
         """
-        :param name:    Name of subset.
-        :param kwargs:  Arguments.
+        Config for subset.
+
+        name:
+            Name of subset.
+        kwargs:  
+            Key arguments.
         """
         super().__init__(
             name=name,
@@ -57,10 +61,11 @@ class TrackedUrlVideo(datasets.GeneratorBasedBuilder):
 
     def _info(self) -> datasets.DatasetInfo:
         features = datasets.Features({
-            "id": datasets.Value("string"),
-            "channel": datasets.Value("string"),
+            "id":       datasets.Value("string"),
+            "channel":  datasets.Value("string"),
             "video_id": datasets.Value("string"),
-            "url": datasets.Value("string"),
+            "url":      datasets.Value("string"),
+            "demo":     datasets.Value("bool"),
         })
 
         return datasets.DatasetInfo(
@@ -75,8 +80,10 @@ class TrackedUrlVideo(datasets.GeneratorBasedBuilder):
     ) -> List[datasets.SplitGenerator]:
         """
         Get splits.
-        :param dl_manager:  Download manager.
-        :return:            Splits.
+
+        dl_manager: 
+            Download manager.
+        return: Splits.
         """
         config_names: List[str] = _CONFIGS[1:] if self.config.name == 'all' else [self.config.name]
 
@@ -99,9 +106,11 @@ class TrackedUrlVideo(datasets.GeneratorBasedBuilder):
     ) -> Tuple[int, dict]: # type: ignore        
         """
         Generate examples from metadata.
-        :param metadata_paths:      Paths to metadata.
-        :param audio_dict:          Paths to directory containing audio.
-        :yield:                     Example.
+
+        metadata_paths: 
+            Paths to metadata.
+        yield:
+            Example.
         """
         dataset = datasets.load_dataset(
             "parquet",
@@ -114,8 +123,9 @@ class TrackedUrlVideo(datasets.GeneratorBasedBuilder):
             url = f'https://www.youtube.com/watch?v={video_id}'
 
             yield i, {
-                "id": video_id,
-                "channel": sample['channel'],
+                "id":       video_id,
+                "channel":  sample['channel'],
                 "video_id": video_id,
-                "url": url,
+                "url":      url,
+                "demo":     sample['demo'],
             }

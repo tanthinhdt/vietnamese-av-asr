@@ -29,19 +29,23 @@ _URLS = {
 _CONFIGS = ["all"]
 if fs.isdir(f"{_REPO_PATH_BRANCH}/metadata/"):
     _CONFIGS.extend([
-        os.path.basename(file)[:-8]
-        for file in fs.ls(f"{_REPO_PATH_BRANCH}/metadata/", detail=False)
-        if file.endswith('.parquet')
+        os.path.basename(file_name)[:-8]
+        for file_name in fs.ls(f"{_REPO_PATH_BRANCH}/metadata/", detail=False)
+        if file_name.endswith('.parquet')
     ])
 
 
-class DetectdSpeakerClipConfig(datasets.BuilderConfig):
+class DetectedSpeakerClipConfig(datasets.BuilderConfig):
     """Detected active speaker clip configuration."""
 
     def __init__(self, name: str, **kwargs):
         """
-        :param name:    Name of subset.
-        :param kwargs:  Arguments.
+        Config for subset.
+
+        name: 
+            Name of subset.
+        kwargs:  
+            Arguments.
         """
         super().__init__(
             name=name,
@@ -51,23 +55,23 @@ class DetectdSpeakerClipConfig(datasets.BuilderConfig):
         )
 
 
-class DetectdSpeakerClip(datasets.GeneratorBasedBuilder):
+class DetectedSpeakerClip(datasets.GeneratorBasedBuilder):
     """Detected active speaker clip dataset."""
 
-    BUILDER_CONFIGS = [DetectdSpeakerClipConfig(name) for name in _CONFIGS]
+    BUILDER_CONFIGS = [DetectedSpeakerClipConfig(name) for name in _CONFIGS]
     DEFAULT_CONFIG_NAME = "all"
 
     def _info(self) -> datasets.DatasetInfo:
         features = datasets.Features({
-            "id": datasets.Value("string"),
-            "channel": datasets.Value("string"),
-            "visual_path": datasets.Value("string"),
-            "chunk_visual_id": datasets.Value("string"),
-            "chunk_audio_id": datasets.Value("string"),
-            "visual_num_frames": datasets.Value("float64"),
-            "audio_num_frames": datasets.Value("float64"),
-            "visual_fps": datasets.Value("int64"),
-            "audio_fps": datasets.Value("int64"),
+            "id":                   datasets.Value("string"),
+            "channel":              datasets.Value("string"),
+            "visual_path":          datasets.Value("string"),
+            "chunk_visual_id":      datasets.Value("string"),
+            "chunk_audio_id":       datasets.Value("string"),
+            "visual_num_frames":    datasets.Value("float64"),
+            "audio_num_frames":     datasets.Value("float64"),
+            "visual_fps":           datasets.Value("int64"),
+            "audio_fps":            datasets.Value("int64"),
         })
 
         return datasets.DatasetInfo(
@@ -82,8 +86,11 @@ class DetectdSpeakerClip(datasets.GeneratorBasedBuilder):
     ) -> List[datasets.SplitGenerator]:
         """
         Get splits.
-        :param dl_manager:  Download manager.
-        :return:            Splits.
+
+        dl_manager:
+            Download manager.
+        return:
+            Splits.
         """
         config_names: List[str] = _CONFIGS[1:] if self.config.name == 'all' else [self.config.name]
 
@@ -114,12 +121,16 @@ class DetectdSpeakerClip(datasets.GeneratorBasedBuilder):
             self,
             metadata_paths: List[str],
             visual_dict: dict
-    ) -> Tuple[int, dict]: # type: ignore
+    ) -> Tuple[int, dict]:  # type: ignore
         """
         Generate examples from metadata.
-        :param metadata_paths:      Paths to metadata.
-        :param audio_dict:          Paths to directory containing audio.
-        :yield:                     Example.
+
+        metadata_paths:     
+            Paths to metadata.
+        visual_dict:
+            Paths to directory containing visual.
+        yield:
+            Example.
         """
         dataset = datasets.load_dataset(
             "parquet",
@@ -132,13 +143,13 @@ class DetectdSpeakerClip(datasets.GeneratorBasedBuilder):
             )
 
             yield i, {
-                'id': sample['id'],
-                'channel': sample['channel'],
-                'visual_path': visual_path,
-                'chunk_visual_id': sample['chunk_visual_id'],
-                'chunk_audio_id': sample['chunk_audio_id'],
-                'visual_num_frames': sample['visual_num_frames'],
-                'audio_num_frames': sample['audio_num_frames'],
-                'visual_fps': sample['visual_fps'],
-                'audio_fps': sample['audio_fps']
+                'id':                   sample['id'],
+                'channel':              sample['channel'],
+                'visual_path':          visual_path,
+                'chunk_visual_id':      sample['chunk_visual_id'],
+                'chunk_audio_id':       sample['chunk_audio_id'],
+                'visual_num_frames':    sample['visual_num_frames'],
+                'audio_num_frames':     sample['audio_num_frames'],
+                'visual_fps':           sample['visual_fps'],
+                'audio_fps':            sample['audio_fps']
             }
