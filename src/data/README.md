@@ -88,8 +88,4 @@ python src/data/tasks/pipe.py
 - `Notes: Should select tasks consecutively. `
 
 ## Colab
-### Open browser, go to colab, Open notebook 'data_process.ipynb' in [repo](https://github.com/tanthinhdt/vietnamese-av-asr/tree/main/notebooks).
-
-
-
-
+### Open browser, go to colab, Open notebook 'data_process.ipynb' in [repo](https://github.com/minhnv4099/vietnamese-av-asr/tree/data_collection/notebooks).
