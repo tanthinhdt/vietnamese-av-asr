@@ -6,7 +6,9 @@ import copy
 from src.data.processors.processor import Processor
 from src.data.utils.logger import get_logger
 
-class YoutTubeDownloader(Processor):    
+class YoutTubeDownloader(Processor):
+    """This class used to download video from YouTube."""
+
     _config_file = 'src/data/databases/command_configs/ytdlp_download.conf'
     _command_download_temp = [
         'yt-dlp',
@@ -25,12 +27,24 @@ class YoutTubeDownloader(Processor):
 
     def process(
         self,
-        sample: dict, 
+        sample: dict,
         video_output_dir: str,
         log_path: str = None,
         *args,
         **kwargs,
-    ) -> dict:  
+    ) -> dict:
+        """
+        Download video from YouTube.
+
+        sample:
+            Dict contains metadata for downloading video.
+        video_output_dir:
+            Directory will contain video.
+        log_path:
+            Path of log file.
+        return:
+            Metadata of processed sample.
+        """
         print()
         logger = get_logger(
             name=__name__,
@@ -43,33 +57,31 @@ class YoutTubeDownloader(Processor):
             format='%(message)s',
         )
 
-        channel = sample['channel'][0]
+        channel  = sample['channel'][0]
         video_id = sample['video_id'][0]
 
         logger_.info('-'*35 + f"Yt-downloader processing video id '{video_id}'" + '-'*35)
         video_path = os.path.join(video_output_dir,f"video@{channel}@{video_id}.mp4")
-        try:
 
-            logger.debug("Load metadata")
-            command_meta = copy.copy(self._command_meta_temp)
-            command_meta[-1] = sample['url'][0]
-            metadata = dict()
-            metadata = json.loads(
-                subprocess.run(
-                    command_meta,
-                    shell=False,
-                    capture_output=True,
-                ).stdout.decode('utf-8').strip('\n')
-            )
-            command_download = copy.copy(self._command_download_temp)
-            command_download[2] = video_path
-            command_download[-2] = self._config_file
-            command_download[-1] = sample['url'][0]
+        logger.debug("Load metadata")
+        command_meta        = copy.copy(self._command_meta_temp)
+        command_meta[-1]    = sample['url'][0]
+        metadata = dict()
+        metadata = json.loads(
+            subprocess.run(
+                command_meta,
+                shell=False,
+                capture_output=True,
+            ).stdout.decode('utf-8').strip('\n')
+        )
+        command_download        = copy.copy(self._command_download_temp)
+        command_download[2]     = video_path
+        command_download[-2]    = self._config_file
+        command_download[-1]    = sample['url'][0]
 
-            logger.debug("Download video")
-            subprocess.run(command_download, shell=False, capture_output=False, stdout=None)
-        except json.decoder.JSONDecodeError:
-            logger.info("Fail get metadata as well as download video")
+        logger.debug("Download video")
+        subprocess.run(command_download, shell=False, capture_output=False, stdout=None)
+
         output_sample = copy.copy(sample)
         for k in sample.keys():
             if k not in ('id','channel'):
@@ -78,12 +90,10 @@ class YoutTubeDownloader(Processor):
         output_sample["id"]             = [None]
         output_sample["channel"]        = sample["channel"]
         output_sample["video_id"]       = sample['video_id']
-        output_sample["uploader"]       = [metadata.get('uploader_id','@no_uploader')[1:]]
         output_sample["video_name"]     = [os.path.basename(os.path.splitext(video_path)[0])]
-        output_sample["duration"]       = [metadata.get('duration',-1)]
-        output_sample["video_fps"]      = [metadata.get('fps',-1)]
-        output_sample["audio_fps"]      = [metadata.get('asr',-1)]
-        
+        output_sample['demo']           = sample['demo']
+        output_sample["uploader"]       = [metadata.get('uploader_id','@no_uploader')[1:]]
+
         if os.path.isfile(video_path) and os.path.splitext(video_path)[-1] == '.mp4':
             output_sample['id'] = sample['id']
 

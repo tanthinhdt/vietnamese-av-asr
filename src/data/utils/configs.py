@@ -27,7 +27,7 @@ class TaskConfig:
 
     schema_dict: dict = None
 
-    def prepare_dir(self, channel: str, overwrite: bool) -> None:
+    def prepare_dir(self, channel: str, overwrite: bool):
         """
         Prepare directory.
         :param channel:     Channel name.
@@ -95,8 +95,8 @@ class SpeakerDetectTaskConfig(TaskConfig):
     src_repo_id: str = 'GSU24AI03-SU24AI21/downloaded-vietnamese-video'
     dest_repo_id: str = 'GSU24AI03-SU24AI21/detected-speaker-clip'
     schemas: list = field(default_factory=lambda: ['visual', 'audio'])
-    remove_columns_loading: list = field(default_factory=lambda: ["duration", "video_fps", "audio_fps"])
-    remove_columns_mapping: list = field(default_factory=lambda: ["video_path", "video_id"])
+    remove_columns_loading: list = field(default_factory=lambda: [])
+    remove_columns_mapping: list = field(default_factory=lambda: ["video_path", "video_id", "demo", "uploader"])
 
     def get_task_kwargs(self) -> dict:
         """

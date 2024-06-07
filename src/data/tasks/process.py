@@ -117,7 +117,9 @@ def get_task_configs(args: argparse.Namespace) -> TaskConfig:
 def main(configs: TaskConfig) -> None:
     """
     This function is used to process data.
-    :param configs:     Task configs.
+    
+    configs:     
+        Task configs.
     """
     print(f"Initialize executor for {configs.task} task...")
     executor = Executor(configs=configs)
@@ -173,4 +175,3 @@ if __name__ == "__main__":
     args = parse_args()
     task_configs = get_task_configs(args)
     main(task_configs)
-    

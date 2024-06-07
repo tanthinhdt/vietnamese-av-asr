@@ -1,6 +1,8 @@
 import os
 import torch
 import torchaudio
+import copy
+
 from CocCocTokenizer import PyTokenizer
 from huggingface_hub import hf_hub_download
 from importlib.machinery import SourceFileLoader
@@ -46,9 +48,13 @@ class Transcriber(Processor):
     ) -> dict:
         """
         Transcribe for a sample.
-        :param sample:                  Audio sample.
-        :param beam_width:              Beam width.
-        :return:                        Sample with path to transcript and audio array.
+
+        sample:
+            Dict contains metadata of sample.
+        beam_width:
+            Beam width.
+        return:
+            Metadata of processed sample.
         """
         print()
         logger = get_logger(
@@ -77,23 +83,27 @@ class Transcriber(Processor):
                 raise Exception("Transcript is invalid.")
         except Exception as e:
             sample["id"][0] = None
-            transcript = None
+            transcript = "None"
 
         logger_.info('*'*50 + 'Transcriber done.' + '*'*50)
+            
         return {
             "id": sample["id"],
             "channel": sample["channel"],
             "chunk_audio_id": sample["chunk_audio_id"],
             "audio_num_frames": sample["audio_num_frames"],
             "audio_fps": sample["audio_fps"],
-            "transcript": [transcript.strip() if transcript else None],
+            "transcript": [transcript.strip()],
         }
 
     def check_output(self, transcript: str) -> str:
         """
         Check output.
-        :param transcript:      Transcript.
-        :return:                Whether output is valid.
+
+        transcript:
+            Transcript.
+        return:
+            Whether output is valid.
         """
         if len(transcript) == 0:
             return False
@@ -109,10 +119,14 @@ class Transcriber(Processor):
     ) -> str:
         """
         Transcribe audio with time offset from audio array.
-        :param audio_array:     audio array.
-        :param sampling_rate:   sampling rate.
-        :param beam_width:      beam width.
-        :return:                transcript.
+        audio_array:
+            audio array.
+        sampling_rate:
+            sampling rate.
+        beam_width:
+            beam width.
+        return:
+            transcript.
         """
         if self.device == "cuda":
             torch.cuda.empty_cache()

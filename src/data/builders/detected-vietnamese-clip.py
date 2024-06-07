@@ -10,7 +10,7 @@ fs = HfFileSystem()
 _CITATION = """
 """
 _DESCRIPTION = """
-    This dataset contains Vietnamese speakers's cropped mouth clip.
+    This dataset contains Vietnamese speaker's cropped mouth clip.
 """
 _HOMEPAGE = "https://github.com/tanthinhdt/vietnamese-av-asr"
 
@@ -30,19 +30,23 @@ _URLS = {
 _CONFIGS = ["all"]
 if fs.exists(f"{_REPO_PATH_BRANCH}/metadata/"):
     _CONFIGS.extend([
-        os.path.basename(file)[:-8]
-        for file in fs.ls(f"{_REPO_PATH_BRANCH}/metadata/", detail=False)
-        if file.endswith('.parquet')
+        os.path.basename(file_name)[:-8]
+        for file_name in fs.ls(f"{_REPO_PATH_BRANCH}/metadata/", detail=False)
+        if file_name.endswith('.parquet')
     ])
 
 
 class VietnameseDetectedClipConfig(datasets.BuilderConfig):
-    """Vietnamese speakers's cropped mouth configuration."""
+    """Vietnamese speaker's cropped mouth configuration."""
 
     def __init__(self, name: str, **kwargs):
         """
-        :param name:    Name of subset.
-        :param kwargs:  Arguments.
+        Config for subset.
+
+        name:  
+            Name of subset.
+        kwargs:
+            Arguments.
         """
         super().__init__(
             name=name,
@@ -53,22 +57,22 @@ class VietnameseDetectedClipConfig(datasets.BuilderConfig):
 
 
 class VietnameseDetectedClip(datasets.GeneratorBasedBuilder):
-    """Vietnamese speakers's cropped mouth configuration dataset."""
+    """Vietnamese speaker's cropped mouth configuration dataset."""
 
     BUILDER_CONFIGS = [VietnameseDetectedClipConfig(name) for name in _CONFIGS]
     DEFAULT_CONFIG_NAME = "all"
 
     def _info(self) -> datasets.DatasetInfo:
         features = datasets.Features({
-            "id": datasets.Value("string"),
-            "channel": datasets.Value("string"),
-            "audio_path": datasets.Value("string"),
-            "chunk_visual_id": datasets.Value("string"),
-            "chunk_audio_id": datasets.Value("string"),
-            "visual_num_frames": datasets.Value("float64"),
-            "audio_num_frames": datasets.Value("float64"),
-            "visual_fps": datasets.Value("int64"),
-            "audio_fps": datasets.Value("int64"),
+            "id":                   datasets.Value("string"),
+            "channel":              datasets.Value("string"),
+            "audio_path":           datasets.Value("string"),
+            "chunk_visual_id":      datasets.Value("string"),
+            "chunk_audio_id":       datasets.Value("string"),
+            "visual_num_frames":    datasets.Value("float64"),
+            "audio_num_frames":     datasets.Value("float64"),
+            "visual_fps":           datasets.Value("int64"),
+            "audio_fps":            datasets.Value("int64"),
         })
         return datasets.DatasetInfo(
             description=_DESCRIPTION,
@@ -82,8 +86,11 @@ class VietnameseDetectedClip(datasets.GeneratorBasedBuilder):
     ) -> List[datasets.SplitGenerator]:
         """
         Get splits.
-        :param dl_manager:  Download manager.
-        :return:            Splits.
+
+        dl_manager:
+            Download manager.
+        return:
+            Splits.
         """
         config_names: List[str] = _CONFIGS[1:] if self.config.name == 'all' else [self.config.name]
 
@@ -117,9 +124,13 @@ class VietnameseDetectedClip(datasets.GeneratorBasedBuilder):
     ) -> Tuple[int, dict]: # type: ignore
         """
         Generate examples from metadata.
-        :param metadata_paths:      Paths to metadata.
-        :param audio_dict:          Paths to directory containing audio.
-        :yield:                     Example.
+
+        metadata_paths:     
+            Paths to metadata.
+        audio_dict:
+            Paths to directory containing audio.
+        yield:
+            Example.
         """
         dataset = datasets.load_dataset(
             "parquet",
@@ -132,13 +143,13 @@ class VietnameseDetectedClip(datasets.GeneratorBasedBuilder):
             )
 
             yield i, {
-                'id': sample['id'],
-                'channel': sample['channel'],
-                'audio_path': audio_path,
-                'chunk_visual_id': sample['chunk_visual_id'],
-                'chunk_audio_id': sample['chunk_audio_id'],
-                'visual_num_frames': sample['visual_num_frames'],
-                'audio_num_frames': sample['audio_num_frames'],
-                'audio_fps': sample['audio_fps'],
-                'visual_fps': sample['visual_fps']
+                'id':                   sample['id'],
+                'channel':              sample['channel'],
+                'audio_path':           audio_path,
+                'chunk_visual_id':      sample['chunk_visual_id'],
+                'chunk_audio_id':       sample['chunk_audio_id'],
+                'visual_num_frames':    sample['visual_num_frames'],
+                'audio_num_frames':     sample['audio_num_frames'],
+                'audio_fps':            sample['audio_fps'],
+                'visual_fps':           sample['visual_fps']
             }

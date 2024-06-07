@@ -29,9 +29,9 @@ _URLS = {
 _CONFIGS = ["all"]
 if fs.isdir(f"{_REPO_PATH_BRANCH}/metadata/"):
     _CONFIGS.extend([
-        os.path.basename(file)[:-8]
-        for file in fs.listdir(f"{_REPO_PATH_BRANCH}/metadata/", detail=False)
-        if file.endswith('.parquet')
+        os.path.basename(file_name)[:-8]
+        for file_name in fs.listdir(f"{_REPO_PATH_BRANCH}/metadata/", detail=False)
+        if file_name.endswith('.parquet')
     ])
 
 
@@ -40,8 +40,12 @@ class DownloadedVietnameseVideoConfig(datasets.BuilderConfig):
 
     def __init__(self, name: str, **kwargs):
         """
-        :param name:    Name of subset.
-        :param kwargs:  Arguments.
+        Config for subset
+            
+        name:   
+            Name of subset.
+        kwargs:  
+            Key arguments.
         """
         super().__init__(
             name=name,
@@ -49,6 +53,7 @@ class DownloadedVietnameseVideoConfig(datasets.BuilderConfig):
             description=_DESCRIPTION,
             **kwargs,
         )
+
 
 class DownloadedVietnameseVideo(datasets.GeneratorBasedBuilder):
     """Raw Video dataset."""
@@ -58,13 +63,11 @@ class DownloadedVietnameseVideo(datasets.GeneratorBasedBuilder):
 
     def _info(self) -> datasets.DatasetInfo:
         features = datasets.Features({
-            "id": datasets.Value("string"),
-            "channel": datasets.Value("string"),
-            "video_id": datasets.Value("string"),
-            "video_path": datasets.Value("string"),
-            "duration": datasets.Value("float"),
-            "video_fps": datasets.Value("int8"),
-            "audio_fps": datasets.Value("int32"),
+            "id":           datasets.Value("string"),
+            "channel":      datasets.Value("string"),
+            "video_id":     datasets.Value("string"),
+            "video_path":   datasets.Value("string"),
+            "demo":         datasets.Value("bool"),
         })
 
         return datasets.DatasetInfo(
@@ -79,8 +82,11 @@ class DownloadedVietnameseVideo(datasets.GeneratorBasedBuilder):
     ) -> List[datasets.SplitGenerator]:
         """
         Get splits.
-        :param dl_manager:  Download manager.
-        :return:            Splits.
+        
+        dl_manager:  
+            Download manager.
+        return:       
+            Splits.
         """
         config_names: List[str] = _CONFIGS[1:] if self.config.name == 'all' else [self.config.name]
 
@@ -111,12 +117,16 @@ class DownloadedVietnameseVideo(datasets.GeneratorBasedBuilder):
             self,
             metadata_paths: List[str],
             video_dict: dict,
-    ) -> Tuple[int, dict]: # type: ignore
+    ) -> Tuple[int, dict]:  # type: ignore
         """
         Generate examples from metadata.
-        :param metadata_paths:      Paths to metadata.
-        :param audio_dict:          Paths to directory containing audio.
-        :yield:                     Example.
+
+        metadata_paths:
+            Paths to metadata.
+        video_dict:  
+            Paths to directory containing video.
+        yield
+            Example.
         """
         dataset = datasets.load_dataset(
             "parquet",
@@ -130,11 +140,9 @@ class DownloadedVietnameseVideo(datasets.GeneratorBasedBuilder):
             )
 
             yield i, {
-                'id': sample['video_id'],
-                'channel': sample['channel'],
-                'video_id': sample['video_id'],
-                'video_path': video_path,
-                'duration': sample['duration'],
-                'video_fps': sample['video_fps'],
-                'audio_fps': sample['audio_fps'],
+                'id':           sample['video_id'],
+                'channel':      sample['channel'],
+                'video_id':     sample['video_id'],
+                'video_path':   video_path,
+                'demo':         sample['demo'],
             }

@@ -26,8 +26,10 @@ class VietnameseDetector(Processor):
     def classify(self, audio_array: torch.Tensor, sampling_rate: int) -> Tuple[int, float]:
         """
         Classify language of audio array.
-        :param audio_array:     Audio array.
-        :return:                Language index and score.
+        audio_array:   
+            Audio array.
+        return:
+            Language index and score.
         """
         if sampling_rate != self.sampling_rate:
             audio_array = torchaudio.transforms.Resample(
@@ -49,10 +51,14 @@ class VietnameseDetector(Processor):
     ) -> bool:
         """
         Check if language is Vietnamese.
-        :param lang_idx:        Language index.
-        :param score:           Score.
-        :param threshold:       Threshold.
-        :return:                Whether language is Vietnamese.
+        lang_idx:   
+            Language index.
+        score:
+            Score.
+        threshold:
+            Threshold.
+        return:
+            Whether language is Vietnamese.
         """
         lang_idx, score = self.classify(audio_array, sampling_rate)
         return lang_idx == 102 and score >= threshold
@@ -63,7 +69,19 @@ class VietnameseDetector(Processor):
             audio_output_dir: str,
             log_path: str = None,
             *args,
-            **kwargs) -> dict:
+            **kwargs,
+        ) -> dict:
+        """
+        Filter out vietnamese audio.
+        sample:
+            Dict contains metadata of sample.
+        audio_output_dir:
+            Directory contains processed audio.
+        log_path:
+            Path to log file.
+        return:
+            Metadata of processed sample.
+        """
         print()
         logger = get_logger(
             name=__name__,
@@ -86,5 +104,6 @@ class VietnameseDetector(Processor):
             shutil.copy(src=audio_path, dst=audio_output_dir)
         else:
             sample['id'][0] = None
+            
         logger_.info('*'*50 + "VN-detector done." + '*'*50)
         return sample
