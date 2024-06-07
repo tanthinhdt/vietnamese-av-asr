@@ -43,7 +43,7 @@ class VietnameseAVConfig(datasets.BuilderConfig):
         """
         Config for subset.
 
-        name:   
+        name:
             Name of subset.
         kwargs:
             Arguments.
@@ -97,7 +97,7 @@ class VietnameseAV(datasets.GeneratorBasedBuilder):
         channel_demo = 'batch_88888'
         if channel_demo in _CONFIGS:
             _CONFIGS.remove(channel_demo)
-            
+
         config_names = _CONFIGS[1:] if self.config.name == "all" else [self.config.name]
 
         metadata_paths = dl_manager.download(
@@ -149,7 +149,7 @@ class VietnameseAV(datasets.GeneratorBasedBuilder):
 
         dataset:
             Dataset.
-        visual_dict:    
+        visual_dict:
             Paths to directory containing visual files.
         audio_dict:
             Paths to directory containing audio files.
@@ -190,4 +190,3 @@ class VietnameseAV(datasets.GeneratorBasedBuilder):
         """
         with open(path, "rb") as f:
             return f.read()
-    
