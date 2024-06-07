@@ -84,7 +84,7 @@ python src/data/tasks/process
 
 
 - `<task>: Select one task to process.`
-- `<channel-names>: Channel name or file contains channel names. Default 'src/data/databases/channel.txt'`
+- `<channel-names>: Channel name or file contains channel names.`
 - `<cache-dir>: Directory contains downloaded data from hub. Default 'data/external/'`
 - `<output-dir>: Directory contains processed data ready upload to hub. Default 'data/processed/'`
 - `--upload-to-hub: Upload processed data to hub.`
@@ -116,7 +116,7 @@ python src/data/tasks/pipe.py
     --demo
     --overwrite
 ```
-- `<url>: Video url in YouTube. Default 'src/data/databases/url.txt'.`
+- `<url>: [File contains] url of video in YouTube.`
 - `<path-to-file>: Path to video file.`
 - `<channel-name>: Name of channel contains url/file.`
 - `<task1> <task2>: Select tasks to process, or 'full' to do all tasks.`

@@ -33,7 +33,7 @@ def prepare_args() -> argparse.Namespace:
         '--channel-volume',
         type=int,
         required=False,
-        default=1,
+        default=-1,
         help='Number tracked url for each channel.'
     )
 

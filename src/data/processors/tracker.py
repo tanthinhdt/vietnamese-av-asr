@@ -34,7 +34,7 @@ def get_metadata(url: str) -> List[dict]:
                 _urls = set(f.readlines())
         else:
             _urls = {url}
-    
+
     cmd = [
         "yt-dlp",
         "--skip-download",
@@ -99,6 +99,9 @@ def divide_metadata(
     else:
         channels = []
 
+    if volume == -1:
+        volume = len(metadata)
+
     available_channels = set(datasets.get_dataset_config_names("GSU24AI03-SU24AI21/tracked-url-video",trust_remote_code=True)) - {'all','batch_88888'}
     n_available_channels = len(available_channels)
     _channels = list(set(channels) - available_channels)
@@ -158,5 +161,3 @@ def track_video_file(
 
     shutil.rmtree(channel_dir)
     os.remove(path=zip_file)
-    
-    

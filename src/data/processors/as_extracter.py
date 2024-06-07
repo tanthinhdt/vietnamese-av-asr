@@ -59,9 +59,9 @@ class ActiveSpeakerExtracter(Processor):
         self.device                 = "cuda" if torch.cuda.is_available() else "cpu"
 
         # threshold
-        self.speaking_frame_count_threshold     = 50
-        self.speaking_score_threshold           = 0.7
-        self.frame_window_length                = 7
+        self.speaking_frame_count_threshold     = 30
+        self.speaking_score_threshold           = 0.6
+        self.frame_window_length                = 4
         self.time_interval                      = 3
         self.start                              = 0.0
         self.duration                           = 10000.0

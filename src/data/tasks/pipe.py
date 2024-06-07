@@ -5,6 +5,7 @@ sys.path.append(os.getcwd())
 import argparse
 
 from src.data.utils.pipeline import pipe,pipe_file
+from src.data.utils.demo import reset_demo
 from src.data.utils import get_logger
 
 logger = get_logger(name=__name__,is_stream=True)
@@ -16,8 +17,7 @@ def prepare_args() -> argparse.Namespace:
     parser.add_argument(
         '--url',
         type=str,
-        required=False,
-        default='no url',
+        required=True,
         help='Url to process.'
     )
 
@@ -120,6 +120,7 @@ def main(args: argparse.Namespace):
     if args.demo:
         args.overwrite = True
         args.channel_name = 'batch_88888'
+        reset_demo(channel_name=args.channel_name)
     if args.do_file:
         # Only for demo
         if not args.demo:
