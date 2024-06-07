@@ -6,7 +6,6 @@ import argparse
 
 from src.data.utils.pipeline import pipe,pipe_file
 from src.data.utils import get_logger
-from src.data.processors.tracker import track_video_file
 
 logger = get_logger(name=__name__,is_stream=True)
 
@@ -118,19 +117,24 @@ def prepare_args() -> argparse.Namespace:
 
 
 def main(args: argparse.Namespace):
+    if args.demo:
+        args.overwrite = True
+        args.channel_name = 'batch_88888'
     if args.do_file:
-        if args.file is None:
+        # Only for demo
+        if not args.demo:
+            logger.warning("Do file only when demo")
+        elif args.file is None:
             logger.warning('Missing \'--file\'')
         elif not os.path.isfile(args.file):
             logger.warning(f"No such file '{args.file}'")
         else:
-            track_video_file(args.file, channel_name=args.channel_name)
             pipe_file(args=args)
     else:
-        pipe(args=args)   
+        pipe(args=args)
+    logger.info("Pipeline is finished. Load dataset from 'GSU24AI03-SU24AI21/vietnamese-av', with name 'batch_88888' to get processed data.")
 
 
 if __name__ == '__main__':
     p_args = prepare_args()
     main(args=p_args)
-    

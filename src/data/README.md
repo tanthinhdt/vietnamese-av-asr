@@ -58,8 +58,8 @@ Track URLs
 ```bash
 python src/data/tasks/track.py --url <url> --channel-name <channel-name>
 ```
-- `<url>: url of video in YouTube.`
-- `<channel-name>: As alias channel to process.`
+- `<url>: [File contains] url of video in YouTube.`
+- `<channel-name>: Name of channel contain url`
 
 Put channel name to channel.txt file
 ```python
@@ -105,24 +105,28 @@ Execute tasks on video file or url.
 ```bash
 python src/data/tasks/pipe.py
     --url <url>                     
-    --file <path-to-file>
-    --do-file                       
+    --file <path-to-file>    
     --channel-name <channel-name>   
     --tasks <task1> <task2> ...     
     --cache-dir <cache-dir>         
-    --output-dir <output-dir>       
+    --output-dir <output-dir>
+    --do-file                          
     --clean-input
     --clean-output
+    --demo
+    --overwrite
 ```
 - `<url>: Video url in YouTube. Default 'src/data/databases/url.txt'.`
 - `<path-to-file>: Path to video file.`
-- `--do-file: Process video file instead of url.`
 - `<channel-name>: Name of channel contains url/file.`
 - `<task1> <task2>: Select tasks to process, or 'full' to do all tasks.`
 - `<cache-dir>: Directory contains downloaded data from hub. Default 'data/external/'`
 - `<output-dir>: Directory contains processed data ready upload to hub. Default 'data/processed/'`
+- `--do-file: Process video file instead of url.` 
 - `--clean-input: Clean cache dir.`
 - `--clean-output: Clean output dir.`
+- `--demo: Demo`
+- `--overwrite: Overwrite`
 - `Available tasks in order: track, download, asd, crop, vndetect, transcribe`
 - `Notes: Should select tasks consecutively. `
 

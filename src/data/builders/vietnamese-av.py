@@ -32,7 +32,7 @@ if fs.exists(_REPO_BRANCH_PATH + "/metadata"):
     _CONFIGS.extend([
         os.path.basename(file_name)[:-8]
         for file_name in fs.listdir(_REPO_BRANCH_PATH + "/metadata", detail=False)
-        if file_name.endswith(".parquet") and "88888" not in file_name
+        if file_name.endswith(".parquet")
     ])
 
 
@@ -94,6 +94,10 @@ class VietnameseAV(datasets.GeneratorBasedBuilder):
         return:
             Splits.
         """
+        channel_demo = 'batch_88888'
+        if channel_demo in _CONFIGS:
+            _CONFIGS.remove(channel_demo)
+            
         config_names = _CONFIGS[1:] if self.config.name == "all" else [self.config.name]
 
         metadata_paths = dl_manager.download(
@@ -105,18 +109,6 @@ class VietnameseAV(datasets.GeneratorBasedBuilder):
             data_files=metadata_paths,
             split="train",
         )
-
-        dataset = dataset.train_test_split(test_size=0.2, shuffle=True, seed=42)
-        train_set = dataset["train"]
-        val_test_set = dataset["test"].train_test_split(test_size=0.5)
-        val_set = val_test_set["train"]
-        test_set = val_test_set["test"]
-
-        split_dict = {
-            datasets.Split.TRAIN: train_set,
-            datasets.Split.VALIDATION: val_set,
-            datasets.Split.TEST: test_set,
-        }
 
         visual_dirs = dl_manager.download_and_extract(
             [_URLS["visual"].format(channel=channel) for channel in config_names]
@@ -138,26 +130,25 @@ class VietnameseAV(datasets.GeneratorBasedBuilder):
 
         return [
             datasets.SplitGenerator(
-                name=name,
+                name=datasets.Split.TEST,
                 gen_kwargs={
-                    "split": split,
+                    "dataset": dataset,
                     "visual_dict": visual_dict,
                     "audio_dict": audio_dict,
                 },
             )
-            for name, split in split_dict.items()
         ]
 
     def _generate_examples(
-        self, split: datasets.Dataset,
+        self, dataset: datasets.Dataset,
         visual_dict: dict,
         audio_dict: dict,
     ) -> Tuple[int, dict]:  # type: ignore
         """
         Generate examples.
 
-        split:
-            Split.
+        dataset:
+            Dataset.
         visual_dict:    
             Paths to directory containing visual files.
         audio_dict:
@@ -165,7 +156,7 @@ class VietnameseAV(datasets.GeneratorBasedBuilder):
         yield:
             Example.
         """
-        for i, sample in enumerate(split):
+        for i, sample in enumerate(dataset):
             channel = sample["channel"]
             visual_path = os.path.join(
                 visual_dict[channel], channel, sample["chunk_visual_id"] + ".mp4"
@@ -199,3 +190,4 @@ class VietnameseAV(datasets.GeneratorBasedBuilder):
         """
         with open(path, "rb") as f:
             return f.read()
+    

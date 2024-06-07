@@ -2,6 +2,7 @@ import os
 import subprocess
 
 from src.data.utils import get_logger
+from src.data.processors.tracker import track_video_file
 import argparse
 
 logger = get_logger(name=__name__, is_stream=True)
@@ -36,7 +37,6 @@ def pipe_url(args: argparse.Namespace) -> None:
             ]
             if args.demo:
                 task_cmd.append('--demo')
-                args.overwrite = True
         else:
             task_cmd = [
                 'python',
@@ -71,6 +71,7 @@ def pipe_url(args: argparse.Namespace) -> None:
 
 
 def pipe_file(args: argparse.Namespace) -> None:
+    track_video_file(args.file, channel_name=args.channel_name,demo=args.demo)
     if 'track' in args.tasks:
         logger.info(f'File pipe no need \'track\'.')
         args.tasks.remove('track')

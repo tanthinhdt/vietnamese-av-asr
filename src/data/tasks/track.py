@@ -60,7 +60,7 @@ def main(args: argparse.Namespace) -> None:
     metadata = get_metadata(
         url=args.url,
     )
-    if metadata is not None:
+    if metadata:
         if args.demo:
             args.overwrite = True
         divide_metadata(
