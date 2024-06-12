@@ -71,6 +71,7 @@ class UploadScheduler(CommitScheduler):
 
                 if self.zip and os.path.exists(src_path):
                     os.remove(src_path)
+                    self.logger.info(f"Deleted {src_path}")
 
                 if self.delete_after_upload:
                     os.remove(path)
