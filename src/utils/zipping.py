@@ -24,11 +24,11 @@ def extract_zip(
     delete_after_extract : bool, optional
         Delete the zip file after extracting, by default False
     """
-    with zipfile.ZipFile(zip_path["file"], "r") as z:
+    with zipfile.ZipFile(zip_path, "r") as z:
         z.extractall(output_dir)
         logger.info(f"Extracted {zip_path} to {output_dir}")
     if delete_after_extract:
-        os.remove(zip_path["file"])
+        os.remove(zip_path)
         logger.info(f"Deleted {zip_path}")
 
 
