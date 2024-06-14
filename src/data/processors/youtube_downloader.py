@@ -4,7 +4,7 @@ import json
 import copy
 
 from src.data.processors.processor import Processor
-from src.data.utils.logger import get_logger
+from src.data.utils import get_logger
 
 class YoutTubeDownloader(Processor):
     """This class used to download video from YouTube."""

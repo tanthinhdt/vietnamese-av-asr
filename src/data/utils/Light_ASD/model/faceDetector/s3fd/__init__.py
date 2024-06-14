@@ -6,12 +6,12 @@ import torch
 from .nets import S3FDNet
 from .box_utils import nms_
 
-PATH_WEIGHT = glob.glob('./**/sfd_face.pth',recursive=True)[0]
-img_mean = np.array([104., 117., 123.])[:, np.newaxis, np.newaxis].astype('float32')
 
 class S3FD():
 
     def __init__(self, device):
+        PATH_WEIGHT = glob.glob('src/weights/sfd_face.pth', recursive=True)[0]
+        self.img_mean = np.array([104., 117., 123.])[:, np.newaxis, np.newaxis].astype('float32')
 
         tstamp = time.time()
         self.device = device
@@ -36,7 +36,7 @@ class S3FD():
                 scaled_img = np.swapaxes(scaled_img, 1, 0)
                 scaled_img = scaled_img[[2, 1, 0], :, :]
                 scaled_img = scaled_img.astype('float32')
-                scaled_img -= img_mean
+                scaled_img -= self.img_mean
                 scaled_img = scaled_img[[2, 1, 0], :, :]
                 x = torch.from_numpy(scaled_img).unsqueeze(0).to(self.device)
                 y = self.net(x)

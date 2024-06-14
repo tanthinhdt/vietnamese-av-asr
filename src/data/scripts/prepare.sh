@@ -10,11 +10,11 @@ chmod +x $MINICONDA_INSTALLER_SCRIPT
 
 
 # Test and upgrade conda
-which conda # should return /usr/local/bin/conda
-conda --version # should return 23.11.0
-python --version # should return 3.9.18
+#which conda # should return /usr/local/bin/conda
+#conda --version # should return 23.11.0
+#python --version # should return 3.9.18
 
-conda install --channel defaults conda python=3.9 --yes
+conda install --channel defaults conda python=3.9.19 --yes
 conda update --channel defaults --all --yes
 
 
@@ -33,11 +33,10 @@ cmake -DBUILD_PYTHON=1 -DCMAKE_INSTALL_PREFIX=/usr/local ..
 make install
 cp /usr/local/lib/python3.9/site-packages/CocCocTokenizer-1.4-py3.9-linux-x86_64.egg/CocCocTokenizer.* /usr/local/lib/python3.9/site-packages
 # Test coccoc tokenizer
-conda list | grep coccoctokenizer   # should show coccoctokenizer 1.4
+#conda list | grep coccoctokenizer   # should show coccoctokenizer 1.4
 
 
 # Install requirements
-cd /content/vietnamese-av-asr/
-pip install -r ./src/data/databases/requirements.txt
+pip install -r vietnamese-av-asr/src/data/databases/requirements.txt
 pip install -U datasets
 pip install fsspec

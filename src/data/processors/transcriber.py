@@ -1,7 +1,5 @@
-import os
 import torch
 import torchaudio
-import copy
 
 from CocCocTokenizer import PyTokenizer
 from huggingface_hub import hf_hub_download
@@ -9,7 +7,7 @@ from importlib.machinery import SourceFileLoader
 from transformers import Wav2Vec2ProcessorWithLM
 
 from .processor import Processor
-from src.data.utils.logger import get_logger
+from src.data.utils import get_logger
 
 
 class Transcriber(Processor):

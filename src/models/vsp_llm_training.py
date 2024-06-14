@@ -5,32 +5,27 @@
 # LICENSE file in the root directory of this source tree.
 
 import logging
-import os, glob
+import os
 import sys
-from typing import Dict, List, Optional, Tuple
-
-import numpy as np
+from typing import List, Optional, Tuple
 
 from dataclasses import dataclass, field
-from fairseq import metrics, search
-from fairseq.data import Dictionary, encoders
+from fairseq.data import Dictionary
 from fairseq.dataclass.configs import FairseqDataclass
 from fairseq.tasks import register_task
 from fairseq.tasks.fairseq_task import FairseqTask
 from omegaconf import MISSING, II
 import numpy as np
-from argparse import Namespace
 
 DBG=True if len(sys.argv) == 1 else False
 
 if DBG:
-    from vsp_llm_dataset import VSP_LLM_dataset
+    from src.data.vsp_llm_dataset import VSP_LLM_dataset
 else:
-    from .vsp_llm_dataset import VSP_LLM_dataset
+    from src.data.vsp_llm_dataset import VSP_LLM_dataset
 
 logger = logging.getLogger(__name__)
 
-from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
 
 @dataclass
 class VSP_LLM_TrainingConfig(FairseqDataclass):
@@ -176,7 +171,6 @@ class VSP_LLM_TrainingTask(FairseqTask):
         return self.cfg.label_dir
 
     def load_dataset(self, split: str, **kwargs) -> None:
-
         manifest = f"{self.cfg.data}/{split}.tsv"
         logger.info(f"Using tokenizer")
         paths = [
@@ -184,7 +178,7 @@ class VSP_LLM_TrainingTask(FairseqTask):
         ]
         image_aug = self.cfg.image_aug if split == 'train' else False
         noise_fn, noise_snr = f"{self.cfg.noise_wav}/{split}.tsv" if self.cfg.noise_wav is not None else None, eval(self.cfg.noise_snr)
-        noise_num = self.cfg.noise_num # 
+        noise_num = self.cfg.noise_num #
         self.datasets[split] = VSP_LLM_dataset(
             manifest,
             sample_rate=self.cfg.sample_rate,

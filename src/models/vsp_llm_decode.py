@@ -47,7 +47,7 @@ logging.root.setLevel(logging.INFO)
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-config_path = Path(__file__).resolve().parent / "conf"
+config_path = Path(__file__).resolve().parent / "configs"
 
 @dataclass
 class OverrideConfig(FairseqDataclass):
@@ -57,8 +57,12 @@ class OverrideConfig(FairseqDataclass):
     modalities: List[str] = field(default_factory=lambda: ["video"], metadata={'help': 'which modality to use'})
     data: Optional[str] = field(default=None, metadata={'help': 'path to test data directory'})
     label_dir: Optional[str] = field(default=None, metadata={'help': 'path to test label directory'})
+    labels: Optional[List[str]] = field(default_factory=lambda : ['km'], metadata={'help': 'extension of label files'})
+    label_rate: int = field(default=-1, metadata={'help': 'load label or not'})
     eval_bleu: bool = field(default=False, metadata={'help': 'evaluate bleu score'})
     llm_ckpt_path: str = field(default=MISSING, metadata={'help': 'path to llama checkpoint'})
+    w2v_path: str = field(default=MISSING, metadata={'help': 'path to hubert checkpoint'})
+    demo: bool = field(default=True, metadata={'help': 'Indicate whether demo or decode'})
 
 @dataclass
 class InferConfig(FairseqDataclass):
@@ -103,6 +107,7 @@ def _main(cfg, output_file):
         level=os.environ.get("LOGLEVEL", "INFO").upper(),
         stream=output_file,
     )
+
     logger = logging.getLogger("hybrid.speech_recognize")
     if output_file is not sys.stdout:  # also print to stdout
         logger.addHandler(logging.StreamHandler(sys.stdout))
@@ -110,8 +115,14 @@ def _main(cfg, output_file):
     utils.import_user_module(cfg.common)
 
     tokenizer = AutoTokenizer.from_pretrained(cfg.override.llm_ckpt_path)
-    model_override_cfg = {'model':{'llm_ckpt_path':cfg.override.llm_ckpt_path}}
-    models, saved_cfg, task = checkpoint_utils.load_model_ensemble_and_task([cfg.common_eval.path],model_override_cfg,strict=False)
+    model_override_cfg = {
+        'model':
+            {
+                'llm_ckpt_path': cfg.override.llm_ckpt_path,
+                'w2v_path': cfg.override.w2v_path,
+            },
+    }
+    models, saved_cfg, task = checkpoint_utils.load_model_ensemble_and_task([cfg.common_eval.path,],model_override_cfg,strict=False)
     models = [model.eval() for model in models]
     saved_cfg.task.modalities = cfg.override.modalities
     task = tasks.setup_task(saved_cfg.task)
@@ -139,7 +150,12 @@ def _main(cfg, output_file):
         task.cfg.data = cfg.override.data
     if cfg.override.label_dir is not None:
         task.cfg.label_dir = cfg.override.label_dir
-    task.load_dataset('test', task_cfg=cfg.task)
+
+    if cfg.override.demo:
+        task.cfg.labels = cfg.override.labels
+        task.cfg.label_rate = cfg.override.label_rate
+
+    task.load_dataset('test')
 
     lms = [None]
 

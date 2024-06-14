@@ -27,7 +27,6 @@ logging.basicConfig(
 )
 logger = logging.getLogger("dump_hubert_feature")
 
-
 class HubertFeatureReader(object):
     def __init__(self, ckpt_path, layer, max_chunk=1600000, custom_utils=None):
         (
@@ -35,7 +34,8 @@ class HubertFeatureReader(object):
             cfg,
             task,
         ) = fairseq.checkpoint_utils.load_model_ensemble_and_task([ckpt_path])
-        self.model = model[0].eval().cuda()
+        self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        self.model = model[0].eval().to(device=self.device)
         self.task = task
         self.layer = layer
         self.max_chunk = max_chunk
@@ -86,7 +86,7 @@ class HubertFeatureReader(object):
     def get_feats(self, path, ref_len=None):
         video_feats, audio_feats = self.load_feature(path, ref_len)
         with torch.no_grad():
-            audio_feats, video_feats = torch.from_numpy(audio_feats.astype(np.float32)).cuda(), torch.from_numpy(video_feats.astype(np.float32)).cuda()
+            audio_feats, video_feats = torch.from_numpy(audio_feats.astype(np.float32)).to(device=self.device), torch.from_numpy(video_feats.astype(np.float32)).to(device=self.device)
             if self.task.cfg.normalize:
                 audio_feats = F.layer_norm(audio_feats, audio_feats.shape[1:])
             video_feats = video_feats.unsqueeze(dim=0).permute((0, 4, 1, 2, 3)).contiguous()
@@ -116,7 +116,7 @@ def get_path_iterator(tsv, nshard, rank):
         tot = len(lines)
         shard_size = math.ceil(tot / nshard)
         start, end = rank * shard_size, min((rank + 1) * shard_size, tot)
-        assert start < end, "start={start}, end={end}"
+        assert start < end, f"start={start}, end={end}"
         logger.info(
             f"rank {rank} of {nshard}, process {end-start} "
             f"({start}-{end}) out of {tot}"
@@ -174,7 +174,7 @@ if __name__ == "__main__":
     logger.info(args)
     fairseq.utils.import_user_module(args)
     sys.path.append(args.user_dir)
-    import utils_vsp_llm as custom_utils
+    from src.utils import utils_vsp_llm as custom_utils
     kwargs = vars(args)
     kwargs.update({'custom_utils': custom_utils})
     dump_feature(**kwargs)

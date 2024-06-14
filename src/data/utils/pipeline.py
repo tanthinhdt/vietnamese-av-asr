@@ -2,8 +2,7 @@ import os
 import subprocess
 
 from src.data.utils import get_logger
-from src.data.utils.demo import check_metadata_demo, reset_demo
-from src.data.processors.tracker import track_video_file
+from src.data.utils import check_metadata_demo
 import argparse
 
 logger = get_logger(name=__name__, is_stream=True)
@@ -66,12 +65,11 @@ def pipe_url(args: argparse.Namespace) -> None:
             capture_output=False,
             cwd=os.getcwd()
         )
-        if res.returncode == 111 or not check_metadata_demo(task=task,channel_name=args.channel_name):
+        if res.returncode or not check_metadata_demo(task=task, channel_name=args.channel_name):
             logger.info(f"Fail process channel '{args.channel_name}' in task '{task}'. Program is exit.")
             exit(123)
 
 def pipe_file(args: argparse.Namespace) -> None:
-    track_video_file(args.file, channel_name=args.channel_name,demo=args.demo)
     if 'track' in args.tasks:
         logger.info(f'File pipe no need \'track\'.')
         args.tasks.remove('track')

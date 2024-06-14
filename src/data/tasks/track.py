@@ -5,7 +5,7 @@ sys.path.append(os.getcwd())
 import argparse
 
 from src.data.processors.tracker import get_metadata, divide_metadata
-from src.data.utils.logger import get_logger
+from src.data.utils import get_logger
 
 logger = get_logger(name=__name__, is_stream=True)
 

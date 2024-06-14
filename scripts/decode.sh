@@ -5,15 +5,21 @@
 # This source code is licensed under the license found in the
 # LICENSE file in the root directory of this source tree.
 
-LANG=en    # language direction (e.g 'en' for VSR task / 'en-es' for En to Es VST task)
+LANG=vi    # language direction (e.g 'en' for VSR task / 'en-es' for En to Es VST task)
 
 # set paths
-ROOT=$(dirname "$(dirname "$(readlink -fm "$0")")")
+ROOT=$(dirname "$(dirname "$(readlink -fn "$0")")")
 MODEL_SRC=${ROOT}/src
-LLM_PATH=${ROOT}/checkpoints/Llama-2-7b-hf   # path to llama checkpoint
-DATA_ROOT=${MODEL_SRC}/dataset   # path to test dataset dir
+_MODEL_SRC=${MODEL_SRC}/models
 
-MODEL_PATH=${ROOT}/checkpoints/checkpoint_finetune.pt  # path to trained model
+LLM_PATH="vilm/vinallama-2.7b"   # path to llama checkpoint
+
+DATA_ROOT=${_MODEL_SRC}/dataset   # path to test dataset dir
+
+MODEL_PATH=${_MODEL_SRC}/checkpoints/checkpoint_best.pt  # path to trained model
+W2V_PATH=${_MODEL_SRC}/checkpoints/large_vox_iter5.pt  # path to trained model
+
+
 OUT_PATH=${ROOT}/decode    # output path to save
 
 # fix variables based on langauge
@@ -32,17 +38,19 @@ fi
 
 # start decoding
 export PYTHONPATH="${ROOT}/fairseq:$PYTHONPATH"
-CUDA_VISIBLE_DEVICES=0 python -B ${MODEL_SRC}/vsp_llm_decode.py \
-    --config-dir ${MODEL_SRC}/conf \
+export HYDRA_FULL_ERROR=1
+CUDA_VISIBLE_DEVICES=0 python -B ${_MODEL_SRC}/vsp_llm_decode.py \
+    --config-dir ${_MODEL_SRC}/configs \
     --config-name s2s_decode \
         common.user_dir=${MODEL_SRC} \
         dataset.gen_subset=test \
         override.data=${DATA_PATH} \
-        override.label_dir=${DATA_PATH} \
+        override.label_dir=${DATA_PATH}\
         generation.beam=20 \
         generation.lenpen=0 \
         dataset.max_tokens=3000 \
         override.eval_bleu=${USE_BLEU} \
         override.llm_ckpt_path=${LLM_PATH} \
+        override.w2v_path=${W2V_PATH} \
         common_eval.path=${MODEL_PATH} \
         common_eval.results_path=${OUT_PATH}/${TASK}/${LANG}

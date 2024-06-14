@@ -5,7 +5,7 @@ sys.path.append(os.getcwd())
 
 import argparse
 from logging import Logger
-from src.utils import (
+from src import (
     get_default_arg_parser,
     get_logger,
     UploadScheduler,

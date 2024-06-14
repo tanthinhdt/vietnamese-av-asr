@@ -1,5 +1,5 @@
 
-unit_pth = ???
+unit_pth = "src/models/dataset/vsr/vi/test.km"
 units = open(unit_pth).readlines()
 count_list = []
 for unit_line in units:

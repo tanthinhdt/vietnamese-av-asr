@@ -6,7 +6,7 @@ from speechbrain.pretrained import EncoderClassifier
 from typing import Tuple
 
 from .processor import Processor
-from src.data.utils.logger import get_logger
+from src.data.utils import get_logger
 
 
 class VietnameseDetector(Processor):

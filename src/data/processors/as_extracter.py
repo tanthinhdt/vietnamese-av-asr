@@ -24,9 +24,9 @@ from scenedetect.scene_manager  import SceneManager
 from scenedetect.stats_manager  import StatsManager
 from scenedetect.detectors      import ContentDetector
 
-from src.data.processors.processor  import Processor
-from src.data.processors.uploader   import Uploader
-from src.data.utils.logger          import get_logger
+from src.data.processors.processor import Processor
+from src.data.processors.uploader import Uploader
+from src.data.utils.logging import get_logger
 
 from ..utils.Light_ASD.model.ASD            import ASD
 from ..utils.Light_ASD.model.faceDetector   import S3FD
@@ -44,7 +44,7 @@ class ActiveSpeakerExtracter(Processor):
                  cropScale: float = 0.4,
                  minFaceSize: int = 1,
                  nDataLoaderThread: int = 10,
-                 pretrainModel: str = "src/data/utils/Light_ASD/weight/pretrain_AVA_CVPR.model",
+                 pretrainModel: str = "src/weights/pretrain_AVA_CVPR.model",
                  ) -> None:
 
         super().__init__()

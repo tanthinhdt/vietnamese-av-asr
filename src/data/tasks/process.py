@@ -174,4 +174,4 @@ def main(configs: TaskConfig) -> None:
 if __name__ == "__main__":
     args = parse_args()
     task_configs = get_task_configs(args)
-    main(task_configs)
+    #main(task_configs)

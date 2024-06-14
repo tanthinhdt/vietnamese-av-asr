@@ -28,19 +28,19 @@ from copy import deepcopy
 DBG=True if len(sys.argv) == 1 else False
 
 if DBG:
-    from hubert_pretraining import (
+    from .hubert_pretraining import (
         AVHubertPretrainingConfig,
         AVHubertPretrainingTask,
     )
-    from resnet import ResEncoder
+    from .resnet import ResEncoder
     logging.basicConfig(
         format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S",
         level=os.environ.get("LOGLEVEL", "INFO").upper(),
         stream=sys.stdout,
     )
-    from utils import compute_mask_indices
-    from decoder import TransformerDecoder
+    from src.utils import compute_mask_indices
+    from .decoder import TransformerDecoder
 
 else:
     from .hubert_pretraining import (
@@ -48,7 +48,7 @@ else:
         AVHubertPretrainingTask,
     )
     from .resnet import ResEncoder
-    from .utils_vsp_llm import compute_mask_indices
+    from src.utils.utils_vsp_llm import compute_mask_indices
     from .decoder import TransformerDecoder
 
 from omegaconf import II
@@ -104,7 +104,7 @@ class AVHubertConfig(FairseqDataclass):
     )
     encoder_layerdrop: float = field(
         default=0.0,
-        metadata={"help": "probability of dropping a tarnsformer layer"},
+        metadata={"help": "probability of dropping a transformer layer"},
     )
     dropout_input: float = field(
         default=0.0,

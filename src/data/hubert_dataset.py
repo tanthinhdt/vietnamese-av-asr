@@ -31,7 +31,7 @@ if DBG:
         stream=sys.stdout,
     )
 else:
-    from . import utils_vsp_llm as custom_utils
+    from src.utils import utils_vsp_llm as custom_utils
 
 logger = logging.getLogger(__name__)
 

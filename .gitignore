@@ -90,3 +90,7 @@ target/
 /data/
 /tmp/
 src/data/databases/
+outputs/
+src/models/dataset/
+src/modules/
+src/models/checkpoints/

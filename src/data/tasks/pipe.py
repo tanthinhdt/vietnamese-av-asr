@@ -4,9 +4,8 @@ sys.path.append(os.getcwd())
 
 import argparse
 
-from src.data.utils.pipeline import pipe,pipe_file
-from src.data.utils.demo import reset_demo
-from src.data.utils import get_logger
+from src.data.utils import pipe, pipe_file, reset_demo, get_logger
+from src.data.processors.tracker import track_video_file
 
 logger = get_logger(name=__name__,is_stream=True)
 
@@ -130,6 +129,7 @@ def main(args: argparse.Namespace):
         elif not os.path.isfile(args.file):
             logger.warning(f"No such file '{args.file}'")
         else:
+            track_video_file(args.file, channel_name=args.channel_name, demo=args.demo)
             pipe_file(args=args)
     else:
         pipe(args=args)

@@ -13,7 +13,7 @@ import mediapipe as mp
 import moviepy.editor as mpe
 from glob import glob
 from datasets import Dataset
-from src.utils import get_default_arg_parser, get_logger
+from src import get_default_arg_parser, get_logger
 
 
 class Cropper:

@@ -7,6 +7,7 @@
 import logging
 import math
 import torch.nn as nn
+import torch
 import pdb
 
 
@@ -154,6 +155,7 @@ class ResEncoder(nn.Module):
             self.trunk.load_state_dict(trunk_std)
 
     def forward(self, x):
+        x = x.to(torch.float32)
         B, C, T, H, W = x.size()
         x = self.frontend3D(x)
         Tnew = x.shape[2]

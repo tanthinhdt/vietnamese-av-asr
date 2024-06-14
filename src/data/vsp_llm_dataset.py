@@ -33,7 +33,7 @@ if DBG:
         stream=sys.stdout,
     )
 else:
-    from . import utils_vsp_llm as custom_utils
+    from src.utils import utils_vsp_llm as custom_utils
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +43,6 @@ def load_audio_visual(
 ):
     def is_audio_label_aligned(audio_dur, label_durs):
         return all([abs(audio_dur - label_dur) < tol for label_dur in label_durs])
-
     n_long, n_short, n_unaligned = 0, 0, 0
     names, inds, sizes = [], [], []
     dur_from_label_list = []
@@ -229,6 +228,7 @@ class VSP_LLM_dataset(FairseqDataset):
             "fr": "French",
             "it": "Italian",
             "pt": "Portuguese",
+            "vi": "Vietnamese",
         }
 
         assert self.single_target == (
@@ -427,6 +427,7 @@ class VSP_LLM_dataset(FairseqDataset):
         labels = [torch.cat((labels[0], torch.tensor([2]).long()))]
 
         fid = self.names[index][1].split(":")[1]
+
         src_lang, tgt_lang = fid.split("/")[1].split("-")
         if src_lang == tgt_lang:
             txt_feats = self.llm_tokenizer(

@@ -212,8 +212,6 @@ class HubertEncoderWrapper(FairseqEncoder):
         return encoder_out
 
 
-
-
 @register_model("vsp_llm", dataclass=VSPLLMConfig)
 class avhubert_llm_seq2seq_cluster_count(BaseFairseqModel):
     def __init__(self, encoder, decoder, cfg):
@@ -221,9 +219,10 @@ class avhubert_llm_seq2seq_cluster_count(BaseFairseqModel):
         self.cfg = cfg
         self.encoder = encoder
         self.decoder = decoder
-        self.avfeat_to_llm = nn.Linear(1024, 4096)
+        self.avfeat_to_llm = nn.Linear(1024, 2560,)
         self.freeze_finetune_updates = cfg.freeze_finetune_updates
-        
+        self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
+
     @classmethod
     def build_model(cls, cfg, task):
         """Build a new model instance."""
@@ -290,6 +289,7 @@ class avhubert_llm_seq2seq_cluster_count(BaseFairseqModel):
             bnb_4bit_quant_type="nf4",
             bnb_4bit_compute_dtype=torch.bfloat16
         )
+        bnb_config = None if not torch.cuda.is_available() else bnb_config
 
         decoder_4bit = AutoModelForCausalLM.from_pretrained(cfg.llm_ckpt_path, quantization_config=bnb_config)            
 
@@ -355,7 +355,7 @@ class avhubert_llm_seq2seq_cluster_count(BaseFairseqModel):
                 top_p=0.9,
                 repetition_penalty=1.0,
                 length_penalty=0.0,
-                  **kwargs,
+                **kwargs,
                 ):
         output = self.encoder(**kwargs)
         output['encoder_out'] = self.avfeat_to_llm(output['encoder_out'])
@@ -373,10 +373,10 @@ class avhubert_llm_seq2seq_cluster_count(BaseFairseqModel):
 
         assert(cluster_counts.sum().item() == output['encoder_out'].size()[1])
 
-        reduced_enc_out = torch.cat(results_tensor, dim=1)     
+        reduced_enc_out = torch.cat(results_tensor, dim=1).to(device=self.device)
         B, T, D = reduced_enc_out.size()
         instruction = kwargs['source']['text']
-        instruction_embedding = self.decoder.model.model.embed_tokens(instruction)
+        instruction_embedding = self.decoder.model.model.embed_tokens(instruction).to(device=self.device)
         llm_input = torch.cat((instruction_embedding, reduced_enc_out), dim=1) 
 
         self.decoder.config.use_cache = True

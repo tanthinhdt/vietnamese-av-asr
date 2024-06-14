@@ -6,7 +6,7 @@ import mediapipe as mp
 import moviepy.editor as mpe
 
 from .processor import Processor
-from src.data.utils.logger import get_logger
+from src.data.utils.logging import get_logger
 
 
 class Cropper(Processor):
