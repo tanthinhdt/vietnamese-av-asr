@@ -11,16 +11,12 @@ Clone branch 'inference' from project repo.
 ```bash
 git clone -b inference https://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@github.com/tanthinhdt/vietnamese-av-asr.git
 ```
-## Go to project dir
-```bash
-cd vietnamese-av-asr/
-```
 
 ## Prepare environment
 
 Install packages, dependencies.
 ```bash
-./scripts/prepare.sh
+./vietnamese-av-asr/scripts/prepare.sh
 ```
 
 ## Prepare checkpoints
@@ -29,6 +25,11 @@ Install packages, dependencies.
 - Download [k-mean model](https://drive.google.com/file/d/1QRhlMRAclLgZ-sv8vQZBRMlG_jbvmArn/view?usp=share_link). 
   1. MUST rename it to 'km_model.km'.
   2. Move 'km_model.km' to [dataset dir](src/models/dataset/vsr/vi)
+
+## Go to project dir
+```bash
+cd vietnamese-av-asr/
+```
 
 ## Run inference
 Download some video...
