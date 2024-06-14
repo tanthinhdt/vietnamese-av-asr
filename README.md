@@ -4,17 +4,20 @@ The transcript is generated base on visual (lip movement) and audio signal from 
 
 # Docstring
 Steps to clone repo, prepare environment and run inference demo.
+
 ## Clone Repository
 Clone branch 'inference' from project repo.
+
 ```bash
-git clone -b inference https://github.com/tanthinhdt/vietnamese-av-asr.git
+git clone -b inference https://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@github.com/tanthinhdt/vietnamese-av-asr.git
+```
+## Go to project dir
+```bash
+cd vietnamese-av-asr/
 ```
 
 ## Prepare environment
-Go to project dir.
-```bash
-cd vietnamese-av-asr
-```
+
 Install packages, dependencies.
 ```bash
 ./scripts/prepare.sh

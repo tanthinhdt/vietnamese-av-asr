@@ -34,9 +34,3 @@ make install
 cp /usr/local/lib/python3.9/site-packages/CocCocTokenizer-1.4-py3.9-linux-x86_64.egg/CocCocTokenizer.* /usr/local/lib/python3.9/site-packages
 # Test coccoc tokenizer
 #conda list | grep coccoctokenizer   # should show coccoctokenizer 1.4
-
-
-# Install requirements
-pip install -r vietnamese-av-asr/src/data/databases/requirements.txt
-pip install -U datasets
-pip install fsspec
