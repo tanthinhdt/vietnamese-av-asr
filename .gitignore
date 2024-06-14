@@ -93,3 +93,4 @@ src/data/databases/
 outputs/
 src/modules/
 src/models/checkpoints/*.pt
+src/models/dataset/

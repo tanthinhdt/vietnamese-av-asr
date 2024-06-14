@@ -30,10 +30,7 @@ Install packages, dependencies.
 ## Run inference
 Download some video...
 
-Download demo video file
-```bash
-!
-```
+Download test demo [video file](https://drive.google.com/file/d/1kCgwpSPPAntC0HSCeCpOsDCQ_UmovijA/view?usp=share_link)
 ```bash
 ./inference.sh <video-path>
 ```
