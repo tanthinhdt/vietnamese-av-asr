@@ -41,7 +41,7 @@ Download test demo [video file](https://drive.google.com/file/d/1kCgwpSPPAntC0HS
 ##### Arguments:
 `<video-path>`: Path to video file.
 
-Result saved in [dir](decode/vsr/vi)
+Result saved in [dir](decode/)
 
 ## Video combine transcript
 ...

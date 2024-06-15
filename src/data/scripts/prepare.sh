@@ -2,7 +2,7 @@
 
 
 # Download and set up miniconda
-MINICONDA_INSTALLER_SCRIPT=Miniconda3-py39_23.11.0-2-Linux-x86_64.sh
+MINICONDA_INSTALLER_SCRIPT=Miniconda3-py310_24.4.0-0-Linux-x86_64.sh
 MINICONDA_PREFIX=/usr/local
 wget https://repo.continuum.io/miniconda/$MINICONDA_INSTALLER_SCRIPT
 chmod +x $MINICONDA_INSTALLER_SCRIPT
@@ -14,7 +14,7 @@ chmod +x $MINICONDA_INSTALLER_SCRIPT
 #conda --version # should return 23.11.0
 #python --version # should return 3.9.18
 
-conda install --channel defaults conda python=3.9.19 --yes
+conda install --channel defaults conda python=3.10 --yes
 conda update --channel defaults --all --yes
 
 
