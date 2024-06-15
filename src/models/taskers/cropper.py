@@ -29,26 +29,20 @@ class DemoCropper(Tasker):
 
             shutil.copy(src=_old_audio_path, dst=_sample['audio_path'])
             _idx = _sample['visual_path'].split('@')[-1][:-4]
+
+            _new_visual_path = os.path.join(sample['visual_output_dir'][0],f'visual_{_idx}.mp4')
+            _new_audio_path = _new_visual_path.replace('visual', 'audio').replace('mp4', 'wav')
             os.rename(
                 src=_sample['visual_path'],
-                dst=os.path.join(
-                    sample['visual_output_dir'][0],
-                    f'visual_{_idx}.mp4')
+                dst=_new_visual_path
             )
             os.rename(
                 src=_sample['audio_path'],
-                dst=os.path.join(
-                    sample['visual_output_dir'][0].replace('visual','audio'),
-                    f'audio_{_idx}.wav')
+                dst=_new_audio_path
             )
-            _sample['visual_path'] = os.path.join(
-                sample['visual_output_dir'][0],
-                f'visual_{_idx}.mp4')
-            _sample['audio_path'] = os.path.join(
-                sample['visual_output_dir'][0].replace('visual','audio'),
-                f'audio_{_idx}.wav')
+            _sample['visual_path'] = _new_visual_path
+            _sample['audio_path'] = _new_audio_path
 
             _samples.append(_sample)
-
 
         return _samples
