@@ -30,6 +30,7 @@ from src.data.utils.logging import get_logger
 
 from ..utils.Light_ASD.model.ASD            import ASD
 from ..utils.Light_ASD.model.faceDetector   import S3FD
+from src.models.utils import get_logger, get_spent_time
 
 fs = HfFileSystem()
 
@@ -113,62 +114,86 @@ class ActiveSpeakerExtracter(Processor):
 
         return sceneList
 
-    def inference_video_v1(self, flist: list, conf_th: float) -> list:
-        # GPU: Face detection, output is the list contains the face location and score in this frame
-        n_f = len(flist)
-        dets = [[]] * n_f
-        n_processes = 2
-        _chunk_size = math.ceil(n_f/n_processes)
-        _chunks_f = [flist[i:i+_chunk_size] for i in range(0,n_f,_chunk_size)]
-        _chunks_fidx = [range(i,i+_chunk_size) for i in range(0,n_f,_chunk_size)]
-        processes: List[mp.Process] = []
-        queue = mp.Queue()
-        for _chunk_f, _chunk_fidx in zip(_chunks_f, _chunks_fidx):
-            processes.append(
-                mp.Process(
-                    target=self._inference_frames,
-                    args=(_chunk_f,_chunk_fidx,n_f,conf_th,queue,),
-                )
-            )
-        for p in processes:
-            p.start()
-        for p in processes:
-            print(mp.current_process())
-            p.join()
-
-        print()
-        with open(os.path.join(self.pyworkPath, 'faces.pckl'), 'wb') as fil:
-            pickle.dump(dets, fil)
-        return dets
-    
-    def _inference_frames(self, fnames: str, fidxs: int, n_f: int, conf_th: float, queue: mp.Queue) -> None:
-        for fidx, fname in zip(fidxs, fnames):
-            image       = cv2.imread(fname)
-            imageNumpy  = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-            bboxes = self.DET.detect_faces(
-                imageNumpy, conf_th=conf_th, scales=[self.facedetScale])
-            frame_det = []
-            for bbox in bboxes:
-                frame_det.append({'frame': fidx, 'bbox': (bbox[:-1]).tolist(), 'conf': bbox[-1]})
-            queue.put(frame_det)
-            print('\rInfering frame: %0.5d/%d' % (fidx, n_f),end='')
-    
-    def inference_video(self, flist: list, conf_th: float) -> list:
-        # GPU: Face detection, output is the list contains the face location and score in this frame
+    @get_spent_time
+    def _inference_video(self, flist: list, conf_th: float) -> list:
         n_f = len(flist)
         dets = []
         for fidx, fname in enumerate(flist):
-            image       = cv2.imread(fname)
-            imageNumpy  = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+            image = cv2.imread(fname)
+            imageNumpy = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
             bboxes = self.DET.detect_faces(
                 imageNumpy, conf_th=conf_th, scales=[self.facedetScale])
             dets.append([])
             for bbox in bboxes:
                 dets[-1].append({'frame': fidx, 'bbox': (bbox[:-1]).tolist(), 'conf': bbox[-1]})
-            print('\rInfering frame: %0.5d/%d' % (fidx, n_f),end='')
+            print('\rInfering frame: %0.5d/%d' % (fidx, n_f), end='')
         print()
         with open(os.path.join(self.pyworkPath, 'faces.pckl'), 'wb') as fil:
             pickle.dump(dets, fil)
+        return dets
+
+    @get_spent_time
+    def _inference_video_v2(self, video_path: str, conf_th: float):
+        frames = []
+        dets = []
+        cap = cv2.VideoCapture(video_path)
+        n_f = cap.get(cv2.CAP_PROP_FRAME_COUNT)
+        fidx = 0
+        while cap.isOpened():
+            ret, frame = cap.read()
+            if not ret:
+                break
+            frames.append(frame)
+        for frame in frames:
+            imageNumpy = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            bboxes = self.DET.detect_faces(
+                imageNumpy, conf_th=conf_th, scales=[self.facedetScale])
+            frame_det = []
+            for bbox in bboxes:
+                frame_det.append({'frame': fidx, 'bbox': (bbox[:-1]).tolist(), 'conf': bbox[-1]})
+            dets.append(frame_det)
+            print('\rDetecting frame: %0.5d/%d' % (fidx, n_f), end='')
+            fidx += 1
+        return dets
+
+    @get_spent_time
+    def _inference_video_v1(self, flist: list, conf_th: float) -> list:
+        images = [cv2.imread(f) for f in flist]
+        n_f = len(images)
+        n_processes = 5
+        _chunk_size = math.ceil(n_f / n_processes)
+        _kwargs = []
+        for i in range(0, n_f, _chunk_size):
+            _chunks_i = images[i:i + _chunk_size]
+            _chunks_iidx = range(i, i + _chunk_size)
+            _kwargs.append(
+                {
+                    'images': _chunks_i,
+                    'iidxs': _chunks_iidx,
+                    'n_f': n_f,
+                    'conf_th': conf_th,
+                }
+            )
+
+        with mp.Pool(processes=n_processes) as pool:
+            dets: list = pool.map(self._inference_frames, _kwargs)
+
+        with open(os.path.join(self.pyworkPath, 'faces.pckl'), 'wb') as fil:
+            pickle.dump(dets, fil)
+
+        return dets
+
+    def _inference_frames(self, kwargs: dict) -> List:
+        dets = []
+        for iidx, image in zip(kwargs['iidxs'], kwargs['images']):
+            imageNumpy = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+            bboxes = self.DET.detect_faces(
+                imageNumpy, conf_th=kwargs['conf_th'], scales=[self.facedetScale])
+            frame_det = []
+            for bbox in bboxes:
+                frame_det.append({'frame': iidx, 'bbox': (bbox[:-1]).tolist(), 'conf': bbox[-1]})
+            dets.append(frame_det)
+            print('\rDetecting frame: %0.5d/%d' % (iidx, kwargs['n_f']), end='')
         return dets
 
     def bb_intersection_over_union(self, boxA: list, boxB: list) -> float:
@@ -218,7 +243,7 @@ class ActiveSpeakerExtracter(Processor):
                     tracks.append({'frame': frameI, 'bbox': bboxesI})
         return tracks
 
-    def crop_video(self, flist: list, track: dict, cropFile: str) -> dict:
+    def crop_video(self, flist: list, track: dict, cropFile: str) -> None:
         # CPU: crop the face clips
         vOut = cv2.VideoWriter(
             cropFile + 't.avi', cv2.VideoWriter_fourcc(*'XVID'), 25, (224, 224))  # Write video
@@ -257,7 +282,7 @@ class ActiveSpeakerExtracter(Processor):
         os.remove(cropFile + 't.avi')
         return {'track': track, 'proc_track': dets}
 
-    def evaluate_network(self, files: list) -> list:
+    def evaluate_network(self, files: list) -> None:
         # GPU: active speaker detection by pretrained TalkNet
         self.asd.eval()
         allScores = []
@@ -310,7 +335,7 @@ class ActiveSpeakerExtracter(Processor):
         with open(os.path.join(self.pyworkPath, 'scores.pckl'), 'wb') as fil:
             pickle.dump(allScores, fil)
 
-    def _detect_active_speaker(self) -> int:
+    def _detect_active_speaker(self) -> list:
         with open(os.path.join(self.pyworkPath, 'scores.pckl'), mode='rb') as f:
             scores = pickle.load(f)
         _crop_paths = []
@@ -388,13 +413,13 @@ class ActiveSpeakerExtracter(Processor):
         flist.sort()
         out_path = os.path.join(self.pyworkPath, 'faces.pckl')
         if not os.path.isfile(out_path):
-            faces = self.inference_video(flist=flist, conf_th=0.99)
+            faces = self._inference_video(flist=flist, conf_th=0.99)
         else:
             with open(out_path, mode='rb') as f:
                 faces = pickle.load(f)
         return faces
     
-    def _crop_face(self, scene: list, faces: list) -> List[dict]:
+    def _crop_face(self, scene: list, faces: list) -> None:
         flist = glob.glob("%s/*.jpg" % self.pyframesPath)
         flist.sort()
         out_path = os.path.join(self.pyworkPath, 'tracks.pckl')
@@ -492,11 +517,11 @@ class ActiveSpeakerExtracter(Processor):
         logger = get_logger(
             name=__name__,
             log_path=log_path,
-            is_stream=False,
+            is_stream=True,
         )
         logger_ = get_logger(
             log_path=log_path,
-            is_stream=False,
+            is_stream=True,
             format="%(message)s"
         )
 
@@ -519,7 +544,7 @@ class ActiveSpeakerExtracter(Processor):
             audio_ids       = [os.path.basename(pa)[:-4] for pa in chunk_audio_list]
         else:
             if not sample['demo'][0]:
-                if sample['uploader'] == 'truyenhinhnhandantv':
+                if sample['uploader'][0] == 'truyenhinhnhandantv':
                     self.duration = 17
 
             logger.info("Check nw")
@@ -567,8 +592,9 @@ class ActiveSpeakerExtracter(Processor):
                         repo_id=self.network_repo_id,
                         overwrite=False,
                     )
-                prefix, _ = os.path.split(self.network_dir.rstrip('/'))
-                shutil.rmtree(prefix)
+                if not sample['demo']:
+                    prefix, _ = os.path.split(self.network_dir.rstrip('/'))
+                    shutil.rmtree(prefix)
 
         output_sample: dict = copy.copy(sample)
         for k in sample.keys():

@@ -28,7 +28,7 @@ class Normalizer(Tasker):
             log_path=None,
         )
 
-    def do(self, metadata_dict: dict,  *args, **kwargs) -> Any:
+    def do(self, metadata_dict: dict,  *args, **kwargs) -> dict:
 
         #metadata_dict['video_path'] = self._normalize(video_path=metadata_dict['video_path'])
 

@@ -431,7 +431,7 @@ class VSP_LLM_dataset(FairseqDataset):
         src_lang, tgt_lang = fid.split("/")[1].split("-")
         if src_lang == tgt_lang:
             txt_feats = self.llm_tokenizer(
-                f"Recognize this speech in {self.lang_dict[src_lang]}. Input : ",
+                f"Hãy nhận diện câu tiếng Việt này. Đầu vào: ",
                 return_tensors="pt",
             ).input_ids[0]
         else:

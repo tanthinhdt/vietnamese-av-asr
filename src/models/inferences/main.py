@@ -6,9 +6,9 @@ sys.path.append(os.getcwd())
 import argparse
 
 from src.models.utils.demo import create_demo_mainfest
-from src.models.taskers import Checker, Normalizer, Detector
+from src.models.taskers import Checker, Normalizer, ASDDetector, DemoCropper
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('main')
 
 
 def get_args() -> argparse.Namespace:
@@ -41,19 +41,24 @@ def get_args() -> argparse.Namespace:
 def infer(args: argparse.Namespace):
     checker = Checker()
     normalizer = Normalizer()
-    detector = Detector()
+    detector = ASDDetector()
+    cropper = DemoCropper()
 
+    # check visual and audio
     checked_metadata = checker.do(video_path=args.video_path)
 
     # normalize video
     normalized_metadata = normalizer.do(metadata_dict=checked_metadata)
 
-    # asd detect
-    detector.do(metadata_dict=normalized_metadata,tmp_dir='data/interim/',output_dir='data/processed/')
+    # detect speaker
+    samples = detector.do(metadata_dict=normalized_metadata)
+
+    # crop mouth
+    samples = cropper.do(samples)
 
     # create mainfest file
     logger.info('create mainfest file')
-    create_demo_mainfest()
+    create_demo_mainfest(samples_dict=samples)
 
     # dump hubert feature
     dump_h_f = ("python src/features/dump_hubert_feature.py src/models/dataset/vsr/vi/ test "

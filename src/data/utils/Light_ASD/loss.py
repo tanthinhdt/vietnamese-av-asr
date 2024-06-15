@@ -15,7 +15,7 @@ class lossAV(nn.Module):
 		if labels == None:
 			predScore = x[:,1]
 			predScore = predScore.t()
-			predScore = predScore.view(-1).detach().to(self.device).numpy()
+			predScore = predScore.view(-1).detach().cpu().numpy()
 			return predScore
 		else:
 			x1 = x / r

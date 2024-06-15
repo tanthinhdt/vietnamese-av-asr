@@ -21,6 +21,9 @@ Pre-processing:
                 Sample rate: 16000
 """
 
+from .tasker import Tasker
 from .checker import Checker
 from .normalizer import Normalizer
-from .detector import Detector
+from .asd_detector import ASDDetector
+from .cropper import DemoCropper
+

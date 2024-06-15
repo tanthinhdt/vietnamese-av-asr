@@ -155,9 +155,9 @@ class ResEncoder(nn.Module):
             self.trunk.load_state_dict(trunk_std)
 
     def forward(self, x):
-        x = x.to(torch.float32)
-        B, C, T, H, W = x.size()
-        x = self.frontend3D(x)
+        with torch.autocast(device_type='cuda' if torch.cuda.is_available() else 'cpu'):
+            B, C, T, H, W = x.size()
+            x = self.frontend3D(x)
         Tnew = x.shape[2]
         x = self.threeD_to_2D_tensor(x)
         x = self.trunk(x)

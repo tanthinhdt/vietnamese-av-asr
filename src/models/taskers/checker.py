@@ -48,6 +48,11 @@ class Checker(Tasker):
         metadata_dict['match_fr'] = self._check_frame_rate(_stream_dict)
         metadata_dict['match_sr'] = self._check_sample_rate(_stream_dict)
 
+        if not metadata_dict['has_v']:
+            pass
+        if not metadata_dict['has_a']:
+            pass
+
         return metadata_dict
 
     def _check_is_file(self, video_path: str) -> bool:

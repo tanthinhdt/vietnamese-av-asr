@@ -48,7 +48,7 @@ class S3FD():
                     j = 0
                     while detections[0, i, j, 0] > conf_th:
                         score = detections[0, i, j, 0]
-                        pt = (detections[0, i, j, 1:] * scale).to(self.device).numpy()
+                        pt = (detections[0, i, j, 1:] * scale).cpu().numpy()
                         bbox = (pt[0], pt[1], pt[2], pt[3], score)
                         bboxes = np.vstack((bboxes, bbox))
                         j += 1

@@ -37,8 +37,6 @@ class LandmarksDetector:
                 bbox_size = (bbox[2] - bbox[0]) + (bbox[3] - bbox[1])
                 x_s, y_s = bbox[0:2]
                 x_e, y_e = (bboxC.xmin + bboxC.width) * iw, (bboxC.ymin + bboxC.height) * ih
-                print(x_s,y_s,x_e,y_e)
-                exit()
                 if bbox_size > max_size:
                     max_id, max_size = idx, bbox_size
                 lmx = [

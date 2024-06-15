@@ -38,9 +38,9 @@ class ASD(nn.Module):
             nlossV = self.lossV.forward(outsV, labels, r)
             nloss = nlossAV + 0.5 * nlossV
 
-            lossV += nlossV.detach().to(device=self.device).numpy()
-            lossAV += nlossAV.detach().to(device=self.device).numpy()
-            loss += nloss.detach().to(device=self.device).numpy()
+            lossV += nlossV.detach().cpu().numpy()
+            lossAV += nlossAV.detach().cpu().numpy()
+            loss += nloss.detach().cpu().numpy()
             top1 += prec
             nloss.backward()
             self.optim.step()
@@ -64,7 +64,7 @@ class ASD(nn.Module):
                 outsAV= self.model.forward_audio_visual_backend(audioEmbed, visualEmbed)  
                 labels = labels[0].reshape((-1)).to(self.device) 
                 _, predScore, _, _ = self.lossAV.forward(outsAV, labels)    
-                predScore = predScore[:,1].detach().to(self.device).numpy()
+                predScore = predScore[:,1].detach().cpu().numpy()
                 predScores.extend(predScore)
                 # break
         evalLines = open(evalOrig).read().splitlines()[1:]
