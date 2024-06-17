@@ -8,9 +8,10 @@
 LANG=vi    # language direction (e.g 'en' for VSR task / 'en-es' for En to Es VST task)
 
 # set paths
-ROOT=$(dirname "$(dirname "$(readlink -fn "$0")")")
-MODEL_SRC=${ROOT}/src
-_MODEL_SRC=${MODEL_SRC}/models
+ROOT=$(dirname "$(dirname "$(dirname "$(dirname "$(readlink -fn "$0")")")")")
+
+SRC_DIR=${ROOT}/src
+_MODEL_SRC=${SRC_DIR}/models
 
 LLM_PATH="vilm/vinallama-2.7b"   # path to llama checkpoint
 
@@ -39,10 +40,10 @@ fi
 # start decoding
 export PYTHONPATH="${ROOT}/fairseq:$PYTHONPATH"
 export HYDRA_FULL_ERROR=1
-CUDA_VISIBLE_DEVICES=0 python -B ${_MODEL_SRC}/vsp_llm_decode.py \
+CUDA_VISIBLE_DEVICES=0 python -B ${_MODEL_SRC}/vsp_llm/vsp_llm_decode.py \
     --config-dir ${_MODEL_SRC}/configs \
     --config-name s2s_decode \
-        common.user_dir=${MODEL_SRC} \
+        common.user_dir=${SRC_DIR} \
         dataset.gen_subset=test \
         override.data=${DATA_PATH} \
         override.label_dir=${DATA_PATH}\

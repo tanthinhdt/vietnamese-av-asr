@@ -20,9 +20,9 @@ import numpy as np
 DBG=True if len(sys.argv) == 1 else False
 
 if DBG:
-    from src.data.vsp_llm_dataset import VSP_LLM_dataset
+    from src.data.vsp_llm.vsp_llm_dataset import VSP_LLM_dataset
 else:
-    from src.data.vsp_llm_dataset import VSP_LLM_dataset
+    from src.data.vsp_llm.vsp_llm_dataset import VSP_LLM_dataset
 
 logger = logging.getLogger(__name__)
 

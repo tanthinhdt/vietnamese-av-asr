@@ -23,7 +23,7 @@ from scipy.io import wavfile
 DBG=True if len(sys.argv) == 1 else False
 
 if DBG:
-    import utils as custom_utils
+    import src.utils as custom_utils
     logging.basicConfig(
         format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S",
@@ -76,6 +76,7 @@ def load_audio_visual(manifest_path, max_keep, min_keep, frame_rate, label_paths
         )
     )
     return root, names, inds, tot, sizes
+
 
 def load_label(label_path, inds, tot):
     with open(label_path) as f:

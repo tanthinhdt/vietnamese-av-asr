@@ -7,11 +7,11 @@ import argparse
 from src.data.utils import pipe, pipe_file, reset_demo, get_logger
 from src.data.processors.tracker import track_video_file
 
-logger = get_logger(name=__name__,is_stream=True)
+logger = get_logger(name=__name__, is_stream=True)
 
 
-def prepare_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser("Full pipeline to process end-to-end video (url/file path).")
+def get_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser("Full pipeline process end-to-end video (url/file path) for data collection.")
 
     parser.add_argument(
         '--url',
@@ -60,8 +60,8 @@ def prepare_args() -> argparse.Namespace:
         nargs='*',
         required=False,
         default=['full'],
-        help='Tasks of pipeline (must consecutive). Order the tasks track ->\
-              download -> asd -> crop -> vndetect -> transcribe. "full" execute all tasks.'
+        help='Tasks of pipeline (must consecutive). Order the tasks '
+             'track -> download -> asd -> crop -> vndetect -> transcribe. "full" execute all tasks.'
     )
 
     parser.add_argument(
@@ -137,5 +137,5 @@ def main(args: argparse.Namespace):
 
 
 if __name__ == '__main__':
-    p_args = prepare_args()
+    p_args = get_args()
     main(args=p_args)

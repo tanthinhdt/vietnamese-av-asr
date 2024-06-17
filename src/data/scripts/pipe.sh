@@ -70,6 +70,8 @@ if [ -z "$overwrite" ]; then
     overwrite="--overwrite"
 fi
 
+# Unable
+exit 1
 
 # Track url and upload to track hub.
 python src/data/tasks/track.py --url $url --channel $channel_name $overwrite --demo

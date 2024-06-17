@@ -5,14 +5,12 @@
 # LICENSE file in the root directory of this source tree.
 
 import logging
-import os, glob
+import os
 import sys
 from typing import Dict, List, Optional, Tuple
 
-import numpy as np
-
 from dataclasses import dataclass, field
-from fairseq import metrics, search
+from fairseq import search
 from fairseq.data import Dictionary, encoders
 from fairseq.dataclass.configs import FairseqDataclass
 from fairseq.tasks import register_task
@@ -24,10 +22,10 @@ from argparse import Namespace
 DBG=True if len(sys.argv) == 1 else False
 
 if DBG:
-    from src.data.hubert_dataset import AVHubertDataset
+    from src.data.vsp_llm.hubert_dataset import AVHubertDataset
     from sequence_generator import SequenceGenerator
 else:
-    from src.data.hubert_dataset import AVHubertDataset
+    from src.data.vsp_llm.hubert_dataset import AVHubertDataset
     from .sequence_generator import SequenceGenerator
 
 logger = logging.getLogger(__name__)

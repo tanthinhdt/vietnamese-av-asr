@@ -9,6 +9,7 @@ _TASK_URL = {
     'vndetect': "GSU24AI03-SU24AI21/detected-vietnamese-clip",
     'transcribe': "GSU24AI03-SU24AI21/transcribed-vietnamese-audio",
 }
+
 fs = HfFileSystem()
 
 
@@ -20,7 +21,9 @@ def reset_demo(channel_name: str):
         Name of channel.
     """
     for task in _TASK_URL:
-        metadata_path = os.path.join("datasets",_TASK_URL[task]+"@main","metadata",f"{channel_name}.parquet")
+        metadata_path = os.path.join(
+            "datasets", _TASK_URL[task]+"@main", "metadata", f"{channel_name}.parquet"
+        )
         if fs.isfile(metadata_path):
             fs.rm(
                 path=metadata_path,
@@ -40,7 +43,9 @@ def check_metadata_demo(task: str, channel_name: str) -> bool:
     return:
          If metadata file exist on repo.
     """
-    metadata_path = os.path.join("datasets",_TASK_URL[task]+"@main","metadata",f"{channel_name}.parquet")
+    metadata_path = os.path.join(
+        "datasets", _TASK_URL[task]+"@main", "metadata", f"{channel_name}.parquet"
+    )
     if fs.isfile(metadata_path):
         return True
     return False

@@ -82,7 +82,7 @@ def infer(args: argparse.Namespace):
     cl_count_cmd = cl_count.split(' ')
 
     # vsp_llm decode
-    decode_cmd = ['./scripts/decode.sh']
+    decode_cmd = ['src/models/scripts/decode.sh']
 
     _cmds_dict = {
         'dump_h_f': dump_h_f_cmd,

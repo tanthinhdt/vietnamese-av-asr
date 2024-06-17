@@ -211,7 +211,6 @@ class HubertEncoderWrapper(FairseqEncoder):
             ].index_select(0, new_order)
         return encoder_out
 
-
 @register_model("vsp_llm", dataclass=VSPLLMConfig)
 class avhubert_llm_seq2seq_cluster_count(BaseFairseqModel):
     def __init__(self, encoder, decoder, cfg):

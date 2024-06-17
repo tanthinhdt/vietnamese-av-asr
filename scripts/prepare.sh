@@ -22,7 +22,7 @@ pip install hf-transfer
 env HF_HUB_ENABLE_HF_TRANSFER=1
 
 
-# Install Coccoc tokenizer
+# Install CocCoc tokenizer
 pip install Cython
 git clone https://github.com/coccoc/coccoc-tokenizer.git
 cd coccoc-tokenizer
@@ -31,7 +31,3 @@ cd build
 cmake -DBUILD_PYTHON=1 -DCMAKE_INSTALL_PREFIX=/usr/local ..
 make install
 cp /usr/local/lib/python3.10/site-packages/CocCocTokenizer-1.4-py3.10-linux-x86_64.egg/CocCocTokenizer.* /usr/local/lib/python3.10/site-packages
-
-# Install packages
-pip install -r vietnamese-av-asr/requirements.txt
-

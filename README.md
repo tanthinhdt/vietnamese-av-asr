@@ -13,11 +13,7 @@ git clone -b inference https://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@github.c
 ```
 
 ## Prepare environment
-
-Install packages, dependencies.
-```bash
-./vietnamese-av-asr/scripts/prepare.sh
-```
+Read [here](scripts/README.md) to prepare environment.
 
 ## Prepare checkpoints
 - Download and move [VSP_LLM checkpoint](https://drive.google.com/file/d/1cQJ-RRZv9Qbl_4zyjZliQurcr_FwnB18/view?usp=share_link) to [checkpoints dir](src/models/checkpoints/).
@@ -36,7 +32,7 @@ Download some video...
 
 Download test demo [video file](https://drive.google.com/file/d/1kCgwpSPPAntC0HSCeCpOsDCQ_UmovijA/view?usp=share_link)
 ```bash
-./inference.sh <video-path>
+bash scripts/inference.sh <video-path>
 ```
 ##### Arguments:
 `<video-path>`: Path to video file.

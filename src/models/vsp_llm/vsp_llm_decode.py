@@ -18,6 +18,7 @@ import editdistance
 from argparse import Namespace
 import pdb
 
+import fairseq.models
 import numpy as np
 import torch
 from fairseq import checkpoint_utils, options, tasks, utils, distributed_utils
@@ -47,7 +48,7 @@ logging.root.setLevel(logging.INFO)
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-config_path = Path(__file__).resolve().parent / "configs"
+config_path = Path(__file__).resolve().parent.parent / "configs"
 
 @dataclass
 class OverrideConfig(FairseqDataclass):
@@ -122,6 +123,7 @@ def _main(cfg, output_file):
                 'w2v_path': cfg.override.w2v_path,
             },
     }
+
     models, saved_cfg, task = checkpoint_utils.load_model_ensemble_and_task([cfg.common_eval.path,],model_override_cfg,strict=False)
     models = [model.eval() for model in models]
     saved_cfg.task.modalities = cfg.override.modalities
@@ -214,7 +216,8 @@ def _main(cfg, output_file):
             continue
         
         sample['net_input']['source']['video'] = sample['net_input']['source']['video'].to(torch.half)
-        best_hypo = model.generate(target_list=sample["target"], 
+
+        best_hypo = model.generate(target_list=sample["target"],
                                    num_beams=cfg.generation.beam, 
                                    length_penalty=cfg.generation.lenpen,
                                    **sample["net_input"])
