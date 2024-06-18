@@ -2,7 +2,6 @@ from abc import ABC
 
 from typing import Any
 
-
 class Tasker(ABC):
     """The abstract class for taskers."""
 

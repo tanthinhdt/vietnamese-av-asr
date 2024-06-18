@@ -47,7 +47,7 @@ class Normalizer(Tasker):
         _tar_path = os.path.join(
             self._INTERIM_DIR, 'n_' + file_name + self._EXTENSION
         )
-        _sr_cmd = [
+        _cmd = [
             'ffmpeg',
             '-y',
             '-i', '%s' % video_path,
@@ -64,7 +64,7 @@ class Normalizer(Tasker):
         ]
 
         subprocess.run(
-            args=_sr_cmd,
+            args=_cmd,
             shell=False,
             stdout=None,
             stderr=None,
@@ -73,7 +73,7 @@ class Normalizer(Tasker):
         )
 
         if not os.path.isfile(_tar_path):
-            self._logger.exception(f"Normalize sample rate video in path '{video_path} fail.'")
+            self._logger.exception(f"Normalize sample rate video in path '{video_path}' fail.'")
             exit(123)
         return _tar_path
 

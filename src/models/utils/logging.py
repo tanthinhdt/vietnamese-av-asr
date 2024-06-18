@@ -44,7 +44,7 @@ def get_logger(
 
     # create formatter
     if format is None:
-        format = """%(asctime)s: %(name)s: %(levelname)s
+        format = """%(asctime)s | %(name)s | %(levelname)s
             "%(filename)s", module %(module)s, line %(lineno)d in <%(funcName)s>
                 --> %(message)s\
         """

@@ -4,13 +4,16 @@ from typing import List
 
 from src.models.taskers.tasker import Tasker
 from src.data.processors.cropper import Cropper
+from src.models.utils.logging import get_logger
 
 
-class DemoCropper(Tasker):
+class MouthCropper(Tasker):
 
     def __init__(self):
         super().__init__()
         self.cropper = Cropper()
+
+        self.logger = get_logger(__name__, is_stream=True, log_path=None)
 
     def do(self, samples: List[dict], *args, **kwargs) -> List[dict]:
         _samples = []
@@ -44,5 +47,7 @@ class DemoCropper(Tasker):
             _sample['audio_path'] = _new_audio_path
 
             _samples.append(_sample)
+
+        assert _samples, self.logger.warning('No mouth of speakers can be cropped.')
 
         return _samples

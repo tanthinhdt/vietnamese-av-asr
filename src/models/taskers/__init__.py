@@ -24,6 +24,6 @@ Pre-processing:
 from .tasker import Tasker
 from .checker import Checker
 from .normalizer import Normalizer
-from .asd_detector import ASDDetector
-from .cropper import DemoCropper
+from .as_detector import ASDetector
+from .cropper import MouthCropper
 

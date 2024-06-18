@@ -23,7 +23,7 @@ DBG=True if len(sys.argv) == 1 else False
 
 if DBG:
     from src.data.vsp_llm.hubert_dataset import AVHubertDataset
-    from sequence_generator import SequenceGenerator
+    from .sequence_generator import SequenceGenerator
 else:
     from src.data.vsp_llm.hubert_dataset import AVHubertDataset
     from .sequence_generator import SequenceGenerator

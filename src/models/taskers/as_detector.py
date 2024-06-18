@@ -1,42 +1,23 @@
-import glob
-import math
 import os
 
-import numpy as np
-import subprocess
-import pickle
-import cv2
-import python_speech_features
-import torch
-import multiprocessing as mp
+from typing import List
 
-from scipy              import signal
-from scipy.io           import wavfile
-from scipy.interpolate  import interp1d
-from typing             import List
-
-from scenedetect.video_manager  import VideoManager
-from scenedetect.scene_manager  import SceneManager
-from scenedetect.stats_manager  import StatsManager
-from scenedetect.detectors      import ContentDetector
-
-from src.data.utils.Light_ASD.model import ASD
-from src.data.utils.Light_ASD.model import S3FD
 from src.models.taskers.tasker import Tasker
-from src.models.utils import get_logger, get_spent_time
-
+from src.models.utils import get_logger
 from src.data.processors.as_extracter import ActiveSpeakerExtracter
 
 
-class ASDDetector(Tasker):
+class ASDetector(Tasker):
 
-    def __init__(self):
+    def __init__(self, n_process: int = 1):
         super().__init__()
-        self.detector = ActiveSpeakerExtracter()
+        self.detector = ActiveSpeakerExtracter(n_process=n_process)
         self.output_dir = 'data/processed'
         self.visual_output_dir = self.output_dir + '/visual/'
         self.audio_output_dir = self.output_dir + '/audio/'
         self.tmp_dir = 'data/interim'
+
+        self._logger = get_logger(name=__name__, is_stream=True)
     # def __init__(self,
     #              minTrack: int = 10,
     #              numFailedDet: int = 10,
@@ -495,17 +476,20 @@ class ASDDetector(Tasker):
 
         _samples = []
 
-        for _id in samples['chunk_visual_id']:
+        for _id, _c_id in zip(samples['id'],samples['chunk_visual_id']):
             if _id is None:
                 continue
             _sample = dict()
-            _sample['id'] = ['id']
-            _sample['visual_path'] = [os.path.join(self.visual_output_dir, samples['channel'][0], _id) + '.mp4']
+            _sample['id'] = [_id]
+            _sample['visual_path'] = [os.path.join(self.visual_output_dir, samples['channel'][0], _c_id) + '.mp4']
             _sample['visual_output_dir'] = [self.visual_output_dir]
-            _sample['chunk_visual_id'] = [_id]
+            _sample['chunk_visual_id'] = [_c_id]
             _sample['visual_fps'] = [self.detector.V_FPS]
             _sample['visual_num_frames'] = [self.detector.V_FRAMES]
             _sample['audio_num_frames'] = [self.detector.A_FRAMES]
             _samples.append(_sample)
 
+        assert _samples, self._logger.warning('No speaker is detected in video.')
+
         return _samples
+

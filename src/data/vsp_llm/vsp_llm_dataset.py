@@ -24,7 +24,7 @@ from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
 DBG = True if len(sys.argv) == 1 else False
 
 if DBG:
-    import utils as custom_utils
+    from src.utils import utils_vsp_llm as custom_utils
 
     logging.basicConfig(
         format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",

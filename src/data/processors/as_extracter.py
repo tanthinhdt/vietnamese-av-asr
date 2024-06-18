@@ -46,6 +46,7 @@ class ActiveSpeakerExtracter(Processor):
                  minFaceSize: int = 1,
                  nDataLoaderThread: int = 10,
                  pretrainModel: str = "src/weights/pretrain_AVA_CVPR.model",
+                 n_process: int = 1,
                  ) -> None:
 
         super().__init__()
@@ -58,6 +59,7 @@ class ActiveSpeakerExtracter(Processor):
         self.nDataLoaderThread      = nDataLoaderThread
         self.pretrainModel          = pretrainModel
         self.device                 = "cuda" if torch.cuda.is_available() else "cpu"
+        self.n_process              = n_process
 
         # threshold
         self.speaking_frame_count_threshold     = 30
@@ -65,7 +67,7 @@ class ActiveSpeakerExtracter(Processor):
         self.frame_window_length                = 4
         self.time_interval                      = 3
         self.start                              = 0.0
-        self.duration                           = 10000.0
+        self.duration                           = 100000.0
 
         # hyper data
         self.V_FPS      = 25
@@ -114,7 +116,7 @@ class ActiveSpeakerExtracter(Processor):
 
         return sceneList
 
-    @get_spent_time
+    @get_spent_time(message='Spent time:')
     def _inference_video(self, flist: list, conf_th: float) -> list:
         n_f = len(flist)
         dets = []
@@ -132,7 +134,7 @@ class ActiveSpeakerExtracter(Processor):
             pickle.dump(dets, fil)
         return dets
 
-    @get_spent_time
+    @get_spent_time(message='Spent time:')
     def _inference_video_v2(self, video_path: str, conf_th: float):
         frames = []
         dets = []
@@ -156,12 +158,11 @@ class ActiveSpeakerExtracter(Processor):
             fidx += 1
         return dets
 
-    @get_spent_time
+    @get_spent_time(message='Spent time:')
     def _inference_video_v1(self, flist: list, conf_th: float) -> list:
         images = [cv2.imread(f) for f in flist]
         n_f = len(images)
-        n_processes = 5
-        _chunk_size = math.ceil(n_f / n_processes)
+        _chunk_size = math.ceil(n_f / self.n_process)
         _kwargs = []
         for i in range(0, n_f, _chunk_size):
             _chunks_i = images[i:i + _chunk_size]
@@ -175,8 +176,13 @@ class ActiveSpeakerExtracter(Processor):
                 }
             )
 
-        with mp.Pool(processes=n_processes) as pool:
-            dets: list = pool.map(self._inference_frames, _kwargs)
+        with mp.Pool(processes=self.n_process) as pool:
+            _dets: list = pool.map(self._inference_frames, _kwargs)
+
+        dets = []
+        for det in _dets:
+            dets.extend(det)
+        dets.sort(key=lambda x: x['frame'])
 
         with open(os.path.join(self.pyworkPath, 'faces.pckl'), 'wb') as fil:
             pickle.dump(dets, fil)
@@ -402,7 +408,7 @@ class ActiveSpeakerExtracter(Processor):
     def _get_scene(self) -> List[dict]:
         out_path = os.path.join(self.pyworkPath, 'scene.pckl')
         if not os.path.isfile(out_path):
-                scene = self.scene_detect()
+            scene = self.scene_detect()
         else:
             with open(out_path,mode='rb') as f:
                 scene = pickle.load(f)
@@ -576,7 +582,7 @@ class ActiveSpeakerExtracter(Processor):
             visual_ids  = []
             audio_ids   = []
             if crop_paths:
-                logger.info('Split into 3s segment')
+                logger.info(f'Split into {self.time_interval}s segment')
                 visual_ids, audio_ids = self._split_into_equally(self.network_dir, crop_paths=crop_paths)
             if not visual_ids:
                 sample['id']    = [None]

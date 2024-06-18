@@ -9,16 +9,16 @@ Each one has corresponding way to install dependencies, packages.
 ## Local machine
 ### 1. Create conda environment
 ```bash
-conda create -n vietnamese-av-asr python=3.10 -y
+conda create -n vietnamese-av-asr python=3.9 -y
 ``` 
 
-[//]: # (Make sure python's version is 3.10 in order to avoid unexpected errors)
+[//]: # (Make sure python's version is 3.9 in order to avoid unexpected errors)
 
 [//]: # (Check version fo python)
 
 [//]: # (```bash)
 
-[//]: # (python --version #should be 3.10.*)
+[//]: # (python --version #should be 3.9.*)
 
 [//]: # (```)
 
@@ -45,7 +45,7 @@ mkdir build
 cd build
 cmake -DBUILD_PYTHON=1 -DCMAKE_INSTALL_PREFIX=/usr/local ..
 make install
-cp /usr/local/lib/python3.10/site-packages/CocCocTokenizer-1.4-py3.10-linux-x86_64.egg/CocCocTokenizer.* /usr/local/lib/python3.10/site-packages
+cp /usr/local/lib/python3.9/site-packages/CocCocTokenizer-1.4-py3.9-linux-x86_64.egg/CocCocTokenizer.* /path/to/env/site-packages
 ```
 ### 4. Install packages
 ```bash

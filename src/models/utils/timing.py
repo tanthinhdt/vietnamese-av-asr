@@ -1,11 +1,12 @@
 import time
 
 
-def get_spent_time(func):
-    def _wrapper(*args, **kwargs):
-        start = time.time()
-        result = func(*args, **kwargs)
-        print()
-        print(time.time() - start)
-        return result
-    return _wrapper
+def get_spent_time(message):
+    def message_wrapper(func):
+        def _wrapper(*args, **kwargs):
+            start = time.time()
+            result = func(*args, **kwargs)
+            print(message, time.time() - start, sep=' ', end='\n\n')
+            return result
+        return _wrapper
+    return message_wrapper

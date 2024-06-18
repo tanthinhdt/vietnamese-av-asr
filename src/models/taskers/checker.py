@@ -48,12 +48,17 @@ class Checker(Tasker):
         metadata_dict['match_fr'] = self._check_frame_rate(_stream_dict)
         metadata_dict['match_sr'] = self._check_sample_rate(_stream_dict)
 
-        if not metadata_dict['has_v']:
-            pass
-        if not metadata_dict['has_a']:
-            pass
+        self.post_do(metadata_dict)
 
         return metadata_dict
+
+    def post_do(self, metadata_dict: dict):
+        if not metadata_dict['has_v']:
+            self._logger.warning(f"Video in '{metadata_dict['video_path']}\' has no visual.")
+            exit()
+        if not metadata_dict['has_a']:
+            self._logger.warning(f"Video in '{metadata_dict['video_path']}\' has no audio.")
+            exit()
 
     def _check_is_file(self, video_path: str) -> bool:
         """
