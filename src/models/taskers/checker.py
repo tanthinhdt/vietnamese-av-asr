@@ -5,6 +5,11 @@ import json
 from src.models.taskers.tasker import Tasker
 from src.models.utils.logging import get_logger
 
+logger = get_logger(
+    name=__name__,
+    is_stream=True,
+    log_path=None,
+)
 
 class Checker(Tasker):
     """Check condition of sample"""
@@ -29,12 +34,6 @@ class Checker(Tasker):
         self._FRAME_RATE = kwargs.get('frame_rate', self._SAMPLE_RATE)
         self._EXTENSION = kwargs.get('extension', self._EXTENSION)
 
-        self._logger = get_logger(
-            name=__name__,
-            is_stream=True,
-            log_path=None,
-        )
-
     def do(self, video_path: str, *args, **kwargs) -> dict:
 
         _stream_dict = self._get_metadata_streams(video_path=video_path)
@@ -54,10 +53,10 @@ class Checker(Tasker):
 
     def post_do(self, metadata_dict: dict):
         if not metadata_dict['has_v']:
-            self._logger.warning(f"Video in '{metadata_dict['video_path']}\' has no visual.")
+            logger.warning(f"Video in '{metadata_dict['video_path']}\' has no visual.")
             exit()
         if not metadata_dict['has_a']:
-            self._logger.warning(f"Video in '{metadata_dict['video_path']}\' has no audio.")
+            logger.warning(f"Video in '{metadata_dict['video_path']}\' has no audio.")
             exit()
 
     def _check_is_file(self, video_path: str) -> bool:
@@ -88,10 +87,10 @@ class Checker(Tasker):
              Dictionary contains metadata.
         """
         if not self._check_is_file(video_path=video_path):
-            self._logger.error(f"The video file '{video_path}' not exist.")
+            logger.error(f"The video file '{video_path}' not exist.")
             exit(123)
         if not self._check_ext(video_path=video_path):
-            self._logger.warning(f"Highly recommend use video with extension '{self._EXTENSION}'.")
+            logger.warning(f"Highly recommend use video file with extension '{self._EXTENSION}'.")
             exit(123)
         cmd = [
             "ffprobe",

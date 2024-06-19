@@ -5,6 +5,17 @@
 # This source code is licensed under the license found in the
 # LICENSE file in the root directory of this source tree.
 
+demo=False
+
+while [[ "$#" -gt 0 ]]; do
+  case "$1" in
+    --demo)
+      demo=True
+      shift 1
+      ;;
+  esac
+done
+
 LANG=vi    # language direction (e.g 'en' for VSR task / 'en-es' for En to Es VST task)
 
 # set paths
@@ -53,5 +64,6 @@ CUDA_VISIBLE_DEVICES=0 python -B ${_MODEL_SRC}/vsp_llm/vsp_llm_decode.py \
         override.eval_bleu=${USE_BLEU} \
         override.llm_ckpt_path=${LLM_PATH} \
         override.w2v_path=${W2V_PATH} \
+        override.demo=$demo \
         common_eval.path=${MODEL_PATH} \
         common_eval.results_path=${OUT_PATH}/${TASK}/${LANG}

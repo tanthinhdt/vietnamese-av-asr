@@ -21,7 +21,6 @@ dill==0.3.8
 editdistance==0.6.0
 einops==0.7.0
 fairseq @ git+https://github.com/facebookresearch/fairseq.git@afc77bdf4bb51453ce76f1572ef2ee6ddcda8eeb
-ffmpeg==1.4
 filelock==3.14.0
 flatbuffers==24.3.25
 fonttools==4.53.0

@@ -34,6 +34,4 @@ def create_demo_mainfest(
     f.writelines(_lines)
     f.close()
 
-    logger.info("Created mainfest for demo.")
-
     return _dir_path

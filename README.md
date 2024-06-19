@@ -9,18 +9,15 @@ Steps to clone repo, prepare environment and run inference demo.
 Clone branch 'inference' from project repo.
 
 ```bash
-git clone -b inference https://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@github.com/tanthinhdt/vietnamese-av-asr.git
+git clone -b inference https://github.com/minhnv4099/vietnamese-av-asr.git
 ```
 
 ## Prepare environment
-Read [here](scripts/README.md) to prepare environment.
+Read [prepare environment.](scripts/README.md) 
 
 ## Prepare checkpoints
 - Download and move [VSP_LLM checkpoint](https://drive.google.com/file/d/1cQJ-RRZv9Qbl_4zyjZliQurcr_FwnB18/view?usp=share_link) to [checkpoints dir](src/models/checkpoints/).
 - Download and move[ AV_HuBert checkpoint](https://drive.google.com/file/d/167-_DiLutzMZtDcnA69tdlp5KxwMmHxQ/view?usp=share_link) to [checkpoints dir](src/models/checkpoints/).
-- Download [k-mean model](https://drive.google.com/file/d/1QRhlMRAclLgZ-sv8vQZBRMlG_jbvmArn/view?usp=share_link). 
-  1. MUST rename it to 'km_model.km'.
-  2. Move 'km_model.km' to [dataset dir](src/models/dataset/vsr/vi)
 
 ## Go to project dir
 ```bash
@@ -37,10 +34,23 @@ bash scripts/inference.sh <video-path>
 ##### Arguments:
 `<video-path>`: Path to video file.
 
-Result saved in [dir](decode/)
+Result saved in [dir](decode)
 
 ## Video combine transcript
-...
+### You can see output video contains:
+1. Scenes of speaker.
+2. Transcripts corresponding scenes
+
+
+### There are 2 version outputs:
+1. Face of speaker, [here](decode/vsr/vi/output)
+2. Origin scene, [here](decode/vsr/vi/output)
+
+### Note:
+1.  The output video is JUST INTUITIVE,
+    means the transcript in video ASYNCHRONOUS with audio and visual. 
+    Because of model's purpose.
+2. The output video contains ONLY scenes of speaker
 
 
 

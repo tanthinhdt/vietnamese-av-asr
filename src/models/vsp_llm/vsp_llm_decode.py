@@ -63,7 +63,7 @@ class OverrideConfig(FairseqDataclass):
     eval_bleu: bool = field(default=False, metadata={'help': 'evaluate bleu score'})
     llm_ckpt_path: str = field(default=MISSING, metadata={'help': 'path to llama checkpoint'})
     w2v_path: str = field(default=MISSING, metadata={'help': 'path to hubert checkpoint'})
-    demo: bool = field(default=True, metadata={'help': 'Indicate whether demo or decode'})
+    demo: bool = field(default=False, metadata={'help': 'Indicate whether demo or decode'})
 
 @dataclass
 class InferConfig(FairseqDataclass):
@@ -235,35 +235,39 @@ def _main(cfg, output_file):
             instruction = tokenizer.decode(sample['net_input']['source']['text'][i].int().cpu(), skip_special_tokens=True, clean_up_tokenization_spaces=False)
             result_dict['instruction'].append(instruction)
             result_dict['hypo'].append(hypo_str)
-            logger.info(f"\nINST:{instruction}\nREF:{ref_sent}\nHYP:{hypo_str}\n")
+            if cfg.override.demo:
+                logger.info(f"\nINST:{instruction}\nHYP:{hypo_str}\n")
+            else:
+                logger.info(f"\nINST:{instruction}\nREF:{ref_sent}\nHYP:{hypo_str}\n")
 
     yaml_str = OmegaConf.to_yaml(cfg.generation)
     fid = int(hashlib.md5(yaml_str.encode("utf-8")).hexdigest(), 16)
     fid = fid % 1000000
     result_fn = f"{cfg.common_eval.results_path}/hypo-{fid}.json"
     json.dump(result_dict, open(result_fn, 'w'), indent=4)
-    if not cfg.override.eval_bleu:
-        n_err, n_total = 0, 0
-        assert len(result_dict['hypo']) == len(result_dict['ref'])
-        for hypo, ref in zip(result_dict['hypo'], result_dict['ref']):
-            hypo, ref = hypo.strip().split(), ref.strip().split()
-            n_err += editdistance.eval(hypo, ref)
-            n_total += len(ref)
-        wer = 100 * n_err / n_total
-        wer_fn = f"{cfg.common_eval.results_path}/wer.{fid}"
-        with open(wer_fn, "w") as fo:
-            fo.write(f"WER: {wer}\n")
-            fo.write(f"err / num_ref_words = {n_err} / {n_total}\n\n")
-            fo.write(f"{yaml_str}")
-        logger.info(f"WER: {wer}%")
-    else:
-        bleu = sacrebleu.corpus_bleu(result_dict['hypo'], [result_dict['ref']])
-        bleu_score = bleu.score
-        bleu_fn = f"{cfg.common_eval.results_path}/bleu.{fid}"
-        with open(bleu_fn, "w") as fo:
-            fo.write(f"BLEU: {bleu_score}\n")
-            fo.write(f"{yaml_str}")
-        logger.info(f"BLEU: {bleu_score}\n")
+    if not cfg.override.demo:
+        if not cfg.override.eval_bleu:
+            n_err, n_total = 0, 0
+            assert len(result_dict['hypo']) == len(result_dict['ref'])
+            for hypo, ref in zip(result_dict['hypo'], result_dict['ref']):
+                hypo, ref = hypo.strip().split(), ref.strip().split()
+                n_err += editdistance.eval(hypo, ref)
+                n_total += len(ref)
+            wer = 100 * n_err / n_total
+            wer_fn = f"{cfg.common_eval.results_path}/wer.{fid}"
+            with open(wer_fn, "w") as fo:
+                fo.write(f"WER: {wer}\n")
+                fo.write(f"err / num_ref_words = {n_err} / {n_total}\n\n")
+                fo.write(f"{yaml_str}")
+            logger.info(f"WER: {wer}%")
+        else:
+            bleu = sacrebleu.corpus_bleu(result_dict['hypo'], [result_dict['ref']])
+            bleu_score = bleu.score
+            bleu_fn = f"{cfg.common_eval.results_path}/bleu.{fid}"
+            with open(bleu_fn, "w") as fo:
+                fo.write(f"BLEU: {bleu_score}\n")
+                fo.write(f"{yaml_str}")
+            logger.info(f"BLEU: {bleu_score}\n")
     return
 
 

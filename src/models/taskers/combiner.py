@@ -1,4 +1,5 @@
 import os
+import shutil
 import subprocess
 import sys
 
@@ -9,8 +10,15 @@ import json
 import time
 from typing import Any, List
 
-from src.models.taskers import Tasker
+from src.models.taskers.tasker import Tasker
 from src.models.taskers.dirs import *
+from src.models.utils.logging import get_logger
+
+logger = get_logger(
+    name=__name__,
+    log_path=None,
+    is_stream=True,
+)
 
 
 class Combiner(Tasker):
@@ -30,7 +38,6 @@ class Combiner(Tasker):
         for utt_id, hypo in sorted(zip(_hypo_dict['utt_id'], _hypo_dict['hypo']), key=lambda x: x[0]):
             _id = "%.5d" % int(utt_id.split('/')[0])
             _name = 'chunk@origin@face@video_id@' + _id
-
             _srt_path = os.path.join(_SUBTITLE_DIR, 'subtitle_%s' % _id + '.srt')
             self._prepare_srt_file(_srt_path, subtitle=hypo)
 
@@ -46,14 +53,19 @@ class Combiner(Tasker):
         _f_concat = os.path.join(_FACE_OUTPUT_DIR, 'face_concat.txt')
         self._prepare_concat_file(_o_concat, _o_output_paths)
         self._prepare_concat_file(_f_concat, _f_output_paths)
-        _o_final_output = os.path.join(_ORIGIN_OUTPUT_DIR, 'final_origin_output.mp4')
-        _f_final_output = os.path.join(_FACE_OUTPUT_DIR, 'final_face_output.mp4')
+        _o_final_output = os.path.join(_OUTPUT_DIR, 'final_origin_output.mp4')
+        _f_final_output = os.path.join(_OUTPUT_DIR, 'final_face_output.mp4')
 
         self._concat_videos(concat_file=_o_concat, output_path=_o_final_output)
         self._concat_videos(concat_file=_f_concat, output_path=_f_final_output)
 
-        return _o_final_output, _f_final_output
+        #shutil.rmtree(_FACE_OUTPUT_DIR, ignore_errors=True)
+        #shutil.rmtree(_ORIGIN_OUTPUT_DIR, ignore_errors=True)
 
+        return (
+            os.path.abspath(_o_final_output),
+            os.path.abspath(_f_final_output)
+        )
 
     def _add_subtitle(
             self,
@@ -61,8 +73,8 @@ class Combiner(Tasker):
             subtitle_path: str,
             output_path: str,
     ) -> str:
-        assert os.path.isfile(video_path), "Video file is not exist."
-        assert os.path.isfile(subtitle_path), "Subtitle file is not exist."
+        assert os.path.isfile(video_path), logger.warning("Video file is not exist.")
+        assert os.path.isfile(subtitle_path), logger.warning("Subtitle file is not exist.")
 
         _cmd = [
             'ffmpeg', '-y',
@@ -73,7 +85,8 @@ class Combiner(Tasker):
         ]
 
         subprocess.run(_cmd, shell=False, capture_output=False, stdout=None)
-        assert os.path.isfile(output_path), f"Add subtitle into video '{video_path}' fail."
+
+        assert os.path.isfile(output_path), logger.warning(f"Add subtitle into video '{video_path}' fail.")
 
         return output_path
 
@@ -94,7 +107,7 @@ class Combiner(Tasker):
             f.write('\n')
         f.close()
 
-    def _prepare_concat_file(self, concat_file: str, video_files: List[str]) -> str:
+    def _prepare_concat_file(self, concat_file: str, video_files: List[str]):
         f = open(concat_file, 'w')
 
         for video_file in video_files:
@@ -105,7 +118,7 @@ class Combiner(Tasker):
         f.close()
 
     def _concat_videos(self, concat_file: str, output_path: str):
-        assert os.path.isfile(concat_file), f"'{concat_file}' is not exist."
+        assert os.path.isfile(concat_file), logger.warning(f"'{concat_file}' is not exist.")
 
         _cmd = [
             'ffmpeg', '-y',
@@ -119,4 +132,4 @@ class Combiner(Tasker):
 
         subprocess.run(_cmd, shell=False, capture_output=False)
 
-        assert os.path.isfile(output_path), f"Concat videos into video '{output_path}' fail."
+        assert os.path.isfile(output_path), logger.warning(f"Concat videos into video '{output_path}' fail.")

@@ -42,9 +42,9 @@ class HubertFeatureReader(object):
         self.stack_order_audio = self.task.cfg.stack_order_audio
         image_crop_size, image_mean, image_std = self.task.cfg.image_crop_size, self.task.cfg.image_mean, self.task.cfg.image_std
         self.transform = custom_utils.Compose([
-            custom_utils.Normalize( 0.0,255.0 ),
+            custom_utils.Normalize(0.0, 255.0),
             custom_utils.CenterCrop((image_crop_size, image_crop_size)),
-            custom_utils.Normalize(image_mean, image_std) ])
+            custom_utils.Normalize(image_mean, image_std)])
 
         self.custom_utils = custom_utils
         logger.info(f"TASK CONFIG:\n{self.task.cfg}")
@@ -77,8 +77,8 @@ class HubertFeatureReader(object):
             audio_feats = audio_feats[:-diff]
         return video_feats, audio_feats
 
-    def load_image(self, audio_name):
-        feats = self.custom_utils.load_video(audio_name)
+    def load_image(self, video_fn):
+        feats = self.custom_utils.load_video(video_fn)
         feats = self.transform(feats)
         feats = np.expand_dims(feats, axis=-1)
         return feats
@@ -104,7 +104,6 @@ class HubertFeatureReader(object):
                 mask=False,
                 output_layer=output_layer,
                 ret_conv=ret_conv
-                # output_layer=self.layer,
             )
             return feat.squeeze(dim=0)
 
@@ -127,7 +126,6 @@ def get_path_iterator(tsv, nshard, rank):
         def iterate():
             for line in lines:
                 items = line.strip().split("\t")
-                # audio_path = f"{items[1]}:{items[0]}"
                 yield (items[1], items[2]+':'+items[0]), int(items[3])
 
         return iterate, len(lines)
@@ -137,7 +135,8 @@ def dump_feature(
         tsv_dir, split, ckpt_path, layer, nshard, rank, feat_dir, max_chunk, custom_utils=None, **kwargs
 ):
     reader = HubertFeatureReader(ckpt_path, layer, max_chunk, custom_utils=custom_utils)
-    generator, num = get_path_iterator(f"{tsv_dir}/{split}.tsv", nshard, rank)
+    tsv_path = os.path.join(tsv_dir, f"{split}.tsv")
+    generator, num = get_path_iterator(tsv_path, nshard, rank)
     iterator = generator()
 
     feat_path = f"{feat_dir}/{split}_{rank}_{nshard}.npy"

@@ -7,14 +7,14 @@ from src.models.taskers.tasker import Tasker
 from src.data.processors.cropper import Cropper
 from src.models.utils.logging import get_logger
 
+logger = get_logger(__name__, is_stream=True, log_path=None)
 
-class MouthCropper(Tasker):
+
+class DemoCropper(Tasker):
 
     def __init__(self):
         super().__init__()
         self.cropper = Cropper()
-
-        self.logger = get_logger(__name__, is_stream=True, log_path=None)
 
     def do(self, samples: List[dict], *args, **kwargs) -> List[dict]:
         _samples = []
@@ -39,21 +39,8 @@ class MouthCropper(Tasker):
             shutil.copy(src=_old_audio_path, dst=_sample['audio_path'])
             _idx = _sample['visual_path'].split('@')[-1][:-4]
 
-            # _new_visual_path = os.path.join(_v_mouth_dir, f'visual_{_idx}.mp4')
-            # _new_audio_path = _new_visual_path.replace('visual', 'audio').replace('mp4', 'wav')
-            # os.rename(
-            #     src=_sample['visual_path'],
-            #     dst=_new_visual_path
-            # )
-            # os.rename(
-            #     src=_sample['audio_path'],
-            #     dst=_new_audio_path
-            # )
-            # _sample['visual_path'] = _new_visual_path
-            # _sample['audio_path'] = _new_audio_path
-
             _samples.append(_sample)
 
-        assert _samples, self.logger.warning('No mouth of speakers can be cropped.')
+        assert _samples, logger.warning('No mouth of speakers can be cropped.')
 
         return _samples
