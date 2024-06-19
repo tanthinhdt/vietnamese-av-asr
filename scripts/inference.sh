@@ -17,4 +17,4 @@ else
   video_path=$1
 fi
 
-python src/models/inferences/main.py $video_path --demo --decode
+python src/models/inferences/main.py $video_path --decode
