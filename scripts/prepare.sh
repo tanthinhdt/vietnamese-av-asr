@@ -13,9 +13,8 @@ conda install --channel defaults conda python=3.10 --yes
 conda update --channel defaults --all --yes
 
 # Kaggle
-conda install git --yes
-conda install libffi==3.3 --yes
-
+conda install -c conda-forge ffmpeg==7.0.1 --yes
+conda install -c conda-forge git --yes
 
 # Install hf-transfer
 pip install hf-transfer

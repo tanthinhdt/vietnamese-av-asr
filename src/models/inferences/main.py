@@ -8,6 +8,7 @@ from src.models.utils.demo import create_demo_mainfest
 from src.models.taskers import Checker, Normalizer, ASDetector, MouthCropper, Combiner
 from src.models.utils.logging import get_logger
 
+logger = get_logger(__name__, is_stream=True)
 
 
 def get_args() -> argparse.Namespace:
@@ -30,7 +31,6 @@ def get_args() -> argparse.Namespace:
 
 
 def infer(args: argparse.Namespace):
-    logger = get_logger(__name__, is_stream=True)
     checker = Checker()
     detector = ASDetector(n_process=2)
     cropper = MouthCropper()
