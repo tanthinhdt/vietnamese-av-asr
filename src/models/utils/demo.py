@@ -1,16 +1,11 @@
 import os
 import sys
-import logging
+sys.path.append(os.getcwd())
 
-logging.basicConfig(
-    format="%(asctime)s | %(levelname)s | %(name)s | %(lineno)d in <%(funcName)s> | %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S",
-    level=os.environ.get("LOGLEVEL", "INFO").upper(),
-    stream=sys.stdout,
-)
-logger = logging.getLogger(__name__)
-
+from src.models.utils.logging import get_logger
 _DATASET_DIR = 'src/models/dataset'
+
+logger = get_logger(name=__name__, is_stream=True)
 
 
 def create_demo_mainfest(

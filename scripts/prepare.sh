@@ -2,14 +2,14 @@
 
 
 # Download and set up miniconda
-MINICONDA_INSTALLER_SCRIPT=Miniconda3-py39_23.11.0-2-Linux-x86_64.sh
+MINICONDA_INSTALLER_SCRIPT=Miniconda3-py310_23.11.0-2-Linux-x86_64.sh
 MINICONDA_PREFIX=/usr/local
 wget https://repo.continuum.io/miniconda/$MINICONDA_INSTALLER_SCRIPT
 chmod +x $MINICONDA_INSTALLER_SCRIPT
 ./$MINICONDA_INSTALLER_SCRIPT -b -f -p $MINICONDA_PREFIX
 
 
-conda install --channel defaults conda python=3.9 --yes
+conda install --channel defaults conda python=3.10 --yes
 conda update --channel defaults --all --yes
 
 # Kaggle
@@ -30,4 +30,4 @@ mkdir build
 cd build
 cmake -DBUILD_PYTHON=1 -DCMAKE_INSTALL_PREFIX=/usr/local ..
 make install
-cp /usr/local/lib/python3.10/site-packages/CocCocTokenizer-1.4-py3.9-linux-x86_64.egg/CocCocTokenizer.* /usr/local/lib/python3.9/site-packages
+cp /usr/local/lib/python3.10/site-packages/CocCocTokenizer-1.4-py3.10-linux-x86_64.egg/CocCocTokenizer.* /usr/local/lib/python3.10/site-packages

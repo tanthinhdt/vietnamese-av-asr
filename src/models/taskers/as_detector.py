@@ -2,7 +2,7 @@ import os
 
 from typing import List
 
-from src.models.taskers.tasker import Tasker
+from src.models.taskers import Tasker
 from src.models.utils import get_logger
 from src.data.processors.as_extracter import ActiveSpeakerExtracter
 
@@ -460,7 +460,7 @@ class ASDetector(Tasker):
         """
         sample = dict()
         sample['id'] = ['id']
-        sample['channel'] = ['channel']
+        sample['channel'] = ['face']
         sample['video_id'] = ['video_id']
         sample['video_path'] = [metadata_dict['video_path']]
         sample['demo'] = [True]
@@ -472,11 +472,13 @@ class ASDetector(Tasker):
             audio_output_dir=self.audio_output_dir,
             tmp_dir=self.tmp_dir,
             log_path=None,
+            trunc_video=True,
+            keep_origin=True,
         )
 
         _samples = []
 
-        for _id, _c_id in zip(samples['id'],samples['chunk_visual_id']):
+        for _id, _c_id in zip(samples['id'], samples['chunk_visual_id']):
             if _id is None:
                 continue
             _sample = dict()

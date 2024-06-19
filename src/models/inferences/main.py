@@ -1,4 +1,3 @@
-import logging
 import os
 import subprocess
 import sys
@@ -6,16 +5,9 @@ sys.path.append(os.getcwd())
 import argparse
 
 from src.models.utils.demo import create_demo_mainfest
-from src.models.taskers import Checker, Normalizer, ASDetector, MouthCropper
+from src.models.taskers import Checker, Normalizer, ASDetector, MouthCropper, Combiner
+from src.models.utils.logging import get_logger
 
-logging.basicConfig(
-    format="%(asctime)s | %(levelname)s | %(name)s | %(lineno)d in <%(funcName)s> | %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S",
-    level=os.environ.get("LOGLEVEL", "INFO").upper(),
-    stream=sys.stdout,
-)
-
-logger = logging.getLogger('inference_pipe')
 
 
 def get_args() -> argparse.Namespace:
@@ -25,14 +17,6 @@ def get_args() -> argparse.Namespace:
         'video_path',
         type=str,
         help="Path to video would to infer",
-    )
-
-    parser.add_argument(
-        '--demo',
-        required=False,
-        default=False,
-        action='store_true',
-        help="Demo. Use fitted k-mean model"
     )
 
     parser.add_argument(
@@ -46,17 +30,15 @@ def get_args() -> argparse.Namespace:
 
 
 def infer(args: argparse.Namespace):
+    logger = get_logger(__name__, is_stream=True)
     checker = Checker()
-    normalizer = Normalizer()
     detector = ASDetector(n_process=2)
     cropper = MouthCropper()
+    combiner = Combiner()
 
     # check visual and audio
     logger.info(f"Check existing of visual and audio in video")
     checked_metadata = checker.do(video_path=args.video_path)
-
-    # normalize video
-    #normalized_metadata = normalizer.do(metadata_dict=checked_metadata)
 
     # detect speaker
     logger.info(f"Detect active speaker in video")
@@ -102,7 +84,7 @@ def infer(args: argparse.Namespace):
     for k in _cmd_dict:
         logger.info(f"Doing step {k}")
         shell = False
-        if (k == 'learn_km' and args.demo) or (k == 'decode' and not args.decode):
+        if k == 'decode' and not args.decode:
             continue
         if k == 'rename_l':
             shell = True
@@ -112,9 +94,15 @@ def infer(args: argparse.Namespace):
             logger.warning(f'Error when {k}')
             exit()
 
+    logger.info('Combine video and transcript.')
+    _output_videos = combiner.do()
+
+    logger.info(f"2 output videos: '{_output_videos[0]}', '{_output_videos[1]}'")
+
     print('Inference DONE.')
 
 
 if __name__ == '__main__':
     p_args = get_args()
-    infer(args=p_args)
+    infer(p_args)
+
