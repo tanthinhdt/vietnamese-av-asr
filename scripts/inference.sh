@@ -6,13 +6,13 @@ Usage:
   $0
     <video-path>                    Path to video.
     [--clear-fragments]             Clear intermediate result generated during inferencing progress.
-    [--n-cluster]                   Number of cluster when learn k-means.
+    [--n-cluster]                   Number of cluster when learn k-means. Default 100
     "
     exit 1
 }
 
 clear_fragments=""
-n_cluster=40
+n_cluster=100
 video_path=''
 
 if [[ -z "$1" ]]; then
