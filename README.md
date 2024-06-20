@@ -36,7 +36,7 @@ bash scripts/inference.sh
 ##### Arguments:
 - `<video-path>`: Path to video file
 - `--clear-fragments`: Clear intermediate results generated during inferencing progress.
-- `--n-cluster`: Number of clusters when learn k-means.
+- `--n-cluster`: Number of clusters when learn k-means. Default 100.
 
 ## Video combines transcript
 ### Output video contains:
