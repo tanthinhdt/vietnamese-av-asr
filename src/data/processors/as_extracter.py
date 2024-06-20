@@ -343,13 +343,13 @@ class ActiveSpeakerExtracter(Processor):
 
                 chunk_visual_id     = 'chunk@visual@%s@%s@%05d' % (channel, video_id, i)
                 chunk_visual_path   = os.path.join(chunk_visual_dir, chunk_visual_id + '.mp4')
-                command = "ffmpeg -y -i %s -an -c:v libx264 -r 25 -ss %s -to %s -map 0 -f mp4 %s -loglevel panic" % \
+                command = "ffmpeg -y -i %s -an -c:v libx264 -b:v 1200k -r 25 -ss %s -to %s -map 0 -f mp4 %s -loglevel panic" % \
                         (_crop_path, start_time, end_time, chunk_visual_path)
                 subprocess.run(command, shell=True, stdout=None)
 
                 chunk_audio_id      = 'chunk@audio@%s@%s@%05d' % (channel, video_id, i)
                 chunk_audio_path    = os.path.join(chunk_audio_dir, chunk_audio_id + '.wav')
-                command = "ffmpeg -y -i %s -vn -ac 1 -c:a pcm_s16le -ar 16000 -ss %s -to %s -f wav %s -loglevel panic" % \
+                command = "ffmpeg -y -i %s -vn -ac 1 -c:a pcm_s16le -ar 16000 -b:a 192k -ss %s -to %s -f wav %s -loglevel panic" % \
                         (_crop_path, start_time, end_time, chunk_audio_path)
                 subprocess.run(command, shell=True, stdout=None)
 
@@ -362,7 +362,7 @@ class ActiveSpeakerExtracter(Processor):
                     subprocess.run(command, shell=True, stdout=None)
 
                 if keep_origin:
-                    # chunk origin video corresponding with cropped face
+                    # truncate origin video corresponding with cropped face
                     origin_video_id = 'chunk@origin@%s@%s@%05d' % (channel, video_id, i)
                     origin_video_path = os.path.join(origin_video_dir, origin_video_id + '.mp4')
                     command = "ffmpeg -y -i %s -c:v libx264 -c:a aac -ss %s -to %s -map 0:v:0 -map 0:a:0 -f mp4 %s -loglevel panic" % \
@@ -379,15 +379,16 @@ class ActiveSpeakerExtracter(Processor):
         
         return chunk_visual_ids, chunk_audio_ids,
 
-    def _get_frames(self, video_file: str) -> list:
+    def _get_frames(self, video_file: str) -> dict:
         cap = cv2.VideoCapture(video_file)
-        frames = []
+        i = 0
+        frames = OrderedDict()
         while cap.isOpened():
             ret, frame = cap.read()
             if not ret:
                 break
-            frames.append(frame)
-
+            frames[i] = frame
+            i += 1
         cap.release()
         return frames
 
@@ -598,7 +599,7 @@ class ActiveSpeakerExtracter(Processor):
             logger.info('Evaluate scores')
             self._compute_scores()
 
-            logger.info('Detect active speake')
+            logger.info('Detect active speaker')
             crop_paths  = self._detect_active_speaker()
             visual_ids  = []
             audio_ids   = []

@@ -19,7 +19,7 @@ class DemoCropper(Tasker):
     def do(self, samples: List[dict], *args, **kwargs) -> List[dict]:
         _samples = []
 
-        for sample in samples:
+        for i, sample in enumerate(samples):
             _v_mouth_dir = os.path.join(sample['visual_output_dir'][0], 'mouth')
             _a_mouth_dir = _v_mouth_dir.replace('visual', 'audio')
 
@@ -30,6 +30,7 @@ class DemoCropper(Tasker):
                 continue
 
             _sample = dict()
+            _sample['index'] = i
             _old_audio_path = _tmp_sample['visual_path'][0].replace('visual', 'audio').replace('mp4', 'wav')
             _sample['visual_path'] = os.path.join(_v_mouth_dir, sample['chunk_visual_id'][0] + '.mp4')
             _sample['audio_path'] = _sample['visual_path'].replace('visual', 'audio').replace('mp4', 'wav')

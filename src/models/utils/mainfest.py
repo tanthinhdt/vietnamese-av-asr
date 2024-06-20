@@ -18,7 +18,7 @@ def create_demo_mainfest(
 
     _lines = ['.\n']
 
-    for idx, sample in enumerate(samples_dict):
+    for idx, sample in enumerate(sorted(samples_dict, key=lambda x: x['index'])):
         _id = "%d/vi-vi" % idx
         _abs_visual_path = os.path.abspath(sample['visual_path'])
         _abs_audio_path = os.path.abspath(sample['audio_path'])

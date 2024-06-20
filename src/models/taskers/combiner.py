@@ -83,8 +83,12 @@ class Combiner(Tasker):
             subtitle_path: str,
             output_path: str,
     ) -> str:
-        assert os.path.isfile(video_path), logger.warning("Video file is not exist.")
-        assert os.path.isfile(subtitle_path), logger.warning("Subtitle file is not exist.")
+        if not os.path.isfile(video_path):
+            logger.critical("Video file is not exist.")
+            exit(1)
+        if not os.path.isfile(subtitle_path):
+            logger.critical("Subtitle file is not exist.")
+            exit(1)
 
         _cmd = [
             'ffmpeg', '-y',
@@ -96,7 +100,9 @@ class Combiner(Tasker):
 
         subprocess.run(_cmd, shell=False, capture_output=False, stdout=None)
 
-        assert os.path.isfile(output_path), logger.warning(f"Add subtitle into video '{video_path}' fail.")
+        if not os.path.isfile(output_path):
+            logger.warning(f"Add subtitle into video '{video_path}' fail.")
+            exit(1)
 
         return output_path
 
@@ -128,7 +134,8 @@ class Combiner(Tasker):
         f.close()
 
     def _concat_videos(self, concat_file: str, output_path: str):
-        assert os.path.isfile(concat_file), logger.warning(f"'{concat_file}' is not exist.")
+        if not os.path.isfile(concat_file):
+            logger.critical(f"'{concat_file}' is not exist.")
 
         _cmd = [
             'ffmpeg', '-y',
@@ -142,4 +149,5 @@ class Combiner(Tasker):
 
         subprocess.run(_cmd, shell=False, capture_output=False)
 
-        assert os.path.isfile(output_path), logger.warning(f"Concat videos into video '{output_path}' fail.")
+        if not os.path.isfile(output_path):
+            logger.critical(f"Concat videos into video '{output_path}' fail.")
