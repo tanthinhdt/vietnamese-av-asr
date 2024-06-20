@@ -125,7 +125,7 @@ class Combiner(Tasker):
 
     def _prepare_concat_file(self, concat_file: str, video_files: List[str]):
         f = open(concat_file, 'w')
-
+        video_files.sort()
         for video_file in video_files:
             _short_path = os.path.abspath(video_file)
             _line = f"file {_short_path}"
