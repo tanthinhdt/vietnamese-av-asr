@@ -1,5 +1,4 @@
 import os
-import shutil
 import subprocess
 import sys
 
@@ -11,7 +10,7 @@ import time
 from typing import Any, List
 
 from src.models.taskers.tasker import Tasker
-from src.models.taskers.dirs import *
+from src.models.utils.dirs import *
 from src.models.utils.logging import get_logger
 
 logger = get_logger(
@@ -30,7 +29,7 @@ class Combiner(Tasker):
         _f_output_paths = []
         _m_output_paths = []
         _o_output_paths = []
-        decode_file = glob.glob(_RESULT_DIR + '/hypo*.json')[0]
+        decode_file = glob.glob(_DECODE_DIR + '/hypo*.json')[0]
 
         with open(decode_file, 'r') as f:
             _hypo_dict = json.load(f)
@@ -53,19 +52,30 @@ class Combiner(Tasker):
         _f_concat = os.path.join(_FACE_OUTPUT_DIR, 'face_concat.txt')
         self._prepare_concat_file(_o_concat, _o_output_paths)
         self._prepare_concat_file(_f_concat, _f_output_paths)
-        _o_final_output = os.path.join(_OUTPUT_DIR, 'final_origin_output.mp4')
-        _f_final_output = os.path.join(_OUTPUT_DIR, 'final_face_output.mp4')
+        _o_final_output = os.path.join(_FINAL_RESULT_DIR, 'final_origin_output.mp4')
+        _f_final_output = os.path.join(_FINAL_RESULT_DIR, 'final_face_output.mp4')
 
         self._concat_videos(concat_file=_o_concat, output_path=_o_final_output)
         self._concat_videos(concat_file=_f_concat, output_path=_f_final_output)
-
-        #shutil.rmtree(_FACE_OUTPUT_DIR, ignore_errors=True)
-        #shutil.rmtree(_ORIGIN_OUTPUT_DIR, ignore_errors=True)
 
         return (
             os.path.abspath(_o_final_output),
             os.path.abspath(_f_final_output)
         )
+
+    def post_do(self, clear_framents: bool = True):
+        dirs = [
+            _DATASET_DIR,
+            _AUDIO_DIR,
+            _VISUAL_DIR,
+            _VIDEO_DIR,
+            _ORIGIN_DIR,
+            _SUBTITLE_DIR,
+            _OUTPUT_DIR,
+        ]
+
+        if clear_framents:
+            clean_dirs(*dirs)
 
     def _add_subtitle(
             self,

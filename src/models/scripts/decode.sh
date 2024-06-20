@@ -5,6 +5,13 @@
 # This source code is licensed under the license found in the
 # LICENSE file in the root directory of this source tree.
 
+usage() {
+  echo "Usage: $0
+    --demo                'demo' mode, otherwise 'decode' mode.
+  "
+  exit 1
+}
+
 demo=False
 
 while [[ "$#" -gt 0 ]]; do
@@ -13,6 +20,9 @@ while [[ "$#" -gt 0 ]]; do
       demo=True
       shift 1
       ;;
+    *)
+      echo -n "Invalid flag $1"
+      usage
   esac
 done
 

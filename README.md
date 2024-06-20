@@ -6,10 +6,9 @@ The transcript is generated base on visual (lip movement) and audio signal from 
 Steps to clone repo, prepare environment and run inference demo.
 
 ## Clone Repository
-Clone branch 'inference' from project repo.
-
+Clone branch 'inference' from project repo. Use accessible token to clone.  
 ```bash
-git clone -b inference https://github.com/minhnv4099/vietnamese-av-asr.git
+git clone -b inference <repo-link>
 ```
 
 ## Prepare environment
@@ -27,30 +26,33 @@ cd vietnamese-av-asr/
 ## Run inference
 Download some video...
 
-Download test demo [video file](https://drive.google.com/file/d/1kCgwpSPPAntC0HSCeCpOsDCQ_UmovijA/view?usp=share_link)
+Download test demo [video file](https://drive.google.com/file/d/1Qgar8SXyfPSeg7O69VtBNyUCZuSdP7LQ/view?usp=share_link)
 ```bash
-bash scripts/inference.sh <video-path>
+bash scripts/inference.sh 
+    <video-path>
+    [--clear-fragments]
+    [--n-cluster <n-cluster>]
 ```
 ##### Arguments:
-`<video-path>`: Path to video file.
+- `<video-path>`: Path to video file
+- `--clear-fragments`: Clear intermediate results generated during inferencing progress.
+- `--n-cluster`: Number of clusters when learn k-means.
 
-Result saved in [dir](decode)
-
-## Video combine transcript
-### You can see output video contains:
+## Video combines transcript
+### Output video contains:
 1. Scenes of speaker.
 2. Transcripts corresponding scenes
 
 
 ### There are 2 version outputs:
-1. Face of speaker, [here](decode/vsr/vi/output)
-2. Origin scene, [here](decode/vsr/vi/output)
+1. Facial scene, [here](results)
+2. Original scene, [here](results)
 
 ### Note:
-1.  The output video is JUST INTUITIVE,
-    means the transcript in video ASYNCHRONOUS with audio and visual. 
-    Because of model's purpose.
-2. The output video contains ONLY scenes of speaker
+1.  The output video is **JUST INTUITIVE**,
+    means the transcript in video ASYNCHRONOUS with both audio and visual. 
+    Because of model's purpose, **JUST** transcribe **WITHOUT** time stamp.
+2. The output video contains **ONLY** scene of **SPEAKER**
 
 
 

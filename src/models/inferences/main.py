@@ -21,7 +21,7 @@ def get_args() -> argparse.Namespace:
     )
 
     parser.add_argument(
-        '--n_cluster',
+        '--n-cluster',
         type=int,
         required=False,
         default=20,
@@ -31,9 +31,17 @@ def get_args() -> argparse.Namespace:
     parser.add_argument(
         '--decode',
         required=False,
-        default=True,
+        default=False,
         action='store_true',
         help='decode phase.'
+    )
+
+    parser.add_argument(
+        '--clear-fragments',
+        required=False,
+        default=False,
+        action='store_true',
+        help='Clear fragments(intermediate results made by inferencing progress).'
     )
 
     return parser.parse_args()
@@ -46,20 +54,22 @@ def infer(args: argparse.Namespace):
     cropper = DemoCropper()
     combiner = Combiner()
 
+    logger.info('Start inferencing')
+
     # check visual and audio
     logger.info(f"Check existing of visual and audio in video")
     checked_metadata = checker.do(video_path=args.video_path)
 
     # detect speaker
     logger.info(f"Detect active speaker in video")
-    samples = detector.do(metadata_dict=checked_metadata)
+    samples = detector.do(metadata_dict=checked_metadata, clear_fragments=args.clear_fragments)
 
     # crop mouth
     logger.info(f"Crop mouth of speaker in video")
     samples = cropper.do(samples)
 
     # create mainfest file
-    logger.info('create mainfest file')
+    logger.info('Create mainfest file')
     mainfest_dir = create_demo_mainfest(samples_dict=samples)
 
     # dump hubert feature
@@ -82,7 +92,7 @@ def infer(args: argparse.Namespace):
     cl_count_cmd = "python src/features/cluster_counts.py".split(' ')
 
     # vsp_llm decode
-    decode_cmd = ['src/models/scripts/decode.sh --demo']
+    decode_cmd = ['src/models/scripts/decode.sh', '--demo']
 
     _cmd_dict = {
         'dump_h_f': dump_h_f_cmd,
@@ -109,8 +119,12 @@ def infer(args: argparse.Namespace):
     logger.info('Combine video and transcript.')
     _output_videos = combiner.do()
 
+    if args.clear_fragments:
+        logger.info('Clear fragments')
+        combiner.post_do(clear_framents=args.clear_fragments)
+
     logger.info(f"2 output videos: '{_output_videos[0]}', '{_output_videos[1]}'")
-    logger.info('Inference DONE.')
+    logger.info('Inference DONE!')
 
 
 if __name__ == '__main__':

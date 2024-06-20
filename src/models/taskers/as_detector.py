@@ -20,7 +20,7 @@ class DemoASDetector(Tasker):
         self.tmp_dir = 'data/interim'
         self.time_interval = time_interval
 
-    def do(self, metadata_dict: dict) -> List[dict]:
+    def do(self, metadata_dict: dict, clear_fragments: bool = False) -> List[dict]:
         """
         Detect speaker in video.
 
@@ -44,6 +44,7 @@ class DemoASDetector(Tasker):
             combine_av=True,
             keep_origin=True,
             time_interval=self.time_interval,
+            clear_nw=clear_fragments,
         )
 
         _samples = []
@@ -61,7 +62,8 @@ class DemoASDetector(Tasker):
             _sample['audio_num_frames'] = [self.detector.A_FPS * self.detector.DURATION]
             _samples.append(_sample)
 
-        assert _samples, logger.warning('No speaker is detected in video.')
-
+        if not _samples:
+            logger.fatal('No speaker is detected in video.')
+            exit(1)
         return _samples
 

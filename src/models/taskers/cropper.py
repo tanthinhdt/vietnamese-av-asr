@@ -41,6 +41,8 @@ class DemoCropper(Tasker):
 
             _samples.append(_sample)
 
-        assert _samples, logger.warning('No mouth of speakers can be cropped.')
+        if not _samples:
+            logger.fatal('No mouth of speakers can be cropped.')
+            exit(1)
 
         return _samples

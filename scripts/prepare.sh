@@ -2,7 +2,8 @@
 
 usage() {
   echo "Description:  Prepare environment when running on cloud platform kaggle or colab
-  Usage: $0
+Usage:
+  $0
     --platform <platform>         Cloud platform where to run project.
                                   2 available platforms 'kaggle' and 'colab'. Default: kaggle
   "
