@@ -53,11 +53,11 @@ class Checker(Tasker):
 
     def post_do(self, metadata_dict: dict):
         if not metadata_dict['has_v']:
-            logger.warning(f"Video in '{metadata_dict['video_path']}\' has no visual.")
-            exit()
+            logger.fatal(f"Video in '{metadata_dict['video_path']}\' has no visual.")
+            exit(1)
         if not metadata_dict['has_a']:
-            logger.warning(f"Video in '{metadata_dict['video_path']}\' has no audio.")
-            exit()
+            logger.fatal(f"Video in '{metadata_dict['video_path']}\' has no audio.")
+            exit(1)
 
     def _check_is_file(self, video_path: str) -> bool:
         """
@@ -88,10 +88,10 @@ class Checker(Tasker):
         """
         if not self._check_is_file(video_path=video_path):
             logger.error(f"The video file '{video_path}' not exist.")
-            exit(123)
+            exit(1)
         if not self._check_ext(video_path=video_path):
             logger.warning(f"Highly recommend use video file with extension '{self._EXTENSION}'.")
-            exit(123)
+            exit(1)
         cmd = [
             "ffprobe",
             "-v", "error",
@@ -156,7 +156,7 @@ class Checker(Tasker):
         """
         if self._check_visual(metadata_streams):
             return int(metadata_streams['visual']['r_frame_rate'][:2]) == self._FRAME_RATE
-        return None
+        return False
 
     def _check_sample_rate(self,metadata_streams):
         """
@@ -169,4 +169,4 @@ class Checker(Tasker):
        """
         if self._check_audio(metadata_streams):
             return int(metadata_streams['audio']['sample_rate']) == self._SAMPLE_RATE
-        return None
+        return False

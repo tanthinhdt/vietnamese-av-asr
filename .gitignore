@@ -92,6 +92,7 @@ target/
 src/data/databases/
 outputs/
 src/modules/
-src/models/checkpoints/*.pt
+src/models/checkpoints/
 src/models/dataset/
 decode/
+results/*.mp4

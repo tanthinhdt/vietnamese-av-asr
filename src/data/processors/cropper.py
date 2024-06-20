@@ -38,7 +38,6 @@ class Cropper(Processor):
         return:      
             Metadata of processed sample.
         """
-        print()
         logger = get_logger(
             name=__name__,
             log_path=log_path,
