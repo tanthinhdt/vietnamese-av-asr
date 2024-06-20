@@ -2,8 +2,6 @@ import copy
 import glob
 import math
 import os
-import time
-
 import numpy as np
 import subprocess
 import shutil
@@ -57,7 +55,7 @@ class ActiveSpeakerExtracter(Processor):
         self.iouThres               = 0.5
         self.pretrainModel          = pretrainModel
         self.device                 = "cuda" if torch.cuda.is_available() else "cpu"
-        self.face_conf_threshold    = 0.8
+        self.face_conf_threshold    = 0.5
 
         # threshold
         self.speaking_frame_count_threshold     = 30
@@ -89,9 +87,52 @@ class ActiveSpeakerExtracter(Processor):
         self.network_dir        = None
         self.outputPath         = None
         self.network_repo_id    = "GSU24AI03-SU24AI21/network-result-asd"
-        
+
+    def bb_intersection_over_union(self, boxA: list, boxB: list) -> float:
+        # CPU: IOU Function to calculate overlap between two image
+        xA = max(boxA[0], boxB[0])
+        yA = max(boxA[1], boxB[1])
+        xB = min(boxA[2], boxB[2])
+        yB = min(boxA[3], boxB[3])
+        interArea = max(0, xB - xA) * max(0, yB - yA)
+        boxAArea = (boxA[2] - boxA[0]) * (boxA[3] - boxA[1])
+        boxBArea = (boxB[2] - boxB[0]) * (boxB[3] - boxB[1])
+        iou = interArea / float(boxAArea + boxBArea - interArea)
+        return iou
+
+    def _get_frames(self, video_file: str) -> dict:
+        cap = cv2.VideoCapture(video_file)
+
+        i = 0
+        frames = OrderedDict()
+        while cap.isOpened():
+            ret, frame = cap.read()
+            if not ret:
+                break
+            frames[i] = frame
+            i += 1
+        cap.release()
+        return frames
+
+    def _get_duration(self, video_file: str):
+        command = "ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 %s" % (
+            video_file,)
+        try:
+            duration = int(float(subprocess.run(command, shell=True, capture_output=True).stdout.strip()))
+        except Exception:
+            duration = -1
+        return duration
+
+    def _get_scene(self) -> List[dict]:
+        out_path = os.path.join(self.pyworkPath, 'scene.pckl')
+        if not os.path.isfile(out_path):
+            scene = self.scene_detect()
+        else:
+            with open(out_path,mode='rb') as f:
+                scene = pickle.load(f)
+        return scene
+
     def scene_detect(self) -> list:
-        # CPU: Scene detection, output is the list of each shot's time duration
         videoManager = VideoManager([self.videoFilePath])
         statsManager = StatsManager()
         sceneManager = SceneManager(statsManager)
@@ -109,8 +150,19 @@ class ActiveSpeakerExtracter(Processor):
 
         return sceneList
 
+    def _get_faces(self) -> Tuple[dict, list]:
+        out_path = os.path.join(self.pyworkPath, 'faces.pckl')
+        if not os.path.isfile(out_path):
+            frames, faces = self._detect_faces(video_path=self.videoFilePath)
+        else:
+            with open(out_path, mode='rb') as f:
+                faces = pickle.load(f)
+            frames = self._get_frames(video_file=self.videoFilePath)
+
+        return frames, faces
+
     @get_spent_time(message="Detect face in second:")
-    def _detect_faces(self, video_path: str, conf_th: float) -> Tuple[dict, list]:
+    def _detect_faces(self, video_path: str) -> Tuple[dict, list]:
         frames = OrderedDict()
         dets = []
         cap = cv2.VideoCapture(video_path)
@@ -129,9 +181,10 @@ class ActiveSpeakerExtracter(Processor):
             dets.append([])
             if results.detections:
                 for detection in results.detections:
-                    bboxC = detection.location_data.relative_bounding_box
-                    bbox = (bboxC.xmin * iw, bboxC.ymin * ih, (bboxC.width + bboxC.xmin) * iw, (bboxC.height + bboxC.ymin) * ih)
-                    dets[-1].append({'frame': fidx, 'bbox': bbox, 'conf': detection.score[0]})
+                    if detection.score[0] > self.face_conf_threshold:
+                        bboxC = detection.location_data.relative_bounding_box
+                        bbox = (bboxC.xmin * iw, bboxC.ymin * ih, (bboxC.width + bboxC.xmin) * iw, (bboxC.height + bboxC.ymin) * ih)
+                        dets[-1].append({'frame': fidx, 'bbox': bbox, 'conf': detection.score[0]})
             print('\rInfering frame: %0.5d/%d' % (fidx, n_f), end='')
             fidx += 1
         cap.release()
@@ -140,20 +193,61 @@ class ActiveSpeakerExtracter(Processor):
             pickle.dump(dets, fil)
         return frames, dets
 
-    def bb_intersection_over_union(self, boxA: list, boxB: list) -> float:
-        # CPU: IOU Function to calculate overlap between two image
-        xA = max(boxA[0], boxB[0])
-        yA = max(boxA[1], boxB[1])
-        xB = min(boxA[2], boxB[2])
-        yB = min(boxA[3], boxB[3])
-        interArea = max(0, xB - xA) * max(0, yB - yA)
-        boxAArea = (boxA[2] - boxA[0]) * (boxA[3] - boxA[1])
-        boxBArea = (boxB[2] - boxB[0]) * (boxB[3] - boxB[1])
-        iou = interArea / float(boxAArea + boxBArea - interArea)
-        return iou
+    def _filter_out_duration(self, video_file: str):
+        _skip = False
+        duration = -1
+        if os.path.isfile(video_file):
+            duration = self._get_duration(video_file)
+            if duration < self.DURATION:
+                _skip = True
+
+        if _skip:
+            # remove audio file
+            os.remove(path=video_file)
+
+            audio_file = video_file.replace('avi', 'wav')
+            if os.path.isfile(audio_file):
+                os.remove(path=audio_file)
+
+            # remove origin video corresponding
+            origin_file = video_file.replace(self.pycropPath, self.pyoriginPath)
+            if os.path.isfile(origin_file):
+                os.remove(path=origin_file)
+
+            # remove origin audio corresponding
+            origin_file = origin_file.replace('avi', 'wav')
+            if os.path.isfile(origin_file):
+                os.remove(path=origin_file)
+
+        return _skip, duration
+
+    def _crop_face(self, scene: list, faces: list, frames: dict, keep_origin: bool = False) -> None:
+        sort_keys = sorted(frames.keys())
+        _frames = OrderedDict({k: frames[k] for k in sort_keys})
+        out_path = os.path.join(self.pyworkPath, 'tracks.pckl')
+        if not os.path.isfile(out_path):
+            allTracks, vidTracks = [], []
+            for shot in scene:
+                if shot[1].frame_num - shot[0].frame_num >= self.minTrack:
+                    allTracks.extend(self.track_shot(faces[shot[0].frame_num:shot[1].frame_num]))
+            ii = 0
+            for track in allTracks:
+                crop_name = os.path.join(self.pycropPath, '%05d' % ii)
+                origin_name = os.path.join(self.pyoriginPath, '%05d' % ii)
+
+                vidTracks.append(self.crop_video(frames=_frames, track=track, cropFile=crop_name))
+                if keep_origin:
+                    self.truncate_video(frames=_frames, track=track, trunc_file=origin_name)
+
+                if self._filter_out_duration(video_file=crop_name + '.avi')[0]:
+                    vidTracks.pop(-1)
+                else:
+                    ii += 1
+
+            with open(os.path.join(self.pyworkPath, 'tracks.pckl'), 'wb') as fil:
+                pickle.dump(vidTracks, fil)
 
     def track_shot(self, sceneFaces: list) -> list:
-        # CPU: Face tracking
         tracks = []
         while True:
             track = []
@@ -188,15 +282,13 @@ class ActiveSpeakerExtracter(Processor):
         return tracks
 
     def crop_video(self, frames: dict, track: dict, cropFile: str) -> None:
-        vOut = cv2.VideoWriter(
-            cropFile + 't.avi', cv2.VideoWriter_fourcc(*'XVID'), 25, (224, 224))  # Write video
+        vOut = cv2.VideoWriter(cropFile + 't.avi', cv2.VideoWriter_fourcc(*'XVID'), 25, (224, 224))
         dets = {'x': [], 'y': [], 's': []}
         for det in track['bbox']:  # Read the tracks
             dets['s'].append(max((det[3] - det[1]), (det[2] - det[0])) / 2)
             dets['y'].append((det[1] + det[3]) / 2)  # crop center x
             dets['x'].append((det[0] + det[2]) / 2)  # crop center y
-        dets['s'] = signal.medfilt(
-            dets['s'], kernel_size=13)  # Smooth detections
+        dets['s'] = signal.medfilt(dets['s'], kernel_size=13)  # Smooth detections
         dets['x'] = signal.medfilt(dets['x'], kernel_size=13)
         dets['y'] = signal.medfilt(dets['y'], kernel_size=13)
         for fidx, frame in enumerate(track['frame']):
@@ -208,7 +300,7 @@ class ActiveSpeakerExtracter(Processor):
             my      = dets['y'][fidx] + bsi  # BBox center Y
             mx      = dets['x'][fidx] + bsi  # BBox center X
             face    = frame[int(my - bs):int(my + bs * (1 + 2 * cs)),
-                   int(mx - bs * (1 + cs)):int(mx + bs * (1 + cs))]
+                            int(mx - bs * (1 + cs)):int(mx + bs * (1 + cs))]
             vOut.write(cv2.resize(face, (224, 224)))
         audioTmp    = cropFile + '.wav'
         audioStart  = (track['frame'][0]) / 25
@@ -216,36 +308,30 @@ class ActiveSpeakerExtracter(Processor):
         vOut.release()
         command = (
                 "ffmpeg -y -i %s -async 1 -ac 1 -vn -c:a pcm_s16le -ar 16000 -threads %d -ss %.3f -to %.3f %s -loglevel panic" %
-                (self.audioFilePath, self.nDataLoaderThread, audioStart, audioEnd, audioTmp))
+                (self.videoFilePath, self.nDataLoaderThread, audioStart, audioEnd, audioTmp))
         subprocess.call(command, shell=True, stdout=None)
 
         command = ("ffmpeg -y -i %st.avi -i %s -threads %d -c:v copy -c:a copy %s.avi -loglevel panic" %
-                   (cropFile, audioTmp, self.nDataLoaderThread, cropFile))  # Combine audio and video file
-        output = subprocess.call(command, shell=True, stdout=None)
+                   (cropFile, audioTmp, self.nDataLoaderThread, cropFile))
+        subprocess.call(command, shell=True, stdout=None)
+
         os.remove(cropFile + 't.avi')
         return {'track': track, 'proc_track': dets}
 
-    def truncate_video(self, frames: dict, track: dict, trunc_file: str) -> None:
-        h, w = frames[0].shape[:2]
+    def truncate_video(self, track: dict, trunc_file: str) -> None:
+        start_time = (track['frame'][0]) / 25
+        end_time = (track['frame'][-1] + 1) / 25
 
-        vOut = cv2.VideoWriter(
-            trunc_file + 't.avi', cv2.VideoWriter_fourcc(*'XVID'), 25, (w, h))  # Write video
-        for fidx, frame in enumerate(track['frame']):
-            image = frames[frame]
-            vOut.write(cv2.resize(image, ((w, h))))
-        audioTmp = trunc_file + '.wav'
-        audioStart = (track['frame'][0]) / 25
-        audioEnd = (track['frame'][-1] + 1) / 25
-        vOut.release()
-        command = (
-                "ffmpeg -y -i %s -async 1 -ac 1 -vn -c:a pcm_s16le -ar 16000 -threads %d -ss %.3f -to %.3f %s -loglevel panic" %
-                (self.audioFilePath, self.nDataLoaderThread, audioStart, audioEnd, audioTmp))
+        command = ("ffmpeg -y -i %s -threads %d -c:v libx264 -c:a pcm_s16le -ss %.3f -to %.3f -f avi %s.avi -loglevel panic" %
+                   (self.videoFilePath, self.nDataLoaderThread, start_time, end_time, trunc_file))
         subprocess.call(command, shell=True, stdout=None)
 
-        command = ("ffmpeg -y -i %st.avi -i %s -threads %d -c:v copy -c:a copy %s.avi -loglevel panic" %
-                   (trunc_file, audioTmp, self.nDataLoaderThread, trunc_file))  # Combine audio and video file
-        subprocess.call(command, shell=True, stdout=None)
-        os.remove(trunc_file + 't.avi')
+    def _compute_scores(self) -> None:
+        out_path = os.path.join(self.pyworkPath, 'scores.pckl')
+        if not os.path.isfile(out_path):
+            files = glob.glob("%s/*.avi" % self.pycropPath)
+            files.sort()
+            self.evaluate_network(files=files)
 
     @get_spent_time(message="Evaluate score in second:")
     def evaluate_network(self, files: list) -> None:
@@ -254,9 +340,8 @@ class ActiveSpeakerExtracter(Processor):
         # durationSet = {1,2,4,6} # To make the result more reliable
         durationSet = {1, 1, 1, 2, 2, 2, 3, 3, 4, 5, 6}
         for file in files:
-            fileName = os.path.splitext(file.split('/')[-1])[0]  # Load audio and video
-            _, audio = wavfile.read(os.path.join(
-                self.pycropPath, fileName + '.wav'))
+            fileName = os.path.splitext(file.split('/')[-1])[0]
+            _, audio = wavfile.read(os.path.join(self.pycropPath, fileName + '.wav'))
             audioFeature = python_speech_features.mfcc(
                 audio, 16000, numcep=13, winlen=0.025, winstep=0.010)
             video = cv2.VideoCapture(os.path.join(self.pycropPath, fileName + '.avi'))
@@ -266,18 +351,16 @@ class ActiveSpeakerExtracter(Processor):
                 if ret:
                     face = cv2.cvtColor(frames, cv2.COLOR_BGR2GRAY)
                     face = cv2.resize(face, (224, 224))
-                    face = face[int(112 - (112 / 2)):int(112 + (112 / 2)),
-                           int(112 - (112 / 2)):int(112 + (112 / 2))]
+                    face = face[int(112 - (112 / 2)):int(112 + (112 / 2)),int(112 - (112 / 2)):int(112 + (112 / 2))]
                     videoFeature.append(face)
                 else:
                     break
             video.release()
             videoFeature = np.array(videoFeature)
-            length = min(
-                (audioFeature.shape[0] - audioFeature.shape[0] % 4) / 100, videoFeature.shape[0] / 25)
+            length = min((audioFeature.shape[0] - audioFeature.shape[0] % 4) / 100, videoFeature.shape[0] / 25)
             audioFeature = audioFeature[:int(round(length * 100)), :]
             videoFeature = videoFeature[:int(round(length * 25)), :, :]
-            allScore = []  # Evaluation use TalkNet
+            allScore = []
             for duration in durationSet:
                 batchSize = int(math.ceil(length / duration))
                 scores = []
@@ -334,22 +417,22 @@ class ActiveSpeakerExtracter(Processor):
         chunk_audio_ids     = []
         i = 0
         for _crop_path in crop_paths:
-            duration = self._get_duration(video_file=_crop_path) // self.time_interval * self.time_interval
+            duration = math.ceil(self._get_duration(video_file=_crop_path) // self.time_interval * self.time_interval)
             if duration < 0:
                 continue
             for timestamp in range(0, duration, self.time_interval):
-                start_time  = time.strftime("%H:%M:%S",time.gmtime(timestamp)) + ".00000"
-                end_time    = time.strftime("%H:%M:%S",time.gmtime(timestamp+self.time_interval)) + ".00000"
+                start_time = float(timestamp)
+                end_time = float(timestamp + self.time_interval)
 
                 chunk_visual_id     = 'chunk@visual@%s@%s@%05d' % (channel, video_id, i)
                 chunk_visual_path   = os.path.join(chunk_visual_dir, chunk_visual_id + '.mp4')
-                command = "ffmpeg -y -i %s -an -c:v libx264 -b:v 1200k -r 25 -ss %s -to %s -map 0 -f mp4 %s -loglevel panic" % \
+                command = "ffmpeg -y -i %s -an -c:v libx264 -b:v 1200k -r 25 -ss %.3f -to %.3f -map 0 -f avi %s -loglevel panic" % \
                         (_crop_path, start_time, end_time, chunk_visual_path)
                 subprocess.run(command, shell=True, stdout=None)
 
                 chunk_audio_id      = 'chunk@audio@%s@%s@%05d' % (channel, video_id, i)
                 chunk_audio_path    = os.path.join(chunk_audio_dir, chunk_audio_id + '.wav')
-                command = "ffmpeg -y -i %s -vn -ac 1 -c:a pcm_s16le -ar 16000 -b:a 192k -ss %s -to %s -f wav %s -loglevel panic" % \
+                command = "ffmpeg -y -i %s -vn -ac 1 -c:a pcm_s16le -ar 16000 -b:a 192k -ss %.3f -to %.3f -map 0 -f wav %s -loglevel panic" % \
                         (_crop_path, start_time, end_time, chunk_audio_path)
                 subprocess.run(command, shell=True, stdout=None)
 
@@ -357,7 +440,7 @@ class ActiveSpeakerExtracter(Processor):
                     # combine chunk visual an chunk audio
                     chunk_video_id = 'chunk@video@%s@%s@%05d' % (channel, video_id, i)
                     chunk_video_path = os.path.join(chunk_video_dir, chunk_video_id + '.mp4')
-                    command = "ffmpeg -y -i %s -i %s -c:v copy -map 0:v:0 -map 1:a:0 -shortest %s -loglevel panic" % \
+                    command = "ffmpeg -y -i %s -i %s -c:v copy -c:a copy -map 0:v:0 -map 1:a:0 %s -loglevel panic" % \
                               (chunk_visual_path, chunk_audio_path, chunk_video_path)
                     subprocess.run(command, shell=True, stdout=None)
 
@@ -365,7 +448,7 @@ class ActiveSpeakerExtracter(Processor):
                     # truncate origin video corresponding with cropped face
                     origin_video_id = 'chunk@origin@%s@%s@%05d' % (channel, video_id, i)
                     origin_video_path = os.path.join(origin_video_dir, origin_video_id + '.mp4')
-                    command = "ffmpeg -y -i %s -c:v libx264 -c:a aac -ss %s -to %s -map 0:v:0 -map 0:a:0 -f mp4 %s -loglevel panic" % \
+                    command = "ffmpeg -y -i %s -c:v libx264 -c:a aac -ss %.3f -to %.3f -map 0:v:0 -map 0:a:0 -f avi %s -loglevel panic" % \
                               (_crop_path.replace('pycrop', 'pyorigin'), start_time, end_time, origin_video_path)
                     subprocess.run(command, shell=True, stdout=None)
 
@@ -376,111 +459,7 @@ class ActiveSpeakerExtracter(Processor):
                     chunk_visual_ids.append(chunk_visual_id)
                     chunk_audio_ids.append(chunk_audio_id)
                     i += 1
-        
         return chunk_visual_ids, chunk_audio_ids,
-
-    def _get_frames(self, video_file: str) -> dict:
-        cap = cv2.VideoCapture(video_file)
-        i = 0
-        frames = OrderedDict()
-        while cap.isOpened():
-            ret, frame = cap.read()
-            if not ret:
-                break
-            frames[i] = frame
-            i += 1
-        cap.release()
-        return frames
-
-    def _get_scene(self) -> List[dict]:
-        out_path = os.path.join(self.pyworkPath, 'scene.pckl')
-        if not os.path.isfile(out_path):
-            scene = self.scene_detect()
-        else:
-            with open(out_path,mode='rb') as f:
-                scene = pickle.load(f)
-        return scene
-
-    def _get_faces(self) -> Tuple[dict, list]:
-        out_path = os.path.join(self.pyworkPath, 'faces.pckl')
-        if not os.path.isfile(out_path):
-            frames, faces = self._detect_faces(video_path=self.videoFilePath, conf_th=0.9)
-        else:
-            with open(out_path, mode='rb') as f:
-                faces = pickle.load(f)
-            frames = self._get_frames(video_file=self.videoFilePath)
-
-        return frames, faces
-
-    def _get_duration(self, video_file: str):
-        command = "ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 %s" % (
-            video_file,)
-        try:
-            duration = int(float(subprocess.run(command, shell=True, capture_output=True).stdout.strip()))
-        except Exception:
-            duration = -1
-        return duration
-
-    def _filter_out_duration(self, video_file: str):
-        _skip = False
-        duration = -1
-        if os.path.isfile(video_file):
-            duration = self._get_duration(video_file) // self.time_interval * self.time_interval
-            if duration < self.DURATION:
-                _skip = True
-
-        if _skip:
-            # remove audio file
-            os.remove(path=video_file)
-
-            audio_file = video_file.replace('avi', 'wav')
-            if os.path.isfile(audio_file):
-                os.remove(path=audio_file)
-
-            # remove origin video corresponding
-            origin_file = video_file.replace(self.pycropPath, self.pyoriginPath)
-            if os.path.isfile(origin_file):
-                os.remove(path=origin_file)
-
-            # remove origin audio corresponding
-            origin_file = origin_file.replace('avi', 'wav')
-            if os.path.isfile(origin_file):
-                os.remove(path=origin_file)
-
-        return _skip, duration
-
-    def _crop_face(self, scene: list, faces: list, frames: dict, keep_origin: bool = False) -> None:
-        sort_keys = sorted(frames.keys())
-        _frames = OrderedDict({k: frames[k] for k in sort_keys})
-        out_path = os.path.join(self.pyworkPath, 'tracks.pckl')
-        if not os.path.isfile(out_path):
-            allTracks, vidTracks = [], []
-            for shot in scene:
-                if shot[1].frame_num - shot[0].frame_num >= self.minTrack:
-                    allTracks.extend(self.track_shot(faces[shot[0].frame_num:shot[1].frame_num]))
-            ii = 0
-            for track in allTracks:
-                crop_name = os.path.join(self.pycropPath, '%05d' % ii)
-                origin_name = os.path.join(self.pyoriginPath, '%05d' % ii)
-
-                vidTracks.append(self.crop_video(frames=_frames, track=track, cropFile=crop_name))
-                if keep_origin:
-                    self.truncate_video(frames=_frames, track=track, trunc_file=origin_name)
-
-                if self._filter_out_duration(video_file=crop_name + '.avi')[0]:
-                    vidTracks.pop(-1)
-                else:
-                    ii += 1
-
-            with open(os.path.join(self.pyworkPath, 'tracks.pckl'), 'wb') as fil:
-                pickle.dump(vidTracks, fil)
-
-    def _compute_scores(self) -> None:
-        out_path = os.path.join(self.pyworkPath, 'scores.pckl')
-        if not os.path.isfile(out_path):
-            files = glob.glob("%s/*.avi" % self.pycropPath)
-            files.sort()
-            self.evaluate_network(files=files)
 
     def _make_network_result(self, tmp_dir: str, channel: str, video_id: str, demo: bool = False) -> bool:
         _up = True
@@ -522,10 +501,7 @@ class ActiveSpeakerExtracter(Processor):
             tmp_dir: str,
             time_interval: int = 3,
             log_path: str = None,
-            combine_av: bool = False,
-            keep_origin: bool = False,
-            face_conf_threshold: float = 0.8,
-            clear_nw: bool = True,
+            face_conf_threshold: float = 0,
             **kwargs
     ) -> dict:
         """
@@ -543,13 +519,13 @@ class ActiveSpeakerExtracter(Processor):
             Directory contains asd network result.
         log_path:
             Path of log file.
-        combine_av:
-            Merge visual and audio into video.
-        keep_origin:
-            Split origin video.
         return:
             Metadat of processed sample.
         """
+        combine_av = kwargs.get('combine_av', False)
+        keep_origin = kwargs.get('keep_origin', False)
+        clear_nw = kwargs.get('clear_nw', True)
+
         logger = get_logger(
             name=__name__,
             log_path=log_path,
@@ -651,7 +627,7 @@ class ActiveSpeakerExtracter(Processor):
         _duration_cmd       = "ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 %s"
         _visual_frame_cmd   = "ffprobe -v error -select_streams v:0 -count_frames -show_entries stream=nb_read_frames -of csv=p=0 %s"
         _visual_fps_cmd     = "ffprobe -v error -select_streams v:0 -show_entries stream=avg_frame_rate -of default=noprint_wrappers=1:nokey=1 %s"
-        _audio_fps_cmd      = "ffprobe -v error -select_streams a -of default=noprint_wrappers=1:nokey=1 -show_entries stream=sample_rate %s"
+        _audio_fps_cmd      = "ffprobe -v error -select_streams a -show_entries stream=sample_rate -of default=noprint_wrappers=1:nokey=1 %s"
         
         _v_dur = float(subprocess.run(_duration_cmd % (visual_path,), shell=True, capture_output=True).stdout)
         _a_dur = float(subprocess.run(_duration_cmd % (audio_path,), shell=True, capture_output=True).stdout)
@@ -660,7 +636,7 @@ class ActiveSpeakerExtracter(Processor):
 
         _v_fps = float(subprocess.run(_visual_fps_cmd % (visual_path,), shell=True, capture_output=True).stdout[:2])
         _a_fps = float(subprocess.run(_audio_fps_cmd % (audio_path,), shell=True, capture_output=True).stdout)
-        
+
         check_true = (_v_dur == self.DURATION and
                       _a_dur == self.DURATION and
                       _v_fra == self.V_FPS * self.DURATION and

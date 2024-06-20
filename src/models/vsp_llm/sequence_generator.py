@@ -1,19 +1,13 @@
-# Copyright (c) Facebook, Inc. and its affiliates.
-# All rights reserved.
-#
-# This source code is licensed under the license found in the
-# LICENSE file in the root directory of this source tree.
-
 import math
-from typing import Dict, List, Optional
 import sys
-
 import torch
 import torch.nn as nn
+
+from typing import Dict, List, Optional
+from torch import Tensor
 from fairseq import search, utils
 from fairseq.data import data_utils
 from fairseq.models import FairseqIncrementalDecoder
-from torch import Tensor
 from fairseq.ngram_repeat_block import NGramRepeatBlock
 
 

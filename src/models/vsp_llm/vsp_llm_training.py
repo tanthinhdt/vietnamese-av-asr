@@ -1,23 +1,17 @@
-# Copyright (c) Facebook, Inc. and its affiliates.
-# All rights reserved.
-#
-# This source code is licensed under the license found in the
-# LICENSE file in the root directory of this source tree.
-
 import logging
-import os
 import sys
-from typing import List, Optional, Tuple
+import os
+import numpy as np
 
+from typing import List, Optional, Tuple
 from dataclasses import dataclass, field
 from fairseq.data import Dictionary
 from fairseq.dataclass.configs import FairseqDataclass
 from fairseq.tasks import register_task
 from fairseq.tasks.fairseq_task import FairseqTask
 from omegaconf import MISSING, II
-import numpy as np
 
-DBG=True if len(sys.argv) == 1 else False
+DBG = True if len(sys.argv) == 1 else False
 
 if DBG:
     from src.data.vsp_llm.vsp_llm_dataset import VSP_LLM_dataset

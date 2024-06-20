@@ -21,5 +21,6 @@ dataset:
 override:
   noise_prob: 0.0
   noise_snr: 0
-  modalities: ['video']
+  modalities: ['visual', 'audio']
   llm_ckpt_path: ???
+  w2v_path: ???

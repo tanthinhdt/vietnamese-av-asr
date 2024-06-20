@@ -1,25 +1,21 @@
-# Copyright (c) Facebook, Inc. and its affiliates.
-# All rights reserved.
-#
-# This source code is licensed under the license found in the
-# LICENSE file in the root directory of this source tree.
-
 import logging
 import os
 import sys
-from typing import Dict, List, Optional, Tuple
+import numpy as np
+from argparse import Namespace
 
+from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass, field
+
+from omegaconf import MISSING, II
 from fairseq import search
 from fairseq.data import Dictionary, encoders
 from fairseq.dataclass.configs import FairseqDataclass
 from fairseq.tasks import register_task
 from fairseq.tasks.fairseq_task import FairseqTask
-from omegaconf import MISSING, II
-import numpy as np
-from argparse import Namespace
+from fairseq.sequence_generator import SequenceGeneratorWithAlignment
 
-DBG=True if len(sys.argv) == 1 else False
+DBG = True if len(sys.argv) == 1 else False
 
 if DBG:
     from src.data.vsp_llm.hubert_dataset import AVHubertDataset
@@ -36,9 +32,7 @@ class LabelEncoder(object):
         self.dictionary = dictionary
 
     def __call__(self, label: str) -> List[str]:
-        return self.dictionary.encode_line(
-            label, append_eos=False, add_if_not_exist=False,
-        )
+        return self.dictionary.encode_line(label, append_eos=False, add_if_not_exist=False,)
 
 class LabelEncoderS2SToken(object):
     def __init__(self, dictionary: Dictionary, bpe_tokenizer) -> None:
@@ -47,9 +41,7 @@ class LabelEncoderS2SToken(object):
 
     def __call__(self, label: str) -> List[str]:
         label = self.bpe_tokenizer.encode(label.lower())
-        return self.dictionary.encode_line(
-            label, append_eos=True, add_if_not_exist=False,
-        ).long()
+        return self.dictionary.encode_line(label, append_eos=True, add_if_not_exist=False,).long()
 
     def decode(self, tok, symbols_ignore=None):
         tok = self.dictionary.string(tok, extra_symbols_to_ignore=symbols_ignore)
@@ -181,7 +173,7 @@ class AVHubertPretrainingTask(FairseqTask):
 
     @property
     def source_dictionary(self) -> Optional[Dictionary]:
-        return None # self._source_dictionary
+        return None
 
     @property
     def target_dictionary(self) -> Optional[Dictionary]:

@@ -12,7 +12,7 @@ Usage:
 }
 
 clear_fragments=""
-n_cluster=100
+n_cluster=25
 video_path=''
 
 if [[ -z "$1" ]]; then
@@ -42,4 +42,4 @@ while [[ "$#" -gt 1 ]]; do
   esac
 done
 
-python src/models/inferences/main.py $video_path --decode $clear_fragments --n-cluster $n_cluster
+python src/models/inferences/main.py $video_path --n-cluster $n_cluster --decode --clear-fragments

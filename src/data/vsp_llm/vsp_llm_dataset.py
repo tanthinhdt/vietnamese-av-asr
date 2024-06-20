@@ -1,25 +1,17 @@
-# Copyright (c) Facebook, Inc. and its affiliates.
-# All rights reserved.
-#
-# This source code is licensed under the license found in the
-# LICENSE file in the root directory of this source tree.
-
 import itertools
 import logging
 import os
 import sys
-import time
-from typing import Any, List, Optional, Union
-
-import numpy as np
-
 import torch
+import numpy as np
 import torch.nn.functional as F
+
+from typing import List, Optional, Union
 from fairseq.data import data_utils
 from fairseq.data.fairseq_dataset import FairseqDataset
 from python_speech_features import logfbank
 from scipy.io import wavfile
-from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
+from transformers import AutoTokenizer
 
 DBG = True if len(sys.argv) == 1 else False
 
@@ -283,7 +275,6 @@ class VSP_LLM_dataset(FairseqDataset):
         )
 
     def load_units(self, index):
-        # assert('video' in self.modalities and 'audio' in self.modalities)
         av_units = self.cluster_counts[index].strip().split(" ")
         int_av_units = [int(x) for x in av_units]
         av_units = torch.tensor(int_av_units, dtype=int)
@@ -317,14 +308,14 @@ class VSP_LLM_dataset(FairseqDataset):
             return feats
 
         video_fn, audio_fn = mix_name
-        if "video" in self.modalities:
+        if "visual" in self.modalities:
             video_feats = self.load_video(video_fn)  # [T, H, W, 1]
         else:
             video_feats = None
         if "audio" in self.modalities:
             audio_fn = audio_fn.split(":")[0]
             audio_npy = audio_fn.replace(".wav", ".npy")
-            if os.path.exists(audio_npy) == False:
+            if not os.path.exists(audio_npy):
                 sample_rate, wav_data = wavfile.read(audio_fn)
                 assert sample_rate == 16_000 and len(wav_data.shape) == 1
                 audio_feats = logfbank(wav_data, samplerate=sample_rate).astype(

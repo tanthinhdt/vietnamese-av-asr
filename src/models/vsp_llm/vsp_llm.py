@@ -1,30 +1,20 @@
-# Copyright (c) Facebook, Inc. and its affiliates.
-# All rights reserved.
-#
-# This source code is licensed under the license found in the
-# LICENSE file in the root directory of this source tree.
-
-import sys, logging
-from argparse import Namespace
-from typing import Dict, List, Optional, Tuple, Any
 import os
+import logging
 import torch
 import torch.nn as nn
-from transformers import AutoModelForCausalLM, BitsAndBytesConfig
-from peft import LoraConfig, get_peft_model
-from einops import repeat
 
+from peft import LoraConfig, get_peft_model
+from argparse import Namespace
+from typing import Any
 from dataclasses import dataclass, field
+from omegaconf import II, MISSING
 from fairseq import checkpoint_utils, tasks, utils
 from fairseq.dataclass import ChoiceEnum, FairseqDataclass
 from fairseq.dataclass.utils import convert_namespace_to_omegaconf
 from fairseq.models import BaseFairseqModel, FairseqEncoder, register_model
-from fairseq.models.hubert.hubert import MASKING_DISTRIBUTION_CHOICES
-from omegaconf import II, MISSING
+from transformers import AutoModelForCausalLM, BitsAndBytesConfig
 
 logger = logging.getLogger(__name__)
-
-
 MASKING_DISTRIBUTION_CHOICES = ChoiceEnum(
     ["static", "uniform", "normal", "poisson"]
 )
@@ -154,21 +144,19 @@ class VSPLLMConfig(FairseqDataclass):
     )
 
 
-
 class HubertEncoderWrapper(FairseqEncoder):
     def __init__(self, w2v_model):
         super().__init__(None)
         self.w2v_model = w2v_model
 
     def forward_(self, source, padding_mask, **kwargs):
-        src ={}
+        src = dict()
         src['video'] = source
         src['audio'] = None
         w2v_args = {
             "source": src,
             "padding_mask": padding_mask,
         }
-
         x, padding_mask = self.w2v_model.extract_finetune(**w2v_args)
         # B x T x C -> T x B x C
         x = x.transpose(0, 1)
@@ -179,22 +167,19 @@ class HubertEncoderWrapper(FairseqEncoder):
             "padding_mask": padding_mask
         }
 
-
     def forward(self, source, padding_mask, **kwargs):
-            w2v_args = {
-                "source": source,
-                "padding_mask": padding_mask,
-            }
-
+        w2v_args = {
+            "source": source,
+            "padding_mask": padding_mask,
+        }
+        with torch.autocast(device_type='cpu'):
             x, padding_mask = self.w2v_model.extract_finetune(**w2v_args)
 
-
-            return {
-                "encoder_out": x,  # T x B x C
-                "encoder_padding_mask": padding_mask,  # B x T
-                "padding_mask": padding_mask
-            }
- 
+        return {
+            "encoder_out": x,  # T x B x C
+            "encoder_padding_mask": padding_mask,  # B x T
+            "padding_mask": padding_mask
+        }
 
     def reorder_encoder_out(self, encoder_out, new_order):
         if encoder_out["encoder_out"] is not None:
@@ -357,7 +342,13 @@ class avhubert_llm_seq2seq_cluster_count(BaseFairseqModel):
                 **kwargs,
                 ):
         output = self.encoder(**kwargs)
-        output['encoder_out'] = self.avfeat_to_llm(output['encoder_out'])
+        # torch.onnx.export(
+        #     model=self.encoder,
+        #     args=(kwargs,),
+        #     f='src/weights/encoder.onnx',
+        # )
+        with torch.autocast(device_type='cpu'):
+            output['encoder_out'] = self.avfeat_to_llm(output['encoder_out'])
         cluster_counts = kwargs['source']['cluster_counts'][0] # tensor list
         
         results_tensor = []
@@ -365,15 +356,15 @@ class avhubert_llm_seq2seq_cluster_count(BaseFairseqModel):
 
         for clutser_num in cluster_counts:
             end_idx = start_idx + clutser_num
-            slice = output['encoder_out'][:,start_idx:end_idx,:]
+            slice = output['encoder_out'][:, start_idx:end_idx, :]
             mean_tensor = torch.mean(slice, dim=1, keepdim=True)
             results_tensor.append(mean_tensor)            
             start_idx = end_idx
 
-        assert(cluster_counts.sum().item() == output['encoder_out'].size()[1])
+        assert cluster_counts.sum().item() == output['encoder_out'].size()[1]
 
         reduced_enc_out = torch.cat(results_tensor, dim=1).to(device=self.device)
-        B, T, D = reduced_enc_out.size()
+        # B, T, D = reduced_enc_out.size()
         instruction = kwargs['source']['text']
         instruction_embedding = self.decoder.model.model.embed_tokens(instruction).to(device=self.device)
         llm_input = torch.cat((instruction_embedding, reduced_enc_out), dim=1) 

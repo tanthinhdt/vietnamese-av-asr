@@ -1,33 +1,12 @@
-# Copyright (c) Facebook, Inc. and its affiliates.
-# All rights reserved.
-#
-# This source code is licensed under the license found in the
-# LICENSE file in the root directory of this source tree.
-
-from argparse import Namespace
-import contextlib
 import copy
 import math
-import numpy as np
 import torch
 import torch.nn as nn
+import numpy as np
 import torch.nn.functional as F
-from dataclasses import dataclass, field
-from omegaconf import MISSING, II, open_dict
-from typing import Any, Optional
 
-from fairseq import checkpoint_utils, tasks, utils
-from fairseq.dataclass import FairseqDataclass
-from fairseq.dataclass.utils import convert_namespace_to_omegaconf
-from fairseq.tasks import FairseqTask
-from fairseq.models import (
-    BaseFairseqModel,
-    FairseqEncoder,
-    FairseqEncoderDecoderModel,
-    FairseqIncrementalDecoder,
-    register_model,
-)
-# from fairseq.models.wav2vec.wav2vec2 import MASKING_DISTRIBUTION_CHOICES
+from fairseq import utils
+from fairseq.models import FairseqIncrementalDecoder
 from fairseq.modules import (
     LayerNorm,
     PositionalEmbedding,
@@ -74,7 +53,7 @@ class TransformerDecoder(FairseqIncrementalDecoder):
         self.embed_scale = 1.0 if cfg.no_scale_embedding else math.sqrt(embed_dim)
 
         self.project_in_dim = (
-            Linear(input_embed_dim, embed_dim, bias=False)
+            nn.Linear(input_embed_dim, embed_dim, bias=False)
             if embed_dim != input_embed_dim
             else None
         )
@@ -92,7 +71,6 @@ class TransformerDecoder(FairseqIncrementalDecoder):
 
         # TODO: update this when transformer gets converted to dataclass configs
         transformer_cfg = copy.deepcopy(cfg)
-        # with open_dict(transformer_cfg):
         transformer_cfg.dropout = transformer_cfg.decoder_dropout
         transformer_cfg.attention_dropout = (
             transformer_cfg.decoder_attention_dropout
@@ -145,7 +123,7 @@ class TransformerDecoder(FairseqIncrementalDecoder):
         return x, extra
 
     def extract_features(
-        self, prev_output_tokens, encoder_out=None, incremental_state=None, **unused
+        self,prev_output_tokens, encoder_out=None, incremental_state=None, **unused
     ):
         """
         Similar to *forward* but only return features.
@@ -211,13 +189,8 @@ class TransformerDecoder(FairseqIncrementalDecoder):
 
     def output_layer(self, features, **kwargs):
         """Project features to the vocabulary size."""
-        # project back to size of vocabulary
         emb_mat = self.embed_tokens.weight if self.share_input_output_embed else self.embed_out
         return torch.matmul(features, emb_mat.transpose(0, 1))
-        # if self.share_input_output_embed:
-        #     return F.linear(features, self.embed_tokens.weight)
-        # else:
-        #     return F.linear(features, self.embed_out)
 
     def max_positions(self):
         """Maximum output length supported by the decoder."""
@@ -240,4 +213,3 @@ class TransformerDecoder(FairseqIncrementalDecoder):
 
     def upgrade_state_dict_named(self, state_dict, name):
         return state_dict
-

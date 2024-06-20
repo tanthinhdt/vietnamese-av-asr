@@ -1,17 +1,10 @@
-# Copyright (c) Facebook, Inc. and its affiliates.
-# All rights reserved.
-#
-# This source code is licensed under the license found in the
-# LICENSE file in the root directory of this source tree.
-
 import logging
 import os
 import sys
-
-import numpy as np
-from sklearn.cluster import MiniBatchKMeans
-
 import joblib
+import numpy as np
+
+from sklearn.cluster import MiniBatchKMeans
 
 logging.basicConfig(
     format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",

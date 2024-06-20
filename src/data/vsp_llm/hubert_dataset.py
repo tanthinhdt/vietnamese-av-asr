@@ -1,14 +1,7 @@
-# Copyright (c) Facebook, Inc. and its affiliates.
-# All rights reserved.
-#
-# This source code is licensed under the license found in the
-# LICENSE file in the root directory of this source tree.
-
 import itertools
 import logging
 import os
 import sys
-import time
 from typing import Any, List, Optional, Union
 
 import numpy as np
@@ -20,7 +13,7 @@ from fairseq.data.fairseq_dataset import FairseqDataset
 from python_speech_features import logfbank
 from scipy.io import wavfile
 
-DBG=True if len(sys.argv) == 1 else False
+DBG = True if len(sys.argv) == 1 else False
 
 if DBG:
     import src.utils as custom_utils
@@ -273,8 +266,9 @@ class AVHubertDataset(FairseqDataset):
                 feats = np.concatenate([feats, res], axis=0)
             feats = feats.reshape((-1, stack_order, feat_dim)).reshape(-1, stack_order*feat_dim)
             return feats
+
         video_fn, audio_fn = mix_name
-        if 'video' in self.modalities:
+        if 'visual' in self.modalities:
             video_feats = self.load_video(video_fn) # [T, H, W, 1]
         else:
             video_feats = None

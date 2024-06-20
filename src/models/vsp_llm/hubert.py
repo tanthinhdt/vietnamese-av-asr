@@ -1,31 +1,21 @@
-# Copyright (c) Facebook, Inc. and its affiliates.
-# All rights reserved.
-#
-# This source code is licensed under the license found in the
-# LICENSE file in the root directory of this source tree.
-
-import os,sys
+import os, sys
 import logging
-from typing import Dict, List, Optional, Tuple
-
-import numpy as np
-
 import torch
 import torch.nn as nn
-from dataclasses import dataclass, field
+import numpy as np
+
 from fairseq import utils
 from fairseq.data.data_utils import compute_mask_indices
 from fairseq.data.dictionary import Dictionary
 from fairseq.dataclass import ChoiceEnum, FairseqDataclass
 from fairseq.models import BaseFairseqModel, register_model
-from fairseq.models.wav2vec.wav2vec2 import (
-    ConvFeatureExtractionModel,
-    TransformerEncoder,
-)
+from fairseq.models.wav2vec.wav2vec2 import TransformerEncoder
 from fairseq.modules import GradMultiply, LayerNorm
 from copy import deepcopy
+from dataclasses import dataclass, field
+from typing import Dict, List, Optional, Tuple
 
-DBG=True if len(sys.argv) == 1 else False
+DBG = True if len(sys.argv) == 1 else False
 
 if DBG:
     from .hubert_pretraining import (
@@ -324,7 +314,8 @@ class SubModel(nn.Module):
     def forward(self, x):
         if self.resnet is not None:
             x = self.resnet(x)
-        x = self.proj(x.transpose(1, 2))
+        with torch.autocast(device_type='cpu'):
+            x = self.proj(x.transpose(1, 2))
         if self.encoder is not None:
             x = self.encoder(x)[0].transpose(1, 2)
         else:
@@ -459,9 +450,8 @@ class AVHubertModel(BaseFairseqModel):
                 no_overlap=self.no_mask_overlap,
                 min_space=self.mask_min_space,
             )
-            mask_indices_np = mask_indices
             mask_indices = torch.from_numpy(mask_indices).to(x.device)
-            x = x.transpose(1, 2).contiguous() # [B, T, C, H, W]
+            x = x.transpose(1, 2).contiguous()  # [B, T, C, H, W]
             if B == 1:
                 x[mask_indices] = 0
             elif is_audio:
@@ -630,7 +620,8 @@ class AVHubertModel(BaseFairseqModel):
             padding_mask = self.forward_padding_mask(features, padding_mask)
 
         if self.post_extract_proj is not None:
-            features = self.post_extract_proj(features)
+            with torch.autocast(device_type='cpu'):
+                features = self.post_extract_proj(features)
 
         features = self.dropout_input(features)
         if self.masking_type == 'feature' and mask:
@@ -643,11 +634,12 @@ class AVHubertModel(BaseFairseqModel):
         # x: (B, T, D), float
         # padding_mask: (B, T), bool
         # mask_indices: (B, T), bool
-        x, _ = self.encoder(
-            x,
-            padding_mask=padding_mask,
-            layer=None if output_layer is None else output_layer - 1
-        )
+        with torch.autocast(device_type='cpu'):
+            x, _ = self.encoder(
+                x,
+                padding_mask=padding_mask,
+                layer=None if output_layer is None else output_layer - 1
+            )
 
         if features_only:
             return {"x": x, "padding_mask": padding_mask, "features": features}
@@ -689,7 +681,6 @@ class AVHubertModel(BaseFairseqModel):
         )
         feature = res["features"] if ret_conv else res["x"]
         return feature, res["padding_mask"]
-    
 
     def extract_units(
         self,
@@ -710,7 +701,6 @@ class AVHubertModel(BaseFairseqModel):
         feature = res["features"] if ret_conv else res["x"]
         proj_x = self.final_proj(feature)
         units = torch.matmul(proj_x, self.label_embs_concat.transpose(0, 1)).argmax(dim=-1) # B T 
-        #import pdb;pdb.set_trace()
         return units
 
     def extract_finetune(self, source, padding_mask=None, mask=False, ret_conv=False, output_layer=None):
@@ -718,46 +708,36 @@ class AVHubertModel(BaseFairseqModel):
         if mask and self.masking_type == 'input':
             src_video, mask_indices_video = self.apply_input_mask(src_video, padding_mask, target_list=None)
             src_audio, mask_indices_audio = self.apply_input_mask(src_audio, padding_mask, target_list=None)
-            mask_indices = torch.logical_or(mask_indices_audio, mask_indices_video) # mask_indices not used in fine-tuning
         else:
             src_audio, src_video, mask_indices = src_audio, src_video, None
 
         if src_audio is not None and src_video is None:
-            features_audio = self.forward_features(src_audio, modality='audio') # features: [B, F, T]
+            features_audio = self.forward_features(src_audio, modality='audio')  # features: [B, F, T]
             features_video = features_audio.new_zeros(features_audio.size(0), self.encoder_embed_dim, features_audio.size(-1))
         elif src_audio is None and src_video is not None:
             features_video = self.forward_features(src_video, modality='video')
             features_audio = features_video.new_zeros(features_video.size(0), self.encoder_embed_dim, features_video.size(-1))
         elif src_audio is not None and src_video is not None:
             features_video = self.forward_features(src_video, modality='video')
-            features_audio = self.forward_features(src_audio, modality='audio') # features: [B, F, T]
+            features_audio = self.forward_features(src_audio, modality='audio')  # features: [B, F, T]
 
         if self.modality_fuse == 'concat':
             features = torch.cat([features_audio, features_video], dim=1)
         elif self.modality_fuse == 'add':
             features = features_audio + features_video
-        features_pen = features.float().pow(2).mean()
 
         features = features.transpose(1, 2)
         features = self.layer_norm(features)
-        unmasked_features = features.clone()
 
         if padding_mask is not None:
             padding_mask = self.forward_padding_mask(features, padding_mask)
 
         if self.post_extract_proj is not None:
-            features = self.post_extract_proj(features)
+            with torch.autocast(device_type='cpu'):
+                features = self.post_extract_proj(features)
 
         features = self.dropout_input(features)
-        unmasked_features = self.dropout_features(unmasked_features)
         x = features
-        mask_indices = None
-
-        # feature: (B, T, D), float
-        # target: (B, T), long
-        # x: (B, T, D), float
-        # padding_mask: (B, T), bool
-        # mask_indices: (B, T), bool
         x, _ = self.encoder(
             x,
             padding_mask=padding_mask,
@@ -765,7 +745,6 @@ class AVHubertModel(BaseFairseqModel):
         )
 
         return x, padding_mask
-
 
     def get_extra_losses(self, net_output):
         extra_losses = []

@@ -17,7 +17,7 @@ class DemoASDetector(Tasker):
         self.output_dir = 'data/processed'
         self.visual_output_dir = self.output_dir + '/visual/'
         self.audio_output_dir = self.output_dir + '/audio/'
-        self.tmp_dir = 'data/interim'
+        self.tmp_dir = 'data/interim/'
         self.time_interval = time_interval
 
     def do(self, metadata_dict: dict, clear_fragments: bool = False) -> List[dict]:
@@ -35,7 +35,7 @@ class DemoASDetector(Tasker):
         sample['demo'] = [True]
 
         samples = self.detector.process(
-            sample,
+            sample=sample,
             output_dir=self.output_dir,
             visual_output_dir=self.visual_output_dir,
             audio_output_dir=self.audio_output_dir,
@@ -45,6 +45,7 @@ class DemoASDetector(Tasker):
             keep_origin=True,
             time_interval=self.time_interval,
             clear_nw=clear_fragments,
+            face_conf_threshold=0.0
         )
 
         _samples = []
@@ -63,7 +64,7 @@ class DemoASDetector(Tasker):
             _samples.append(_sample)
 
         if not _samples:
-            logger.fatal('No speaker is detected in video.')
+            logger.critical('No speaker is detected in video.')
             exit(1)
         return _samples
 

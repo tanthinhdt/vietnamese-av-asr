@@ -1,21 +1,14 @@
-# Copyright (c) Facebook, Inc. and its affiliates.
-# All rights reserved.
-#
-# This source code is licensed under the license found in the
-# LICENSE file in the root directory of this source tree.
-
 import logging
 import math
 import os
 import sys
-
 import fairseq
-import soundfile as sf
 import torch
-import torch.nn.functional as F
 import tqdm
-from npy_append_array import NpyAppendArray
 import numpy as np
+import torch.nn.functional as F
+
+from npy_append_array import NpyAppendArray
 from python_speech_features import logfbank
 from scipy.io import wavfile
 
@@ -51,7 +44,7 @@ class HubertFeatureReader(object):
         logger.info(f" max_chunk = {self.max_chunk}")
         logger.info(f"Transform: {self.transform}")
 
-    def load_feature(self, mix_name, ref_len=None):
+    def load_feature(self, mix_name, modalities):
         def stacker(feats, stack_order):
             feat_dim = feats.shape[1]
             if len(feats) % stack_order != 0:
@@ -60,21 +53,27 @@ class HubertFeatureReader(object):
                 feats = np.concatenate([feats, res], axis=0)
             feats = feats.reshape((-1, stack_order, feat_dim)).reshape(-1, stack_order*feat_dim)
             return feats
+
         video_fn, audio_fn = mix_name
         video_feats = self.load_image(video_fn)
-
         audio_fn = audio_fn.split(':')[0]
-        
+
         sample_rate, wav_data = wavfile.read(audio_fn)
         assert sample_rate == 16_000 and len(wav_data.shape) == 1
         audio_feats = logfbank(wav_data, samplerate=sample_rate).astype(np.float32)
         audio_feats = stacker(audio_feats, self.stack_order_audio)
+
+        if 'visual' not in modalities:
+            video_feats *= 0
+        if 'audio' not in modalities:
+            audio_feats *= 0
 
         diff = len(audio_feats) - len(video_feats)
         if diff < 0:
             audio_feats = np.concatenate([audio_feats, np.zeros([-diff, audio_feats.shape[-1]], dtype=audio_feats.dtype)])
         elif diff > 0:
             audio_feats = audio_feats[:-diff]
+
         return video_feats, audio_feats
 
     def load_image(self, video_fn):
@@ -83,8 +82,8 @@ class HubertFeatureReader(object):
         feats = np.expand_dims(feats, axis=-1)
         return feats
 
-    def get_feats(self, path, ref_len=None):
-        video_feats, audio_feats = self.load_feature(path, ref_len)
+    def get_feats(self, path, modalities: list):
+        video_feats, audio_feats = self.load_feature(path, modalities)
         with torch.no_grad():
             audio_feats, video_feats = torch.from_numpy(audio_feats.astype(np.float32)).to(device=self.device), torch.from_numpy(video_feats.astype(np.float32)).to(device=self.device)
             if self.task.cfg.normalize:
@@ -92,7 +91,6 @@ class HubertFeatureReader(object):
             video_feats = video_feats.unsqueeze(dim=0).permute((0, 4, 1, 2, 3)).contiguous()
             audio_feats = audio_feats.unsqueeze(dim=0).transpose(1, 2)
 
-            audio_feats = audio_feats * 0
             source = {'audio': audio_feats, 'video': video_feats}
             if self.layer == 0:
                 ret_conv, output_layer = True, None
@@ -132,8 +130,14 @@ def get_path_iterator(tsv, nshard, rank):
 
 
 def dump_feature(
-        tsv_dir, split, ckpt_path, layer, nshard, rank, feat_dir, max_chunk, custom_utils=None, **kwargs
+        tsv_dir, split, ckpt_path, layer, nshard, rank, feat_dir, max_chunk, custom_utils=None, modalities: list = None, **kwargs
 ):
+    if modalities is None:
+        logger.critical("Select modalities to dump feature")
+        exit(1)
+    if not {'visual', 'audio'}.intersection(set(modalities)):
+        logger.critical("No visual or audio modalities.")
+        exit(1)
     reader = HubertFeatureReader(ckpt_path, layer, max_chunk, custom_utils=custom_utils)
     tsv_path = os.path.join(tsv_dir, f"{split}.tsv")
     generator, num = get_path_iterator(tsv_path, nshard, rank)
@@ -149,8 +153,8 @@ def dump_feature(
     feat_f = NpyAppendArray(feat_path)
     with open(leng_path, "w") as leng_f:
         for path, nsample in tqdm.tqdm(iterator, total=num):
-            feat = reader.get_feats(path, nsample)
-            feat_f.append(feat.cpu().numpy())
+            feat = reader.get_feats(path, modalities=modalities)
+            feat_f.append(feat.cpu().to(torch.float).numpy())
             leng_f.write(f"{len(feat)}\n")
     logger.info("finished successfully")
 
@@ -168,11 +172,11 @@ if __name__ == "__main__":
     parser.add_argument("feat_dir")
     parser.add_argument("--max_chunk", type=int, default=1600000)
     parser.add_argument("--user_dir", type=str, default=None)
+    parser.add_argument('--modalities', nargs='+', type=str, required=False, default=None)
 
     args = parser.parse_args()
-    logger.info(args)
-    fairseq.utils.import_user_module(args)
     sys.path.append(args.user_dir)
+    logger.info(args)
     from src.utils import utils_vsp_llm as custom_utils
     kwargs = vars(args)
     kwargs.update({'custom_utils': custom_utils})

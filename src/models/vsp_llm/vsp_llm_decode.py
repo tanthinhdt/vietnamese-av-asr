@@ -1,35 +1,23 @@
-# Copyright (c) Facebook, Inc. and its affiliates.
-# All rights reserved.
-#
-# This source code is licensed under the license found in the
-# LICENSE file in the root directory of this source tree.
-
-#============================ 69 ============================
-
-import ast
 from itertools import chain
 import logging
-import math
 import os
 import sys
 import json
 import hashlib
 import editdistance
 from argparse import Namespace
-import pdb
 
-import fairseq.models
 import numpy as np
 import torch
-from fairseq import checkpoint_utils, options, tasks, utils, distributed_utils
-from fairseq.dataclass.utils import convert_namespace_to_omegaconf
-from fairseq.logging import progress_bar
-from fairseq.logging.meters import StopwatchMeter, TimeMeter
-from omegaconf import DictConfig
+import hydra
+import sacrebleu
 
 from pathlib import Path
-import hydra
 from hydra.core.config_store import ConfigStore
+from fairseq import checkpoint_utils, utils, distributed_utils
+from fairseq import tasks
+from fairseq.dataclass.utils import convert_namespace_to_omegaconf
+from fairseq.logging import progress_bar
 from fairseq.dataclass.configs import (
     CheckpointConfig,
     CommonConfig,
@@ -39,10 +27,10 @@ from fairseq.dataclass.configs import (
     DistributedTrainingConfig,
     FairseqDataclass,
 )
+from transformers import AutoTokenizer
 from dataclasses import dataclass, field, is_dataclass
-from typing import Any, Dict, List, Optional, Tuple, Union
-from omegaconf import OmegaConf, MISSING
-import sacrebleu
+from typing import Any, List, Optional, Tuple, Union
+from omegaconf import OmegaConf, MISSING, DictConfig
 
 logging.root.setLevel(logging.INFO)
 logging.basicConfig(level=logging.INFO)
@@ -50,20 +38,22 @@ logger = logging.getLogger(__name__)
 
 config_path = Path(__file__).resolve().parent.parent / "configs"
 
+
 @dataclass
 class OverrideConfig(FairseqDataclass):
     noise_wav: Optional[str] = field(default=None, metadata={'help': 'noise wav file'})
     noise_prob: float = field(default=0, metadata={'help': 'noise probability'})
     noise_snr: float = field(default=0, metadata={'help': 'noise SNR in audio'})
-    modalities: List[str] = field(default_factory=lambda: ["video"], metadata={'help': 'which modality to use'})
+    modalities: List[str] = field(default_factory=lambda: ["visual"], metadata={'help': 'which modality to use'})
     data: Optional[str] = field(default=None, metadata={'help': 'path to test data directory'})
     label_dir: Optional[str] = field(default=None, metadata={'help': 'path to test label directory'})
-    labels: Optional[List[str]] = field(default_factory=lambda : ['km'], metadata={'help': 'extension of label files'})
+    labels: Optional[List[str]] = field(default_factory=lambda: ['km'], metadata={'help': 'extension of label files'})
     label_rate: int = field(default=-1, metadata={'help': 'load label or not'})
     eval_bleu: bool = field(default=False, metadata={'help': 'evaluate bleu score'})
     llm_ckpt_path: str = field(default=MISSING, metadata={'help': 'path to llama checkpoint'})
     w2v_path: str = field(default=MISSING, metadata={'help': 'path to hubert checkpoint'})
     demo: bool = field(default=False, metadata={'help': 'Indicate whether demo or decode'})
+
 
 @dataclass
 class InferConfig(FairseqDataclass):
@@ -98,8 +88,6 @@ def main(cfg: DictConfig):
 
     return _main(cfg, sys.stdout)
 
-from fairseq import tasks
-from transformers import AutoTokenizer
 
 def _main(cfg, output_file):
     logging.basicConfig(
@@ -110,7 +98,7 @@ def _main(cfg, output_file):
     )
 
     logger = logging.getLogger("hybrid.speech_recognize")
-    if output_file is not sys.stdout:  # also print to stdout
+    if output_file is not sys.stdout and False:  # also print to stdout
         logger.addHandler(logging.StreamHandler(sys.stdout))
 
     utils.import_user_module(cfg.common)
@@ -131,19 +119,12 @@ def _main(cfg, output_file):
     task.build_tokenizer(saved_cfg.tokenizer)
     task.build_bpe(saved_cfg.bpe)
 
-    logger.info(cfg)
-
-    # Fix seed for stochastic decoding
-    if cfg.common.seed is not None :
+    if cfg.common.seed is not None:
         np.random.seed(cfg.common.seed)
         utils.set_torch_seed(cfg.common.seed)
 
     use_cuda = torch.cuda.is_available()
 
-    # Set dictionary
-    dictionary = task.target_dictionary
-
-    # loading the dataset should happen after the checkpoint has been loaded so we can give it the saved task config
     task.cfg.llm_ckpt_path = cfg.override.llm_ckpt_path
     task.cfg.noise_prob = cfg.override.noise_prob
     task.cfg.noise_snr = cfg.override.noise_snr
@@ -162,7 +143,6 @@ def _main(cfg, output_file):
     lms = [None]
 
     # Optimize ensemble for generation
-
     for model in chain(models, lms):
         if model is None:
             continue
@@ -196,26 +176,17 @@ def _main(cfg, output_file):
         default_log_format=("tqdm" if not cfg.common.no_progress_bar else "simple"),
     )
 
-    gen_timer = StopwatchMeter()
-    def decode_fn(x):
-        symbols_ignore = {"<unk>", "<mask>","<pad>", "</s>"}
-        if hasattr(task.datasets[cfg.dataset.gen_subset].label_processors[0], 'decode'):
-            return tokenizer.decode(x, skip_special_tokens=True)
-        chars = dictionary.string(x, extra_symbols_to_ignore=symbols_ignore)
-        words = " ".join("".join(chars.split()).replace('|', ' ').split())
-        return words
-
-    num_sentences = 0
-    has_target = True
-    wps_meter = TimeMeter()
     result_dict = {'utt_id': [], 'ref': [], 'hypo': [], 'instruction': []}
     model = models[0]
     for sample in progress:
         sample = utils.move_to_cuda(sample) if use_cuda else sample
         if "net_input" not in sample:
             continue
-        
-        sample['net_input']['source']['video'] = sample['net_input']['source']['video'].to(torch.half)
+
+        if sample['net_input']['source']['video'] is not None:
+            sample['net_input']['source']['video'] = sample['net_input']['source']['video'].to(torch.half)
+        if sample['net_input']['source']['audio'] is not None:
+            sample['net_input']['source']['audio'] = sample['net_input']['source']['audio'].to(torch.half)
 
         best_hypo = model.generate(target_list=sample["target"],
                                    num_beams=cfg.generation.beam, 
@@ -230,7 +201,6 @@ def _main(cfg, output_file):
                 sample['target'][i] == -100, 0
             )
             ref_sent = tokenizer.decode(target.int().cpu(), skip_special_tokens=True, clean_up_tokenization_spaces=False)
-            result_dict['ref'].append(ref_sent)
             hypo_str = best_hypo[i]
             instruction = tokenizer.decode(sample['net_input']['source']['text'][i].int().cpu(), skip_special_tokens=True, clean_up_tokenization_spaces=False)
             result_dict['instruction'].append(instruction)
@@ -238,6 +208,7 @@ def _main(cfg, output_file):
             if cfg.override.demo:
                 logger.info(f"\nINST:{instruction}\nHYP:{hypo_str}\n")
             else:
+                result_dict['ref'].append(ref_sent)
                 logger.info(f"\nINST:{instruction}\nREF:{ref_sent}\nHYP:{hypo_str}\n")
 
     yaml_str = OmegaConf.to_yaml(cfg.generation)
@@ -295,10 +266,7 @@ def hydra_main(cfg: InferConfig) -> Union[float, Tuple[float, Optional[float]]]:
 
 def cli_main() -> None:
     try:
-        from hydra._internal.utils import (
-            get_args,
-        )  # pylint: disable=import-outside-toplevel
-
+        from hydra._internal.utils import get_args
         cfg_name = get_args().config_name or "infer"
     except ImportError:
         logger.warning("Failed to get config name from hydra args")

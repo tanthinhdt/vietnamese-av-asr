@@ -23,6 +23,7 @@ Pre-processing:
 import os
 from .tasker import Tasker
 from .checker import Checker
-from .as_detector import DemoASDetector
+from .normalizer import Normalizer
+from .splitter import Splitter
 from .cropper import DemoCropper
-from .combiner import Combiner
+from .embedder import Embedder

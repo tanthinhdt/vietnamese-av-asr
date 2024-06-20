@@ -1,26 +1,15 @@
-# Copyright (c) Facebook, Inc. and its affiliates.
-# All rights reserved.
-#
-# This source code is licensed under the license found in the
-# LICENSE file in the root directory of this source tree.
-
 import math
-import re
-from dataclasses import dataclass, field
-from typing import List, Optional
-
 import torch
-import torch.nn.functional as F
+
 from fairseq import metrics, utils
 from fairseq.criterions import FairseqCriterion, register_criterion
 from fairseq.dataclass import FairseqDataclass
-import editdistance
+
 
 @register_criterion("decoder_only_language_modeling_loss", dataclass=FairseqDataclass)
 class decoder_only_language_modeling_loss(FairseqCriterion):
     def __init__(self, task):
         super().__init__(task)
-
 
     def forward(self, model, sample, reduce=True):
         """Compute the loss for the given sample.
@@ -50,7 +39,6 @@ class decoder_only_language_modeling_loss(FairseqCriterion):
         logging_output["total"] = utils.item(total.data)
 
         return loss, sample_size, logging_output
-
     
     def compute_accuracy(self, lprobs, sample):
         target = sample['net_input']['prev_output_tokens']
@@ -102,4 +90,3 @@ class decoder_only_language_modeling_loss(FairseqCriterion):
         to True will improves distributed training speed.
         """
         return False
-

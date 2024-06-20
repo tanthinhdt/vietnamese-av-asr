@@ -24,36 +24,19 @@ cd vietnamese-av-asr/
 ```
 
 ## Run inference
-Download some video...
-
-Download test demo [video file](https://drive.google.com/file/d/1Qgar8SXyfPSeg7O69VtBNyUCZuSdP7LQ/view?usp=share_link)
 ```bash
-bash scripts/inference.sh 
+python src/models/inferences/main.py 
     <video-path>
-    [--clear-fragments]
     [--n-cluster <n-cluster>]
+    [--time-interval <time-interval>]
 ```
 ##### Arguments:
-- `<video-path>`: Path to video file
-- `--clear-fragments`: Clear intermediate results generated during inferencing progress.
-- `--n-cluster`: Number of clusters when learn k-means. Default 100.
+- `<video-path>`: Path to video file. It can be video/visual/audio clip. It is required duration not to be greater than **30** seconds, because of resource constraints.
+- `--n-cluster`: Number of clusters when learn k-means. Default 25.
+- `--time-interval`: Time interval to split. Default 3s.
 
-## Video combines transcript
-### Output video contains:
-1. Scenes of speaker.
-2. Transcripts corresponding scenes
-
-
-### There are 2 version outputs:
-1. Facial scene, [here](results)
-2. Original scene, [here](results)
-
-### Note:
-1.  The output video is **JUST INTUITIVE**,
-    means the transcript in video ASYNCHRONOUS with both audio and visual. 
-    Because of model's purpose, **JUST** transcribe **WITHOUT** time stamp.
-2. The output video contains **ONLY** scene of **SPEAKER**
-
-
-
-
+## Video with embedded transcript
+### Output video is located in [dir](results)
+#### Note: 
+The output video is **JUST INTUITIVE**, means the transcript in video ASYNCHRONOUS with both audio and visual. 
+Because of model's purpose, **JUST** transcribe **WITHOUT** time stamp.

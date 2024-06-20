@@ -1,4 +1,5 @@
 import logging
+import sys
 
 from typing import Union
 
@@ -55,7 +56,7 @@ def get_logger(
     if not logger.handlers:
         # create stream handler if
         if is_stream:
-            s_handler = logging.StreamHandler()
+            s_handler = logging.StreamHandler(stream=sys.stdout)
             s_handler.setLevel(level=level)
             s_handler.setFormatter(fmt=formater)
             logger.addHandler(hdlr=s_handler)

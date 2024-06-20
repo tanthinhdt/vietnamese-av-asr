@@ -5,7 +5,7 @@ sys.path.append(os.getcwd())
 import argparse
 
 from src.models.utils.mainfest import create_demo_mainfest
-from src.models.taskers import Checker, DemoASDetector, DemoCropper, Combiner
+from src.models.taskers import Checker, DemoCropper, Embedder, Normalizer, Splitter
 from src.models.utils import get_logger, get_spent_time
 
 logger = get_logger('inference', is_stream=True)
@@ -24,8 +24,16 @@ def get_args() -> argparse.Namespace:
         '--n-cluster',
         type=int,
         required=False,
-        default=20,
+        default=25,
         help='N-cluster when clustering hubert features.'
+    )
+
+    parser.add_argument(
+        '--time-interval',
+        type=int,
+        required=False,
+        default=3,
+        help='Time interval to split',
     )
 
     parser.add_argument(
@@ -47,35 +55,42 @@ def get_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-@get_spent_time(message='Inferencing time in second: ')
-def infer(args: argparse.Namespace):
-    checker = Checker()
-    detector = DemoASDetector()
+@get_spent_time(message='Inferencing time: ')
+def infer(args: argparse.Namespace) -> str:
+    checker = Checker(duration_threshold=30)
+    normalizer = Normalizer(checker=checker)
     cropper = DemoCropper()
-    combiner = Combiner()
+    splitter = Splitter()
+    embedder = Embedder()
 
     logger.info('Start inferencing')
 
-    # check visual and audio
-    logger.info(f"Check existing of visual and audio in video")
+    logger.info(f"Check video")
     checked_metadata = checker.do(video_path=args.video_path)
 
-    # detect speaker
-    logger.info(f"Detect active speaker in video")
-    samples = detector.do(metadata_dict=checked_metadata, clear_fragments=args.clear_fragments)
+    if checked_metadata['has_v'] and checked_metadata['has_a']:
+        modalities, short_modal = "visual audio", "av"
+    elif checked_metadata['has_v']:
+        modalities, short_modal = "visual", "v"
+    else:
+        modalities, short_modal = "audio", "a"
 
-    # crop mouth
-    logger.info(f"Crop mouth of speaker in video")
-    samples = cropper.do(samples)
+    logger.info(f"Normalize video")
+    normalized_metadata = normalizer.do(metadata_dict=checked_metadata, checker=checker)
 
-    # create mainfest file
+    logger.info(f"Split into segments")
+    samples = splitter.do(metadata_dict=normalized_metadata, time_interval=args.time_interval)
+
+    logger.info(f"Crop mouth of speaker")
+    samples = cropper.do(samples, need_to_crop=checked_metadata['has_v'])
+
     logger.info('Create mainfest file')
     mainfest_dir = create_demo_mainfest(samples_dict=samples)
 
     # dump hubert feature
     dump_h_f_cmd = (f"python src/features/dump_hubert_feature.py {mainfest_dir} test "
-                "src/models/checkpoints/large_vox_iter5.pt 12 1 0 "
-                f"{mainfest_dir} --user_dir .").split(' ')
+                    f"src/models/checkpoints/large_vox_iter5.pt 12 1 0 "
+                    f"{mainfest_dir} --user_dir . --modalities {modalities}").split(' ')
 
     # learn k-means
     learn_k_means_cmd = (f"python src/features/learn_kmeans.py "
@@ -92,7 +107,7 @@ def infer(args: argparse.Namespace):
     cl_count_cmd = "python src/features/cluster_counts.py".split(' ')
 
     # vsp_llm decode
-    decode_cmd = ['src/models/scripts/decode.sh', '--demo']
+    decode_cmd = ['src/models/scripts/decode.sh', '--demo', '--modal', short_modal]
 
     _cmd_dict = {
         'dump_h_f': dump_h_f_cmd,
@@ -117,13 +132,13 @@ def infer(args: argparse.Namespace):
             exit()
 
     logger.info('Combine video and transcript.')
-    _output_videos = combiner.do()
+    _output_video_path = 'aaa' #embedder.do(samples)
 
     if args.clear_fragments:
         logger.info('Clear fragments')
-        combiner.post_do(clear_framents=args.clear_fragments)
+        embedder.post_do(clear_framents=args.clear_fragments)
 
-    logger.info(f"2 output videos: '{_output_videos[0]}', '{_output_videos[1]}'")
+    logger.info(f"Output path: '{_output_video_path}'")
     logger.info('Inference DONE!')
 
 
