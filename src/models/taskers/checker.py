@@ -43,7 +43,9 @@ class Checker(Tasker):
         metadata_dict['extension'] = os.path.splitext(video_path)[1][1:]
         metadata_dict['match_ext'] = self._check_ext(video_path=video_path)
         metadata_dict['has_v'] = self._check_visual(_stream_dict)
+        metadata_dict['v_codec'] = _stream_dict['visual']['codec_name'] if metadata_dict['has_v'] else None
         metadata_dict['has_a'] = self._check_audio(_stream_dict)
+        metadata_dict['a_codec'] = _stream_dict['audio']['codec_name'] if metadata_dict['has_a'] else None
         metadata_dict['match_fr'] = self._check_frame_rate(_stream_dict)
         metadata_dict['match_sr'] = self._check_sample_rate(_stream_dict)
 
@@ -52,12 +54,24 @@ class Checker(Tasker):
         return metadata_dict
 
     def post_do(self, metadata_dict: dict):
+        tmp = 0
         if not metadata_dict['has_v']:
-            logger.fatal(f"Video in '{metadata_dict['video_path']}\' has no visual.")
-            exit(1)
+            logger.warning(f"Video in '{metadata_dict['video_path']}\' has no visual.")
+            tmp += 1
+        else:
+            logger.info(f"Video codec in '{metadata_dict['video_path']}\': {metadata_dict['v_codec']}.")
+
         if not metadata_dict['has_a']:
-            logger.fatal(f"Video in '{metadata_dict['video_path']}\' has no audio.")
+            logger.info(f"Video in '{metadata_dict['video_path']}\' has no audio.")
+            tmp += 1
+        else:
+            logger.warning(f"Audio codec in '{metadata_dict['video_path']}\': {metadata_dict['a_codec']}.")
+
+        if tmp:
+            logger.critical(f"Invalid video in '{metadata_dict['video_path']}'.")
             exit(1)
+        else:
+            logger.info(f"Valid video in '{metadata_dict['video_path']}'.")
 
     def _check_is_file(self, video_path: str) -> bool:
         """

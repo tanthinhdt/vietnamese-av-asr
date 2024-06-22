@@ -55,7 +55,7 @@ class OverrideConfig(FairseqDataclass):
     noise_wav: Optional[str] = field(default=None, metadata={'help': 'noise wav file'})
     noise_prob: float = field(default=0, metadata={'help': 'noise probability'})
     noise_snr: float = field(default=0, metadata={'help': 'noise SNR in audio'})
-    modalities: List[str] = field(default_factory=lambda: ["video"], metadata={'help': 'which modality to use'})
+    modalities: List[str] = field(default_factory=lambda: ["video", "audio"], metadata={'help': 'which modality to use'})
     data: Optional[str] = field(default=None, metadata={'help': 'path to test data directory'})
     label_dir: Optional[str] = field(default=None, metadata={'help': 'path to test label directory'})
     labels: Optional[List[str]] = field(default_factory=lambda : ['km'], metadata={'help': 'extension of label files'})

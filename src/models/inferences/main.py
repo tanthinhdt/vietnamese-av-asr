@@ -5,7 +5,7 @@ sys.path.append(os.getcwd())
 import argparse
 
 from src.models.utils.mainfest import create_demo_mainfest
-from src.models.taskers import Checker, DemoASDetector, DemoCropper, Combiner
+from src.models.taskers import Checker, DemoASDetector, DemoCropper, Combiner, Normalizer
 from src.models.utils import get_logger, get_spent_time
 
 logger = get_logger('inference', is_stream=True)
@@ -18,6 +18,14 @@ def get_args() -> argparse.Namespace:
         'video_path',
         type=str,
         help="Path to video would to infer",
+    )
+
+    parser.add_argument(
+        '--time-interval',
+        type=int,
+        required=False,
+        default=3,
+        help='Interval to split'
     )
 
     parser.add_argument(
@@ -50,19 +58,23 @@ def get_args() -> argparse.Namespace:
 @get_spent_time(message='Inferencing time in second: ')
 def infer(args: argparse.Namespace):
     checker = Checker()
-    detector = DemoASDetector()
+    normalizer = Normalizer()
+    detector = DemoASDetector(time_interval=args.time_interval)
     cropper = DemoCropper()
     combiner = Combiner()
 
     logger.info('Start inferencing')
 
     # check visual and audio
-    logger.info(f"Check existing of visual and audio in video")
+    logger.info(f"Check video")
     checked_metadata = checker.do(video_path=args.video_path)
+
+    logger.info(f"Normalize video")
+    normalized_metadata = normalizer.do(metadata_dict=checked_metadata)
 
     # detect speaker
     logger.info(f"Detect active speaker in video")
-    samples = detector.do(metadata_dict=checked_metadata, clear_fragments=args.clear_fragments)
+    samples = detector.do(metadata_dict=normalized_metadata, clear_fragments=args.clear_fragments)
 
     # crop mouth
     logger.info(f"Crop mouth of speaker in video")

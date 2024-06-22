@@ -25,6 +25,8 @@ class Cropper(Processor):
         visual_output_dir: str,
         padding: int = 96,
         log_path: str = None,
+        time_interval: float = 3.0,
+        **infer_kwargs
     ) -> dict:
         """
         Crop mouth region of speaker in video.
@@ -38,6 +40,7 @@ class Cropper(Processor):
         return:      
             Metadata of processed sample.
         """
+
         logger = get_logger(
             name=__name__,
             log_path=log_path,
@@ -80,9 +83,9 @@ class Cropper(Processor):
                     frame_height=max_height,
                     fps=sample["visual_fps"][0],
                 )
-                logger.info('Normalize 3s')
-                command = "ffmpeg -y -i %s -an -c:v libx264 -ss %s -t %s -map 0 -f mp4 -loglevel panic %s" % \
-                            (_visual_output_path, "00:00:00.00000", "00:00:03.00000", visual_output_path)
+                logger.info(f'Normalize after cropping')
+                command = "ffmpeg -y -i %s -an -c:v libx264 -t %f -map 0 -f avi -loglevel panic %s" % \
+                            (_visual_output_path, time_interval, visual_output_path)
                 subprocess.run(command, shell=True, stdout=None)
                 os.remove(path=_visual_output_path)
             else:

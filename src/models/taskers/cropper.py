@@ -25,7 +25,7 @@ class DemoCropper(Tasker):
 
             os.makedirs(_v_mouth_dir, exist_ok=True)
             os.makedirs(_a_mouth_dir, exist_ok=True)
-            _tmp_sample = self.cropper.process(sample, visual_output_dir=_v_mouth_dir)
+            _tmp_sample = self.cropper.process(sample, visual_output_dir=_v_mouth_dir, infer=False)
             if _tmp_sample['id'] is None:
                 continue
 

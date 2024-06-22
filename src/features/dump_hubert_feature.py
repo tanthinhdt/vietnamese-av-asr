@@ -92,7 +92,7 @@ class HubertFeatureReader(object):
             video_feats = video_feats.unsqueeze(dim=0).permute((0, 4, 1, 2, 3)).contiguous()
             audio_feats = audio_feats.unsqueeze(dim=0).transpose(1, 2)
 
-            audio_feats = audio_feats * 0
+            #audio_feats = audio_feats * 0
             source = {'audio': audio_feats, 'video': video_feats}
             if self.layer == 0:
                 ret_conv, output_layer = True, None

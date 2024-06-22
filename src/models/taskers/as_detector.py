@@ -20,7 +20,11 @@ class DemoASDetector(Tasker):
         self.tmp_dir = 'data/interim'
         self.time_interval = time_interval
 
-    def do(self, metadata_dict: dict, clear_fragments: bool = False) -> List[dict]:
+    def do(
+            self,
+            metadata_dict: dict,
+            clear_fragments: bool = False
+    ) -> List[dict]:
         """
         Detect speaker in video.
 
@@ -43,13 +47,17 @@ class DemoASDetector(Tasker):
             log_path=None,
             combine_av=True,
             keep_origin=True,
+            keep_full=False,
+            filter_out=True,
             time_interval=self.time_interval,
             clear_nw=clear_fragments,
+            conf_th=0.8,
+            infer=True,
         )
 
         _samples = []
 
-        for _id, _c_id in zip(samples['id'], samples['chunk_visual_id']):
+        for _id,_c_id in zip(samples['id'],samples['chunk_visual_id']):
             if _id is None:
                 continue
             _sample = dict()

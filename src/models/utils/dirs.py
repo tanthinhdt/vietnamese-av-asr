@@ -15,6 +15,7 @@ _OUTPUT_DIR = os.path.join(_DECODE_DIR, 'output')
 _FACE_OUTPUT_DIR = os.path.join(_OUTPUT_DIR, 'face')
 _ORIGIN_OUTPUT_DIR = os.path.join(_OUTPUT_DIR, 'origin')
 
+os.makedirs(_DATASET_DIR, exist_ok=True)
 os.makedirs(_SUBTITLE_DIR, exist_ok=True)
 os.makedirs(_FACE_OUTPUT_DIR, exist_ok=True)
 os.makedirs(_ORIGIN_OUTPUT_DIR, exist_ok=True)
