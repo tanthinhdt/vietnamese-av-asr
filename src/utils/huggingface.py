@@ -37,11 +37,13 @@ class UploadScheduler(CommitScheduler):
         """
         Push files to HuggingFace repository.
         """
-        paths = glob(self.folder_path)
+        paths = sorted(glob(self.folder_path))
 
         with tempfile.TemporaryDirectory() as temp_dir:
             for i, path in enumerate(paths):
-                dest_path = os.path.join(self.path_in_repo, os.path.basename(path))
+                dest_path = os.path.join(
+                    self.path_in_repo, os.path.basename(path)
+                )
                 if os.path.isdir(path) and self.zip:
                     dest_path += ".zip"
                 if not self.overwrite and exist_in_hf(
