@@ -92,7 +92,8 @@ def main(args: argparse.Namespace, logger: Logger) -> None:
                 upload_scheduler.stop()
                 break
         logger.info("Uploading files completed")
-    except Exception:
+    except Exception as e:
+        print(e)
         logger.info("Uploading files interrupted")
 
 
