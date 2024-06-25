@@ -19,6 +19,7 @@ class UploadScheduler(CommitScheduler):
         delete_after_upload: bool = False,
         overwrite: bool = False,
         zip: bool = False,
+        reverse: bool = False,
         **kwargs,
     ) -> None:
         super().__init__(**kwargs)
@@ -30,6 +31,7 @@ class UploadScheduler(CommitScheduler):
         self.delete_after_upload = delete_after_upload
         self.overwrite = overwrite
         self.zip = zip
+        self.reverse = reverse
         self.is_done = False
         self.logger.info(f"Created UploadScheduler for {self.repo_id} repo")
 
@@ -38,7 +40,7 @@ class UploadScheduler(CommitScheduler):
         Push files to HuggingFace repository.
         """
         self.logger.info("Start new pushing cycle")
-        paths = sorted(glob(self.folder_path))
+        paths = sorted(glob(self.folder_path), reverse=self.reverse)
         self.logger.info(f"Found {len(paths)} to be pushed")
         if len(paths) == 0:
             self.is_done = True
