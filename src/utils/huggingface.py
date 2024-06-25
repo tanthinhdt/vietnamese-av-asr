@@ -6,6 +6,9 @@ from huggingface_hub import HfApi, HfFileSystem, CommitScheduler
 from .zipping import zip_dir
 
 
+os.environ["HF_HUB_ENABLE_HF_TRANSFER"] = "1"
+
+
 class UploadScheduler(CommitScheduler):
     """
     This class is used to upload files to HuggingFace repository.
