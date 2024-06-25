@@ -31,56 +31,63 @@ class UploadScheduler(CommitScheduler):
         self.overwrite = overwrite
         self.zip = zip
         self.is_done = False
-        self.logger.info(f"Created UploadScheduler for {self.repo_id} repository")
+        self.logger.info(f"Created UploadScheduler for {self.repo_id} repo")
 
     def push_to_hub(self):
         """
         Push files to HuggingFace repository.
         """
+        self.logger.info("Start new pushing cycle")
         paths = sorted(glob(self.folder_path))
+        self.logger.info(f"Found {len(paths)} to be pushed")
+        if len(paths) == 0:
+            self.is_done = True
+            return
 
-        with tempfile.TemporaryDirectory() as temp_dir:
-            for i, path in enumerate(paths):
-                dest_path = os.path.join(
-                    self.path_in_repo, os.path.basename(path)
-                )
-                if os.path.isdir(path) and self.zip:
-                    dest_path += ".zip"
-                if not self.overwrite and exist_in_hf(
-                    repo_id=self.repo_id,
-                    path_in_repo=dest_path,
-                    repo_type=self.repo_type,
-                ):
-                    continue
-                self.logger.info(f"[{i + 1}/{len(paths)}] Uploading {path}")
+        for i, path in enumerate(paths):
+            dest_path = os.path.join(
+                self.path_in_repo, os.path.basename(path)
+            )
+            if os.path.isdir(path) and self.zip:
+                dest_path += ".zip"
+            if not self.overwrite and exist_in_hf(
+                repo_id=self.repo_id,
+                path_in_repo=dest_path,
+                repo_type=self.repo_type,
+            ):
+                continue
+            self.logger.info(f"[{i + 1}/{len(paths)}] Uploading {path}")
 
-                src_path = os.path.join(temp_dir, os.path.basename(path))
-                if os.path.isdir(path) and self.zip:
+            if os.path.isdir(path) and self.zip:
+                with tempfile.TemporaryDirectory() as temp_dir:
+                    src_path = os.path.join(temp_dir, os.path.basename(path))
                     zip_dir(
                         dir_path=path,
                         output_dir=temp_dir,
                         logger=self.logger,
                     )
                     src_path = src_path + ".zip"
+            else:
+                src_path = path
 
-                upload_to_hf(
-                    src_path=src_path,
-                    dest_path=dest_path,
-                    repo_id=self.repo_id,
-                    repo_type=self.repo_type,
-                    logger=self.logger,
-                )
+            upload_to_hf(
+                src_path=src_path,
+                dest_path=dest_path,
+                repo_id=self.repo_id,
+                repo_type=self.repo_type,
+                logger=self.logger,
+            )
 
-                if self.zip and os.path.exists(src_path):
-                    os.remove(src_path)
-                    self.logger.info(f"Deleted {src_path}")
+            if self.zip and os.path.exists(src_path):
+                os.remove(src_path)
+                self.logger.info(f"Deleted {src_path}")
 
-                if self.delete_after_upload:
-                    os.remove(path)
-                    self.logger.info(f"Deleted {path}")
+            if self.delete_after_upload:
+                os.remove(path)
+                self.logger.info(f"Deleted {path}")
 
-                if i == len(paths) - 1:
-                    self.is_done = True
+            if i == len(paths) - 1:
+                self.is_done = True
 
 
 def upload_to_hf(
