@@ -21,12 +21,14 @@ peft
 psutil==5.9.8
 python-dateutil==2.8.2
 python-speech-features==0.6
+soundfile
 sacrebleu==2.4.0
 safetensors==0.4.2
 scikit-learn==1.4.0
 scipy==1.10.0
 sentencepiece==0.1.96
-torch
+submitit==1.4.1
 tqdm
 transformers
 typing_extensions==4.9.0
+hf-transfer
