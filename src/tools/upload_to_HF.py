@@ -61,6 +61,11 @@ def get_args() -> argparse.Namespace:
         action="store_true",
         help="Zip the directory before uploading",
     )
+    parser.add_argument(
+        "--reverse",
+        action="store_true",
+        help="Reverse the sorted uploading list",
+    )
     return parser.parse_args()
 
 
@@ -86,6 +91,7 @@ def main(args: argparse.Namespace, logger: Logger) -> None:
             delete_after_upload=args.delete_after_upload,
             overwrite=args.overwrite,
             zip=args.zip,
+            reverse=args.reverse,
         )
         while True:
             if upload_scheduler.is_done:
