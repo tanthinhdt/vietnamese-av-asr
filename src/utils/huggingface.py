@@ -13,7 +13,6 @@ class UploadScheduler(CommitScheduler):
     """
     This class is used to upload files to HuggingFace repository.
     """
-
     def __init__(
         self,
         *,
@@ -55,6 +54,9 @@ class UploadScheduler(CommitScheduler):
             )
             if os.path.isdir(path) and self.zip:
                 dest_path += ".zip"
+                zipping = True
+            else:
+                zipping = False
             if not self.overwrite and exist_in_hf(
                 repo_id=self.repo_id,
                 path_in_repo=dest_path,
@@ -63,7 +65,7 @@ class UploadScheduler(CommitScheduler):
                 continue
             self.logger.info(f"[{i + 1}/{len(paths)}] Uploading {path}")
 
-            if os.path.isdir(path) and self.zip:
+            if zipping:
                 with tempfile.TemporaryDirectory() as temp_dir:
                     src_path = os.path.join(temp_dir, os.path.basename(path))
                     zip_dir(
@@ -72,20 +74,24 @@ class UploadScheduler(CommitScheduler):
                         logger=self.logger,
                     )
                     src_path = src_path + ".zip"
+                    upload_to_hf(
+                        src_path=src_path,
+                        dest_path=dest_path,
+                        repo_id=self.repo_id,
+                        repo_type=self.repo_type,
+                        logger=self.logger,
+                    )
+                    os.remove(src_path)
+                    self.logger.info(f"Deleted {src_path}")
             else:
                 src_path = path
-
-            upload_to_hf(
-                src_path=src_path,
-                dest_path=dest_path,
-                repo_id=self.repo_id,
-                repo_type=self.repo_type,
-                logger=self.logger,
-            )
-
-            if self.zip and os.path.exists(src_path):
-                os.remove(src_path)
-                self.logger.info(f"Deleted {src_path}")
+                upload_to_hf(
+                    src_path=src_path,
+                    dest_path=dest_path,
+                    repo_id=self.repo_id,
+                    repo_type=self.repo_type,
+                    logger=self.logger,
+                )
 
             if self.delete_after_upload:
                 os.remove(path)
