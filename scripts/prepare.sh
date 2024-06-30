@@ -47,6 +47,7 @@ conda update --channel defaults --all --yes
 # Install ffmpeg to process media file
 conda install -c conda-forge ffmpeg==7.0.1 --yes
 
+# Require git to install packages from github
 if [[ "$platform" == 'kaggle' ]]
 then
   conda install -c conda-forge git --yes
