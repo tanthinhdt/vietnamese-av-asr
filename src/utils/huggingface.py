@@ -97,8 +97,7 @@ class UploadScheduler(CommitScheduler):
                 os.remove(path)
                 self.logger.info(f"Deleted {path}")
 
-            if i == len(paths) - 1:
-                self.is_done = True
+        self.is_done = True
 
 
 def upload_to_hf(
