@@ -62,8 +62,8 @@ class Splitter(Tasker):
                 _sample = dict()
                 _sample['id'] = [i]
                 _sample['chunk_visual_id'] = [_video_name.replace('video', 'visual')]
-                _sample['timestamp'] = [(timestamp, timestamp+time_interval)]
                 dur = get_duration(_video_path)
+                _sample['timestamp'] = [(timestamp, timestamp+int(dur))]
                 _sample['visual_output_dir'] = [_visual_dir_path]
                 _sample['audio_output_dir'] = [_audio_dir_path]
                 _sample['visual_fps'] = [self.FPS]

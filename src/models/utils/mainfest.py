@@ -1,3 +1,4 @@
+import numbers
 import os
 
 from src.models.utils.dirs import _DATASET_DIR
@@ -17,7 +18,9 @@ def create_demo_mainfest(
 
     _lines = ['.\n']
 
-    for i in range(len(samples_dict)-1):
+    for i in samples_dict.keys():
+        if not isinstance(i, numbers.Number):
+            continue
         _id = "%d/vi-vi" % samples_dict[i]['index']
         _abs_visual_path = os.path.abspath(samples_dict[i]['visual_path'])
         _abs_audio_path = os.path.abspath(samples_dict[i]['audio_path'])

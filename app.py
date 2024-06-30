@@ -7,6 +7,10 @@ import gradio as gr
 
 
 def predict(video_path: str):
+    output_file = 'results/output.mp4'
+    if os.path.isfile(output_file):
+        os.remove(output_file)
+
     inference_file = 'src/models/inferences/main.py'
     cmd = [
         'python',
@@ -31,9 +35,9 @@ def predict(video_path: str):
         print(f"Standard Output: {e.stdout}")
         return f"Error: {e.stdout}"
 
-    if not os.path.isfile('results/output.mp4'):
+    if not os.path.isfile(output_file):
         return video_path
-    return 'results/output.mp4'
+    return output_file
 
 
 if __name__ == "__main__":

@@ -5,7 +5,7 @@ sys.path.append(os.getcwd())
 import argparse
 
 from src.models.utils.mainfest import create_demo_mainfest
-from src.models.taskers import Checker, DemoCropper, Embedder, Normalizer, Splitter
+from src.models.taskers import Checker, MouthCropper, Embedder, Normalizer, Splitter, FaceCropper
 from src.models.utils import get_logger, get_spent_time
 
 logger = get_logger('inference', is_stream=True)
@@ -59,7 +59,8 @@ def get_args() -> argparse.Namespace:
 def infer(args: argparse.Namespace) -> str:
     checker = Checker(duration_threshold=30)
     normalizer = Normalizer(checker=checker)
-    cropper = DemoCropper()
+    face_cropper = FaceCropper()
+    mouth_cropper = MouthCropper()
     splitter = Splitter()
     embedder = Embedder()
 
@@ -81,8 +82,11 @@ def infer(args: argparse.Namespace) -> str:
     logger.info(f"Split into segments")
     samples = splitter.do(metadata_dict=normalized_metadata, time_interval=args.time_interval)
 
+    logger.info(f"Crop face of speaker")
+    samples = face_cropper.do(samples=samples, need_to_crop=checked_metadata['has_v'])
+
     logger.info(f"Crop mouth of speaker")
-    samples = cropper.do(samples, need_to_crop=checked_metadata['has_v'])
+    samples = mouth_cropper.do(samples, need_to_crop=checked_metadata['has_v'])
 
     logger.info('Create mainfest file')
     mainfest_dir = create_demo_mainfest(samples_dict=samples)
@@ -132,7 +136,7 @@ def infer(args: argparse.Namespace) -> str:
             exit()
 
     logger.info('Combine video and transcript.')
-    _output_video_path = 'aaa' #embedder.do(samples)
+    _output_video_path = embedder.do(samples)
 
     if args.clear_fragments:
         logger.info('Clear fragments')
