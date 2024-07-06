@@ -72,7 +72,10 @@ def get_args() -> argparse.Namespace:
 def main(args: argparse.Namespace, logger: Logger) -> None:
     logger.info("Uploading files to HuggingFace Hub")
 
-    if '*' in os.path.basename(args.path):
+    if "*" in os.path.basename(args.path):
+        folder_path = os.path.dirname(args.path)
+        glob_pattern = os.path.basename(args.path)
+    elif "." in os.path.basename(args.path):
         folder_path = os.path.dirname(args.path)
         glob_pattern = os.path.basename(args.path)
     else:
