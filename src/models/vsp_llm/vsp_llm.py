@@ -1,5 +1,6 @@
-import os
 import logging
+import os.path
+
 import torch
 import torch.nn as nn
 
@@ -149,32 +150,16 @@ class HubertEncoderWrapper(FairseqEncoder):
         super().__init__(None)
         self.w2v_model = w2v_model
 
-    def forward_(self, source, padding_mask, **kwargs):
-        src = dict()
-        src['video'] = source
-        src['audio'] = None
-        w2v_args = {
-            "source": src,
-            "padding_mask": padding_mask,
+    def forward(self, visual=None, audio=None, padding_mask=None):
+        source = {
+            'video': visual,
+            'audio': audio,
         }
-        x, padding_mask = self.w2v_model.extract_finetune(**w2v_args)
-        # B x T x C -> T x B x C
-        x = x.transpose(0, 1)
-
-        return {
-            "encoder_out": x,  # T x B x C
-            "encoder_padding_mask": padding_mask,  # B x T
-            "padding_mask": padding_mask
-        }
-
-    def forward(self, source, padding_mask, **kwargs):
         w2v_args = {
             "source": source,
             "padding_mask": padding_mask,
         }
-        with torch.autocast(device_type='cpu'):
-            x, padding_mask = self.w2v_model.extract_finetune(**w2v_args)
-
+        x, padding_mask = self.w2v_model.extract_finetune(**w2v_args)
         return {
             "encoder_out": x,  # T x B x C
             "encoder_padding_mask": padding_mask,  # B x T
@@ -275,7 +260,7 @@ class avhubert_llm_seq2seq_cluster_count(BaseFairseqModel):
         )
         bnb_config = None if not torch.cuda.is_available() else bnb_config
 
-        decoder_4bit = AutoModelForCausalLM.from_pretrained(cfg.llm_ckpt_path, quantization_config=bnb_config)            
+        decoder_4bit = AutoModelForCausalLM.from_pretrained(cfg.llm_ckpt_path, quantization_config=bnb_config)
 
         config = LoraConfig(
             r=16, 
@@ -288,7 +273,7 @@ class avhubert_llm_seq2seq_cluster_count(BaseFairseqModel):
 
         decoder_4bit = get_peft_model(decoder_4bit, config)
         decoder_4bit.print_trainable_parameters()
-        
+
         return avhubert_llm_seq2seq_cluster_count(encoder, decoder_4bit, cfg)
     
     def forward(self, **kwargs):
@@ -332,25 +317,24 @@ class avhubert_llm_seq2seq_cluster_count(BaseFairseqModel):
 
 
     @torch.no_grad()
-    def generate(self,
-                num_beams=20,
-                max_length=30,
-                min_length=1,
-                top_p=0.9,
-                repetition_penalty=1.0,
-                length_penalty=0.0,
-                **kwargs,
-                ):
-        output = self.encoder(**kwargs)
-        # torch.onnx.export(
-        #     model=self.encoder,
-        #     args=(kwargs,),
-        #     f='src/weights/encoder.onnx',
-        # )
-        with torch.autocast(device_type='cpu'):
-            output['encoder_out'] = self.avfeat_to_llm(output['encoder_out'])
-        cluster_counts = kwargs['source']['cluster_counts'][0] # tensor list
-        
+    def generate(
+            self,
+            num_beams=20,
+            max_length=30,
+            min_length=1,
+            top_p=0.9,
+            repetition_penalty=1.0,
+            length_penalty=0.0,
+            **kwargs,
+    ):
+        output = self.encoder(
+            visual=kwargs['source']['video'],
+            audio=kwargs['source']['audio'],
+            padding_mask=kwargs['padding_mask']
+        )
+        output['encoder_out'] = self.avfeat_to_llm(output['encoder_out'])
+        cluster_counts = kwargs['source']['cluster_counts'][0]
+
         results_tensor = []
         start_idx = 0
 
@@ -358,34 +342,132 @@ class avhubert_llm_seq2seq_cluster_count(BaseFairseqModel):
             end_idx = start_idx + clutser_num
             slice = output['encoder_out'][:, start_idx:end_idx, :]
             mean_tensor = torch.mean(slice, dim=1, keepdim=True)
-            results_tensor.append(mean_tensor)            
+            results_tensor.append(mean_tensor)
             start_idx = end_idx
 
-        assert cluster_counts.sum().item() == output['encoder_out'].size()[1]
+        assert (cluster_counts.sum().item() == output['encoder_out'].size()[1])
 
         reduced_enc_out = torch.cat(results_tensor, dim=1).to(device=self.device)
-        # B, T, D = reduced_enc_out.size()
         instruction = kwargs['source']['text']
         instruction_embedding = self.decoder.model.model.embed_tokens(instruction).to(device=self.device)
-        llm_input = torch.cat((instruction_embedding, reduced_enc_out), dim=1) 
+        llm_input = torch.cat((instruction_embedding, reduced_enc_out), dim=1)
 
         self.decoder.config.use_cache = True
-        outputs = self.decoder.generate(inputs_embeds=llm_input,
-                        top_p=top_p,
-                        num_beams=num_beams,
-                        max_new_tokens=max_length,
-                        min_length=min_length,
-                        repetition_penalty=repetition_penalty,
-                        do_sample=True,
-                        length_penalty=length_penalty,
-                        )
+        outputs = self.decoder.generate(
+            inputs_embeds=llm_input,
+            top_p=top_p,
+            num_beams=num_beams,
+            max_new_tokens=max_length,
+            min_length=min_length,
+            repetition_penalty=repetition_penalty,
+            do_sample=True,
+            length_penalty=length_penalty,
+        )
 
         return outputs
+
+    def export_onnx(
+            self,
+            encoder_path: str,
+            decoder_path: str,
+            modalities: list,
+            num_beams=20,
+            max_length=30,
+            min_length=1,
+            top_p=0.9,
+            repetition_penalty=1.0,
+            length_penalty=0.0,
+    ):
+        args = []
+        input_names = []
+        dynamic_axes = dict()
+        input_feed = dict()
+        batch_size = 1
+        seq_len = 10
+        v_channel = 1
+        height = 88
+        width = 88
+        a_dim = 104
+        llm_input_dim = 2560
+
+        if "visual" in modalities:
+            v = torch.randn(batch_size, v_channel, seq_len, height, width)
+            input_names.append('video')
+            args.append(v)
+            input_feed['video'] = v.numpy()
+            dynamic_axes['video'] = {
+                0: "batch_size",
+                2: "seq_len",
+                3: "height",
+                4: "width",
+            }
+        else:
+            args.append(None)
+        if "audio" in modalities:
+            a = torch.randn(batch_size, a_dim, seq_len)
+            input_names.append('audio')
+            args.append(a)
+            input_feed['audio'] = a.numpy()
+            dynamic_axes['audio'] = {
+                0: "batch_size",
+                2: "seq_len",
+            }
+        else:
+            args.append(None)
+        dynamic_axes['features'] = {
+            0: "batch_size",
+            1: "seq_len",
+        }
+
+        if not os.path.isfile(encoder_path):
+            torch.onnx.export(
+                model=self.encoder,
+                args=tuple(args),
+                f=encoder_path,
+                export_params=True,
+                input_names=input_names,
+                output_names=['features'],
+                dynamic_axes=dynamic_axes
+            )
+
+        llm_input = torch.randn(batch_size, seq_len, llm_input_dim)
+
+        self.decoder.config.use_cache = True
+        decoder_kwargs = {
+            'inputs_embeds': llm_input,
+            'top_p': top_p,
+            'num_beams': num_beams,
+            'max_new_tokens': max_length,
+            'min_length': min_length,
+            'repetition_penalty': repetition_penalty,
+            'do_sample': True,
+            'length_penalty': length_penalty,
+        }
+
+        if not os.path.isfile(decoder_path):
+            torch.onnx.export(
+                model=self.decoder,
+                args=(decoder_kwargs,),
+                f=decoder_path,
+                input_names=['llm_input'],
+                output_names=["outputs"],
+                export_params=True,
+                dynamic_axes={
+                    "llm_input": {
+                        0: "batch_size",
+                        1: "seq_len",
+                    },
+                    "outputs": {
+                        0: "batch_size",
+                        1: "seq_len",
+                    }
+                }
+            )
 
     def get_ctc_target(self, sample):
         return sample["target"], sample["target_lengths"]
 
-    def get_ctc_output(self, encoder_out, sample):
+    def get_ctc_output(self, encoder_out):
         en_out = encoder_out["encoder_out"]
         logits = self.ctc_proj(en_out)  # T x B x C
         out = utils.log_softmax(logits.float(), dim=-1)

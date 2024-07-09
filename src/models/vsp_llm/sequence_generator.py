@@ -133,7 +133,7 @@ class SequenceGenerator(nn.Module):
         return self._generate(sample, prefix_tokens, bos_token=bos_token)
 
     # TODO(myleott): unused, deprecate after pytorch-translate migration
-    def generate_batched_itr(self, data_itr, beam_size=None, cuda=False, timer=None):
+    def generate_batched_itr(self, data_itr, cuda=False, timer=None):
         """Iterate over a batched dataset and yield individual translations.
         Args:
             cuda (bool, optional): use GPU for generation

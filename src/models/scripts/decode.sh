@@ -1,20 +1,16 @@
-#! /bin/bash
-# Copyright (c) Meta Platforms, Inc. and its affiliates.
-# All rights reserved.
-#
-# This source code is licensed under the license found in the
-# LICENSE file in the root directory of this source tree.
-
 usage() {
   echo "Usage: $0
     --demo                'demo' mode, otherwise 'decode' mode.
-    --modal               Modal to use: 'v'(visual) or 'a'(audio) or 'av'(audio+visual)
+    --export-onnx         Export model to ONNX
+    --use-onnx            Use onnx for inferencing instead of origin
   "
   exit 1
 }
 
 demo=False
-modalities=""
+modalities=["visual","audio"]
+export_onnx=False
+use_onnx=False
 
 while [[ "$#" -gt 0 ]]; do
   case "$1" in
@@ -31,7 +27,7 @@ while [[ "$#" -gt 0 ]]; do
           modalities=["audio"]
         elif [[ "$2" == "v" ]]; then
           modalities=["visual"]
-        elif [[ "$2" == "av" ]]; then
+        elif [[ "$2" == "av" ]] || [[ "$2" == "va" ]]; then
           modalities=["visual","audio"]
         else
           echo "Invalid modal $2"
@@ -40,11 +36,23 @@ while [[ "$#" -gt 0 ]]; do
         shift 2
       fi
       ;;
+    --export-onnx)
+      export_onnx=True
+      shift 1
+      ;;
+    --use-onnx)
+      use_onnx=True
+      shift 1
+      ;;
     *)
       echo "Unexpected flag $1"
       usage
   esac
 done
+
+if $export_onnx; then
+  use_onnx=False
+fi
 
 if [[ -z "$modalities" ]]; then
   echo "Should explicitly select modal to avoid unexpected behaviours"
@@ -92,6 +100,8 @@ CUDA_VISIBLE_DEVICES=0 python -B ${_MODEL_SRC}/vsp_llm/vsp_llm_decode.py \
         generation.beam=20 \
         generation.lenpen=0 \
         dataset.max_tokens=3000 \
+        common_eval.path=${MODEL_PATH} \
+        common_eval.results_path=${OUT_PATH}/${TASK}/${LANG} \
         override.data=${DATA_PATH} \
         override.label_dir=${DATA_PATH}\
         override.eval_bleu=${USE_BLEU} \
@@ -99,5 +109,5 @@ CUDA_VISIBLE_DEVICES=0 python -B ${_MODEL_SRC}/vsp_llm/vsp_llm_decode.py \
         override.w2v_path=${W2V_PATH} \
         override.demo=$demo \
         override.modalities=$modalities \
-        common_eval.path=${MODEL_PATH} \
-        common_eval.results_path=${OUT_PATH}/${TASK}/${LANG}
+        override.export_onnx=$export_onnx \
+        override.use_onnx=$use_onnx

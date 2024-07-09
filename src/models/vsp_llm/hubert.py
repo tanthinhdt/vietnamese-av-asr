@@ -304,6 +304,7 @@ class AVHubertConfig(FairseqDataclass):
     )
     no_scale_embedding: bool = field(default=True, metadata={'help': 'scale embedding'})
 
+
 class SubModel(nn.Module):
     def __init__(self, resnet=None, input_dim=None, cfg=None):
         super().__init__()
@@ -314,13 +315,13 @@ class SubModel(nn.Module):
     def forward(self, x):
         if self.resnet is not None:
             x = self.resnet(x)
-        with torch.autocast(device_type='cpu'):
-            x = self.proj(x.transpose(1, 2))
+        x = self.proj(x.transpose(1, 2))
         if self.encoder is not None:
             x = self.encoder(x)[0].transpose(1, 2)
         else:
             x = x.transpose(1, 2)
         return x
+
 
 @register_model("av_hubert", dataclass=AVHubertConfig)
 class AVHubertModel(BaseFairseqModel):
@@ -554,7 +555,7 @@ class AVHubertModel(BaseFairseqModel):
     def forward_padding_mask(
         self, features: torch.Tensor, padding_mask: torch.Tensor,
     ) -> torch.Tensor:
-        extra = padding_mask.size(1) % features.size(1)
+        extra = padding_mask.shape[1] % features.shape[1]
         if extra > 0:
             padding_mask = padding_mask[:, :-extra]
         padding_mask = padding_mask.view(
@@ -615,31 +616,26 @@ class AVHubertModel(BaseFairseqModel):
 
         features = features.transpose(1, 2)
         features = self.layer_norm(features)
-
         if padding_mask is not None:
             padding_mask = self.forward_padding_mask(features, padding_mask)
-
         if self.post_extract_proj is not None:
-            with torch.autocast(device_type='cpu'):
-                features = self.post_extract_proj(features)
+            features = self.post_extract_proj(features)
 
         features = self.dropout_input(features)
         if self.masking_type == 'feature' and mask:
             x, mask_indices = self.apply_feature_mask(features, padding_mask, target_list)
         else:
             x = features
-
         # feature: (B, T, D), float
         # target: (B, T), long
         # x: (B, T, D), float
         # padding_mask: (B, T), bool
         # mask_indices: (B, T), bool
-        with torch.autocast(device_type='cpu'):
-            x, _ = self.encoder(
-                x,
-                padding_mask=padding_mask,
-                layer=None if output_layer is None else output_layer - 1
-            )
+        x, _ = self.encoder(
+            x,
+            padding_mask=padding_mask,
+            layer=None if output_layer is None else output_layer - 1
+        )
 
         if features_only:
             return {"x": x, "padding_mask": padding_mask, "features": features}
@@ -688,7 +684,6 @@ class AVHubertModel(BaseFairseqModel):
         padding_mask: Optional[torch.Tensor] = None,
         mask: bool = False,
         ret_conv: bool = False,
-        output_layer: Optional[int] = None,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         res = self.forward(
             source,
@@ -703,7 +698,7 @@ class AVHubertModel(BaseFairseqModel):
         units = torch.matmul(proj_x, self.label_embs_concat.transpose(0, 1)).argmax(dim=-1) # B T 
         return units
 
-    def extract_finetune(self, source, padding_mask=None, mask=False, ret_conv=False, output_layer=None):
+    def extract_finetune(self, source, padding_mask=None, mask=False, output_layer=None):
         src_audio, src_video = source['audio'], source['video']
         if mask and self.masking_type == 'input':
             src_video, mask_indices_video = self.apply_input_mask(src_video, padding_mask, target_list=None)
@@ -723,7 +718,7 @@ class AVHubertModel(BaseFairseqModel):
 
         if self.modality_fuse == 'concat':
             features = torch.cat([features_audio, features_video], dim=1)
-        elif self.modality_fuse == 'add':
+        elif self.modality_fuse == 'add' and False:
             features = features_audio + features_video
 
         features = features.transpose(1, 2)
@@ -731,10 +726,8 @@ class AVHubertModel(BaseFairseqModel):
 
         if padding_mask is not None:
             padding_mask = self.forward_padding_mask(features, padding_mask)
-
         if self.post_extract_proj is not None:
-            with torch.autocast(device_type='cpu'):
-                features = self.post_extract_proj(features)
+            features = self.post_extract_proj(features)
 
         features = self.dropout_input(features)
         x = features

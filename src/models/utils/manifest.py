@@ -4,12 +4,12 @@ import os
 from src.models.utils.dirs import _DATASET_DIR
 
 
-def create_demo_mainfest(
+def create_demo_manifest(
         samples_dict: dict
 ) -> str:
     """
-    Create mainfest file .tsv, prepare to demo
-    :return: mainfest file
+    Create manifest file .tsv, prepare to demo
+    :return: manifest file
     """
 
     _dir_path = os.path.join(_DATASET_DIR, 'vsr', 'vi')

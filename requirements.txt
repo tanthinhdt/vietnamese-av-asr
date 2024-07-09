@@ -88,8 +88,11 @@ numba==0.59.0
 numpy==1.23.5
 oauthlib==3.2.2
 omegaconf==2.0.6
+onnx==1.15.0
+onnxruntime==1.18.1
 opencv-contrib-python==4.10.0.82
 opencv-python==4.8.1.78
+optimum==1.21.2
 orjson==3.10.5
 packaging==23.2
 pandas==2.2.0

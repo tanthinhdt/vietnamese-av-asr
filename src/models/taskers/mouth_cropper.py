@@ -1,6 +1,5 @@
 import math
 import os
-import shutil
 
 from src.models.taskers.tasker import Tasker
 from src.data.processors.cropper import Cropper

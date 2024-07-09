@@ -6,20 +6,25 @@ _DECODE_DIR = 'decode/vsr/vi'
 _VISUAL_DIR = 'data/processed/visual'
 _AUDIO_DIR = 'data/processed/audio'
 _VIDEO_DIR = 'data/processed/video'
-_ORIGIN_DIR = 'data/processed/origin'
+_EXTERNAL_DIR = 'data/external'
 _FINAL_RESULT_DIR = 'results'
 
+os.makedirs(_DATASET_DIR, exist_ok=True)
+os.makedirs(_DECODE_DIR, exist_ok=True)
 os.makedirs(_FINAL_RESULT_DIR, exist_ok=True)
+os.makedirs(_EXTERNAL_DIR, exist_ok=True)
+os.makedirs(_VIDEO_DIR, exist_ok=True)
+os.makedirs(_VISUAL_DIR, exist_ok=True)
+os.makedirs(_AUDIO_DIR, exist_ok=True)
 
 __all__ = [
     '_DECODE_DIR',
     '_VISUAL_DIR',
     '_AUDIO_DIR',
     '_VIDEO_DIR',
-    '_ORIGIN_DIR',
+    '_EXTERNAL_DIR',
     '_FINAL_RESULT_DIR',
     '_DATASET_DIR',
-    'clean_dirs',
 ]
 
 

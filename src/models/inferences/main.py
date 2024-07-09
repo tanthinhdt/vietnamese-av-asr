@@ -4,8 +4,8 @@ import sys
 sys.path.append(os.getcwd())
 import argparse
 
-from src.models.utils.mainfest import create_demo_mainfest
-from src.models.taskers import Checker, MouthCropper, Embedder, Normalizer, Splitter, FaceCropper
+from src.models.utils.manifest import create_demo_manifest
+from src.models.taskers import Checker, Normalizer, Splitter, FaceCropper, MouthCropper, Embedder
 from src.models.utils import get_logger, get_spent_time
 
 logger = get_logger('inference', is_stream=True)
@@ -21,14 +21,6 @@ def get_args() -> argparse.Namespace:
     )
 
     parser.add_argument(
-        '--n-cluster',
-        type=int,
-        required=False,
-        default=25,
-        help='N-cluster when clustering hubert features.'
-    )
-
-    parser.add_argument(
         '--time-interval',
         type=int,
         required=False,
@@ -39,7 +31,7 @@ def get_args() -> argparse.Namespace:
     parser.add_argument(
         '--decode',
         required=False,
-        default=False,
+        default=True,
         action='store_true',
         help='decode phase.'
     )
@@ -56,7 +48,7 @@ def get_args() -> argparse.Namespace:
 
 
 @get_spent_time(message='Inferencing time: ')
-def infer(args: argparse.Namespace) -> str:
+def infer(args: argparse.Namespace):
     checker = Checker(duration_threshold=30)
     normalizer = Normalizer(checker=checker)
     face_cropper = FaceCropper()
@@ -88,34 +80,35 @@ def infer(args: argparse.Namespace) -> str:
     logger.info(f"Crop mouth of speaker")
     samples = mouth_cropper.do(samples, need_to_crop=checked_metadata['has_v'])
 
-    logger.info('Create mainfest file')
-    mainfest_dir = create_demo_mainfest(samples_dict=samples)
+    logger.info('Create manifest file')
+    manifest_dir = create_demo_manifest(samples_dict=samples)
+    k_mean_path = "src/models/checkpoints/kmean_model.km"
 
     # dump hubert feature
-    dump_h_f_cmd = (f"python src/features/dump_hubert_feature.py {mainfest_dir} test "
+    dump_h_f_cmd = (f"python src/features/dump_hubert_feature.py {manifest_dir} test "
                     f"src/models/checkpoints/large_vox_iter5.pt 12 1 0 "
-                    f"{mainfest_dir} --user_dir . --modalities {modalities}").split(' ')
-
-    # learn k-means
-    learn_k_means_cmd = (f"python src/features/learn_kmeans.py "
-                         f"{mainfest_dir} test 1 {mainfest_dir}/km_model.km "
-                         f"{args.n_cluster} --percent -1").split(' ')
+                    f"{manifest_dir} --user_dir . --modalities {modalities}").split(' ')
 
     # dump label
-    dump_l_cmd = f"python src/features/dump_km_label.py {mainfest_dir} test {mainfest_dir}/km_model.km 1 0 {mainfest_dir}".split(' ')
+    dump_l_cmd = f"python src/features/dump_km_label.py {manifest_dir} test {k_mean_path} 1 0 {manifest_dir}".split(' ')
 
     # rename dumped label file
-    rename_l_cmd = f"for rank in $(seq 0 $((1 - 1))); do   cat {mainfest_dir}/test_0_1.km; done > {mainfest_dir}/test.km"
+    rename_l_cmd = f"for rank in $(seq 0 $((1 - 1))); do   cat {manifest_dir}/test_0_1.km; done > {manifest_dir}/test.km"
 
     # cluster count
     cl_count_cmd = "python src/features/cluster_counts.py".split(' ')
 
     # vsp_llm decode
-    decode_cmd = ['src/models/scripts/decode.sh', '--demo', '--modal', short_modal]
+    decode_cmd = [
+        'bash',
+        'src/models/scripts/decode.sh',
+        '--demo',
+        '--modal',
+        short_modal,
+    ]
 
     _cmd_dict = {
         'dump_h_f': dump_h_f_cmd,
-        'learn_km': learn_k_means_cmd,
         'dump_l': dump_l_cmd,
         'rename_l': rename_l_cmd,
         'cl_count': cl_count_cmd,

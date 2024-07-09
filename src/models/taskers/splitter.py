@@ -5,6 +5,7 @@ import subprocess
 from src.models.taskers.tasker import Tasker
 from src.models.utils.media import get_duration
 from src.models.utils.logging import get_logger
+from src.models.utils.dirs import *
 
 logger = get_logger(name=__name__, log_path=None, is_stream=True)
 
@@ -17,7 +18,6 @@ class Splitter(Tasker):
         super().__init__()
 
     def do(self, metadata_dict: dict, time_interval: int) -> dict:
-        _ext = '.mp4'
         _cmd = [
             'ffmpeg', '-y',
             '-loglevel', 'panic',
@@ -32,21 +32,18 @@ class Splitter(Tasker):
             '-f', 'avi',
             '%s',
         ]
-        _video_dir_path = os.path.join('data', 'processed', 'video',)
-        _visual_dir_path = os.path.join('data', 'processed', 'visual')
-        _audio_dir_path = os.path.join('data', 'processed', 'audio')
-        os.makedirs(os.path.join(_video_dir_path, 'origin'), exist_ok=True)
-        os.makedirs(os.path.join(_visual_dir_path, 'origin'), exist_ok=True)
-        os.makedirs(os.path.join(_audio_dir_path, 'origin'), exist_ok=True)
+        os.makedirs(os.path.join(_VIDEO_DIR, 'origin'), exist_ok=True)
+        os.makedirs(os.path.join(_VISUAL_DIR, 'origin'), exist_ok=True)
+        os.makedirs(os.path.join(_AUDIO_DIR, 'origin'), exist_ok=True)
         _samples = dict()
         _samples['result_video_path'] = metadata_dict['result_video_path']
         _samples['samples'] = []
         i = 0
 
-        for timestamp in range(0, int(metadata_dict['duration']), time_interval):
+        for i, timestamp in enumerate(range(0, int(metadata_dict['duration']), time_interval)):
             _video_name = "video_%.5d" % i
             _video_path = os.path.join(
-                _video_dir_path, 'origin', _video_name + _ext
+                _VIDEO_DIR, 'origin', _video_name + '.mp4'
             )
             subprocess.run(
                 " ".join(_cmd) % (float(timestamp), float(time_interval), _video_path),
@@ -64,8 +61,8 @@ class Splitter(Tasker):
                 _sample['chunk_visual_id'] = [_video_name.replace('video', 'visual')]
                 dur = get_duration(_video_path)
                 _sample['timestamp'] = [(timestamp, timestamp+int(dur))]
-                _sample['visual_output_dir'] = [_visual_dir_path]
-                _sample['audio_output_dir'] = [_audio_dir_path]
+                _sample['visual_output_dir'] = [_VISUAL_DIR]
+                _sample['audio_output_dir'] = [_AUDIO_DIR]
                 _sample['visual_fps'] = [self.FPS]
                 _sample['visual_num_frames'] = [math.ceil(dur * self.FPS)]
                 _sample['audio_num_frames'] = [math.ceil(dur * self.SR)]

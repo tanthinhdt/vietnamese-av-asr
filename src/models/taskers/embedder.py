@@ -11,6 +11,7 @@ from typing import Any
 
 from src.models.taskers.tasker import Tasker
 from src.models.utils.dirs import *
+from src.models.utils.dirs import clean_dirs
 from src.models.utils.logging import get_logger
 
 logger = get_logger(

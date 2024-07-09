@@ -5,7 +5,7 @@ import subprocess
 
 from src.models.taskers.tasker import Tasker
 from src.models.taskers.checker import Checker
-from src.models.utils.media import get_duration
+from src.models.utils.dirs import *
 
 
 class Normalizer(Tasker):
@@ -116,7 +116,7 @@ class Normalizer(Tasker):
     def _normalize(self, cmd_: list, meta_dict: dict, output_name: str,  fail_msg: str = None) -> str:
         cmd = copy.copy(cmd_)
         output_path = os.path.join(
-            'data', 'external', f'{output_name}.mp4'
+             _EXTERNAL_DIR, f'{output_name}.mp4'
         )
 
         cmd[cmd.index('video_path')] = meta_dict['video_path']
@@ -129,4 +129,5 @@ class Normalizer(Tasker):
         if not os.path.isfile(output_path):
             logging.warning(fail_msg)
             exit([1])
+
         return output_path

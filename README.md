@@ -27,16 +27,14 @@ cd vietnamese-av-asr/
 ```bash
 python src/models/inferences/main.py 
     <video-path>
-    [--n-cluster <n-cluster>]
     [--time-interval <time-interval>]
 ```
 ##### Arguments:
 - `<video-path>`: Path to video file. It can be video/visual/audio clip. It is required duration not to be greater than **30** seconds, because of resource constraints.
-- `--n-cluster`: Number of clusters when learn k-means. Default 25.
 - `--time-interval`: Time interval to split. Default 3s.
 
 ## Video with embedded transcript
-### Output video is located in [dir](results)
+### Output video is located in `result/` dir
 #### Note: 
 The output video is **JUST INTUITIVE**, means the transcript in video ASYNCHRONOUS with both audio and visual. 
 Because of model's purpose, **JUST** transcribe **WITHOUT** time stamp.

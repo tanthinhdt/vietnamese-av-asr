@@ -87,12 +87,15 @@ target/
 # Mypy cache
 .mypy_cache/
 
-/data/
-/tmp/
-src/data/databases/
+test.py
+data/
+tmp/
 outputs/
-src/modules/
-src/models/checkpoints/
-src/models/dataset/
+flagged/
+onnx/
 decode/
 results/
+src/data/databases/
+src/modules/
+src/models/checkpoints/*.pt
+src/models/dataset/

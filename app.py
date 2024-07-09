@@ -1,13 +1,18 @@
-import sys
-import os
-
-sys.path.append(os.getcwd())
-import subprocess
 import gradio as gr
+import os
+import subprocess
+
+
+def setup_environment():
+    cmd = [
+        'bash', 'scripts/prepare.sh',
+        '--platform', 'any'
+    ]
+    subprocess.run(cmd, shell=False, capture_output=False, stdout=None)
 
 
 def predict(video_path: str):
-    output_file = 'results/output.mp4'
+    output_file = os.path.join('results', 'output.mp4')
     if os.path.isfile(output_file):
         os.remove(output_file)
 
@@ -16,32 +21,32 @@ def predict(video_path: str):
         'python',
         inference_file,
         video_path,
+        '--time-interval', '3',
+        '--n-cluster', '25',
         '--clear-fragments',
-        '--decode',
+        '--decode'
     ]
-    if not os.access(inference_file, os.X_OK):
-        os.chmod(inference_file, 0o755)
 
     try:
         subprocess.run(
             cmd,
             shell=False,
-            check=True,
             stdout=None,
-            capture_output=True
+            capture_output=False
         )
     except subprocess.CalledProcessError as e:
         print(f"Command '{e.cmd}' returned non-zero exit status {e.returncode}.")
         print(f"Standard Output: {e.stdout}")
-        return f"Error: {e.stdout}"
 
     if not os.path.isfile(output_file):
         return video_path
+
     return output_file
 
+# setup_environment()
 
 if __name__ == "__main__":
-    iface = gr.Interface(
+    app = gr.Interface(
         fn=predict,
         inputs=gr.Video(),
         outputs=gr.Video(),
@@ -49,4 +54,4 @@ if __name__ == "__main__":
         description="Vietnamese Automatic Speech Recognition Utilizing Audio and Visual Data"
     )
 
-    iface.launch(share=True)
+    app.launch(share=True)

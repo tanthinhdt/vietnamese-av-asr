@@ -42,7 +42,6 @@ class Checker(Tasker):
         metadata_dict = dict()
         metadata_dict['video_path'] = video_path
         metadata_dict['duration'] = _stream_dict['duration']
-        metadata_dict['extension'] = os.path.splitext(video_path)[1][1:]
         metadata_dict['has_v'] = 'visual' in _stream_dict
         metadata_dict['has_a'] = 'audio' in _stream_dict
         metadata_dict['v_codec'] = None

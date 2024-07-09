@@ -147,8 +147,7 @@ class ResEncoder(nn.Module):
 
     def forward(self, x):
         B, C, T, H, W = x.size()
-        with torch.autocast(device_type='cpu'):
-            x = self.frontend3D(x)
+        x = self.frontend3D(x)
         Tnew = x.shape[2]
         x = self.threeD_to_2D_tensor(x)
         x = self.trunk(x)

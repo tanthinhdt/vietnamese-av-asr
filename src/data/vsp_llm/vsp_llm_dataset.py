@@ -343,6 +343,7 @@ class VSP_LLM_dataset(FairseqDataset):
                 )
             elif diff > 0:
                 audio_feats = audio_feats[:-diff]
+
         return video_feats, audio_feats
 
     def load_video(self, audio_name):

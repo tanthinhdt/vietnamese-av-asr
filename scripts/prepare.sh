@@ -5,7 +5,7 @@ usage() {
 Usage:
   $0
     --platform <platform>         Cloud platform where to run project.
-                                  2 available platforms 'kaggle' and 'colab'. Default: kaggle
+                                  2 available platforms 'kaggle' and 'any'. Default: kaggle
   "
   exit 1
 }
@@ -26,12 +26,6 @@ while [[ "$#" -gt 0 ]]; do
   esac
 done
 
-
-if [[ "$platform" != "kaggle" && "$platform" != "colab" ]];
-then
-  echo "Invalid platform."
-  usage
-fi
 
 # Download and set up miniconda
 MINICONDA_INSTALLER_SCRIPT=Miniconda3-py310_23.11.0-2-Linux-x86_64.sh

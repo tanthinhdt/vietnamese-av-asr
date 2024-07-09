@@ -46,7 +46,7 @@ bash vietnamese-av-asr/scripts/prepare.sh --platform <platform>
 ```
 Argument:
 
-`<platform>:` which platform run project, `kaggle` or `colab`. Default `kaggle`
+`<platform>:` which platform run project, `kaggle` or `any`. Default `kaggle`
 ### 2. Install packages
 ```bash
 pip install -r vietnamese-av-asr/requirements.txt
