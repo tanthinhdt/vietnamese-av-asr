@@ -1,16 +1,12 @@
 usage() {
   echo "Usage: $0
     --demo                'demo' mode, otherwise 'decode' mode.
-    --export-onnx         Export model to ONNX
-    --use-onnx            Use onnx for inferencing instead of origin
   "
   exit 1
 }
 
 demo=False
 modalities=["visual","audio"]
-export_onnx=False
-use_onnx=False
 
 while [[ "$#" -gt 0 ]]; do
   case "$1" in
@@ -36,28 +32,11 @@ while [[ "$#" -gt 0 ]]; do
         shift 2
       fi
       ;;
-    --export-onnx)
-      export_onnx=True
-      shift 1
-      ;;
-    --use-onnx)
-      use_onnx=True
-      shift 1
-      ;;
     *)
       echo "Unexpected flag $1"
       usage
   esac
 done
-
-if $export_onnx; then
-  use_onnx=False
-fi
-
-if [[ -z "$modalities" ]]; then
-  echo "Should explicitly select modal to avoid unexpected behaviours"
-  usage
-fi
 
 LANG=vi
 
@@ -108,6 +87,4 @@ CUDA_VISIBLE_DEVICES=0 python -B ${_MODEL_SRC}/vsp_llm/vsp_llm_decode.py \
         override.llm_ckpt_path=${LLM_PATH} \
         override.w2v_path=${W2V_PATH} \
         override.demo=$demo \
-        override.modalities=$modalities \
-        override.export_onnx=$export_onnx \
-        override.use_onnx=$use_onnx
+        override.modalities=$modalities

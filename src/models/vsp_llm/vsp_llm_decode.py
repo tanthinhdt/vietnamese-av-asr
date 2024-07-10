@@ -7,7 +7,6 @@ import hashlib
 import editdistance
 from argparse import Namespace
 
-import pickle
 import numpy as np
 import torch
 import hydra
@@ -33,8 +32,6 @@ from dataclasses import dataclass, field, is_dataclass
 from typing import Any, List, Optional, Tuple, Union
 from omegaconf import OmegaConf, MISSING, DictConfig
 
-from src.models.utils.onnx_utils import load_components, avhubert_llm_run
-
 logging.root.setLevel(logging.INFO)
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -56,8 +53,6 @@ class OverrideConfig(FairseqDataclass):
     llm_ckpt_path: str = field(default=MISSING, metadata={'help': 'path to llama checkpoint'})
     w2v_path: str = field(default=MISSING, metadata={'help': 'path to hubert checkpoint'})
     demo: bool = field(default=False, metadata={'help': 'Indicate whether demo or decode'})
-    export_onnx: bool = field(default=False, metadata={'help': 'Indicate whether export or inference'})
-    use_onnx: bool = field(default=True, metadata={'help': 'Indicate use onnx or origin to inference'})
 
 @dataclass
 class InferConfig(FairseqDataclass):
@@ -112,89 +107,27 @@ def _main(cfg, output_file):
 
     use_cuda = torch.cuda.is_available()
 
-    if not cfg.override.use_onnx:
-        model_override_cfg = {
-            'model': {
-                'w2v_path': cfg.override.w2v_path,
-                'llm_ckpt_path': cfg.override.llm_ckpt_path,
-            }
+    model_override_cfg = {
+        'model': {
+            'w2v_path': cfg.override.w2v_path,
+            'llm_ckpt_path': cfg.override.llm_ckpt_path,
         }
-        models, saved_cfg, task = checkpoint_utils.load_model_ensemble_and_task(
-            [cfg.common_eval.path,],
-            model_override_cfg, strict=False
-        )
+    }
+    models, saved_cfg, task = checkpoint_utils.load_model_ensemble_and_task(
+        [cfg.common_eval.path,],
+        model_override_cfg, strict=False
+    )
 
-        models = [model.eval() for model in models]
-        lms = [None]
-        for model in chain(models, lms):
-            if model is None:
-                continue
-            if use_cuda and not cfg.distributed_training.pipeline_model_parallel:
-                model.encoder.cuda()
-                model.avfeat_to_llm.cuda()
-                model.half()
-        model = models[0]
-
-        if cfg.override.export_onnx:
-            onnx_dir = "../../../onnx"
-            encoder_dir = os.path.join(onnx_dir, "encoder")
-            decoder_dir = os.path.join(onnx_dir, "decoder")
-            others_dir = os.path.join(onnx_dir, "others")
-            os.makedirs(encoder_dir, exist_ok=True)
-            os.makedirs(decoder_dir, exist_ok=True)
-            os.makedirs(others_dir, exist_ok=True)
-
-            saved_cfg_path = os.path.join(others_dir, "saved_cfg.pckl")
-            ins_path = os.path.join(others_dir, "instruction_embedding.pckl")
-            avfeat_to_llm_path = os.path.join(others_dir, "avfeat_to_llm_layer.pckl")
-            decoder_path = os.path.join(decoder_dir, "decoder.onnx")
-
-            txt_feats = llm_tokenizer(
-                f"Hãy nhận diện câu tiếng Việt này. Đầu vào: ",
-                return_tensors="pt",
-            ).input_ids[0].unsqueeze(dim=0)
-            instruction_embedding = model.decoder.model.model.embed_tokens(txt_feats).to(device=model.device).detach()
-            torch.save(instruction_embedding, ins_path)
-
-            with open(saved_cfg_path, 'wb') as f:
-                pickle.dump(saved_cfg, f)
-
-            torch.save(model.avfeat_to_llm.state_dict(), f=avfeat_to_llm_path)
-            for modalities in [['visual', 'audio'], ['visual'], ['audio']]:
-                onnx_name = '_'.join(modalities)
-                encoder_path = os.path.join(encoder_dir, f"{onnx_name}_encoder.onnx")
-                model.export_onnx(
-                    encoder_path=encoder_path,
-                    decoder_path=decoder_path,
-                    modalities=modalities,
-                )
-            metadata_dict = {
-                'saved_cfg_path': saved_cfg_path,
-                'ins_path': ins_path,
-                'avfeat_to_llm_path': avfeat_to_llm_path,
-                'encoder_path': encoder_path,
-                'decoder_path': decoder_path,
-            }
-            with open(os.path.abspath("../../../onnx/metadata_dict.pckl"), 'wb') as f:
-                pickle.dump(metadata_dict, f)
-            logger.info("Export onnx model and dependencies successfully.")
-            exit(1)
-
-    else:
-        metadata_path = os.path.abspath("../../../onnx/metadata_dict.pckl")
-        if not os.path.isfile(metadata_path):
-            logger.error(f"Not existing file '{metadata_path}'.")
-            exit(1)
-        with open(metadata_path, 'rb') as f:
-            metadata_dict: dict = pickle.load(f)
-
-        metadata_dict['encoder_path'] = os.path.join(
-            os.path.dirname(metadata_dict['encoder_path']), '_'.join(cfg.override.modalities) + "_encoder.onnx"
-        )
-
-        logger.info("Load components")
-        components_dict = load_components(metadata_dict)
-        saved_cfg = components_dict['cfg']
+    models = [model.eval() for model in models]
+    lms = [None]
+    for model in chain(models, lms):
+        if model is None:
+            continue
+        if use_cuda and not cfg.distributed_training.pipeline_model_parallel:
+            model.encoder.cuda()
+            model.avfeat_to_llm.cuda()
+            model.half()
+    model = models[0]
 
     task = tasks.setup_task(saved_cfg.task)
     task.build_tokenizer(saved_cfg.tokenizer)
@@ -211,7 +144,6 @@ def _main(cfg, output_file):
         task.cfg.data = cfg.override.data
     if cfg.override.label_dir is not None:
         task.cfg.label_dir = cfg.override.label_dir
-
     if cfg.override.demo:
         task.cfg.labels = cfg.override.labels
         task.cfg.label_rate = cfg.override.label_rate
@@ -253,23 +185,12 @@ def _main(cfg, output_file):
         if sample['net_input']['source']['audio'] is not None:
             sample['net_input']['source']['audio'] = sample['net_input']['source']['audio'].to(torch.float32)
 
-        if not cfg.override.use_onnx:
-            best_hypo = model.generate(
-                target_list=sample["target"],
-                num_beams=cfg.generation.beam,
-                length_penalty=cfg.generation.lenpen,
-                modalities=cfg.override.modalities,
-                **sample["net_input"],
-            )
-        else:
-            best_hypo = avhubert_llm_run(
-                tokenizer=llm_tokenizer, encoder_ort=components_dict['encoder'],
-                decoder_ort=components_dict['decoder'], avfeat_to_llm=components_dict['projector'],
-                instruction_embedding=components_dict['ins'],
-                video=sample['net_input']['source']['video'],
-                audio=sample['net_input']['source']['audio'],
-                cluster_counts=sample['net_input']['source']['cluster_counts'][0]
-            )
+        best_hypo = model.generate(
+            target_list=sample["target"],
+            num_beams=cfg.generation.beam,
+            length_penalty=cfg.generation.lenpen,
+            **sample["net_input"],
+        )
 
         best_hypo = llm_tokenizer.batch_decode(
             best_hypo, skip_special_tokens=True, clean_up_tokenization_spaces=False
