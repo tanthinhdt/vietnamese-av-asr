@@ -342,8 +342,8 @@ class AVHubertDataset(FairseqDataset):
 
     def __getitem__(self, index):
         video_feats, audio_feats = self.load_feature(self.names[index])
-        audio_feats, video_feats = (torch.from_numpy(audio_feats.astype(np.float32)) if audio_feats is not None else None,
-                                    torch.from_numpy(video_feats.astype(np.float32)) if video_feats is not None else None)
+        audio_feats = torch.from_numpy(audio_feats.astype(np.float32)) if audio_feats is not None else None
+        video_feats = torch.from_numpy(video_feats.astype(np.float32)) if video_feats is not None else None
         if self.normalize and 'audio' in self.modalities:
             with torch.no_grad():
                 audio_feats = F.layer_norm(audio_feats, audio_feats.shape[1:])

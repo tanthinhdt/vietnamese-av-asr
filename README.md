@@ -15,7 +15,7 @@ git clone -b inference <repo-link>
 Read [prepare environment.](scripts/README.md) 
 
 ## Prepare checkpoints
-- Download and move [VSP_LLM checkpoint](https://drive.google.com/file/d/1cQJ-RRZv9Qbl_4zyjZliQurcr_FwnB18/view?usp=share_link) to [checkpoints dir](src/models/checkpoints/).
+- Download and move [VSP_LLM checkpoint](https://drive.google.com/file/d/1NEeXC6qHDPQ0Wd7Z8OeXavx0OOshLCEU/view?usp=share_link) to [checkpoints dir](src/models/checkpoints/).
 - Download and move[ AV_HuBert checkpoint](https://drive.google.com/file/d/167-_DiLutzMZtDcnA69tdlp5KxwMmHxQ/view?usp=share_link) to [checkpoints dir](src/models/checkpoints/).
 
 ## Go to project dir
@@ -34,7 +34,9 @@ python src/models/inferences/main.py
 - `--time-interval`: Time interval to split. Default 3s.
 
 ## Video with embedded transcript
-### Output video is located in `result/` dir
+### Output video and transcript are located in `result/` dir
 #### Note: 
 The output video is **JUST INTUITIVE**, means the transcript in video ASYNCHRONOUS with both audio and visual. 
 Because of model's purpose, **JUST** transcribe **WITHOUT** time stamp.
+
+## Deploy in [Gradio](https://huggingface.co/spaces/nguyenminh4099/Demo) 

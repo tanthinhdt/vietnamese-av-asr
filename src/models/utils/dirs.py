@@ -8,6 +8,8 @@ _AUDIO_DIR = 'data/processed/audio'
 _VIDEO_DIR = 'data/processed/video'
 _EXTERNAL_DIR = 'data/external'
 _FINAL_RESULT_DIR = 'results'
+_OUTPUT_DIR = 'outputs'
+_FLAGGED_DIR = 'flagged'
 
 os.makedirs(_DATASET_DIR, exist_ok=True)
 os.makedirs(_DECODE_DIR, exist_ok=True)
@@ -25,6 +27,8 @@ __all__ = [
     '_EXTERNAL_DIR',
     '_FINAL_RESULT_DIR',
     '_DATASET_DIR',
+    '_OUTPUT_DIR',
+    '_FLAGGED_DIR',
 ]
 
 

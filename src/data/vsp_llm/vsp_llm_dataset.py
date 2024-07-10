@@ -330,6 +330,7 @@ class VSP_LLM_dataset(FairseqDataset):
 
         else:
             audio_feats = None
+
         if audio_feats is not None and video_feats is not None:
             diff = len(audio_feats) - len(video_feats)
             if diff < 0:

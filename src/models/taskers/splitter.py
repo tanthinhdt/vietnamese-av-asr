@@ -14,7 +14,7 @@ class Splitter(Tasker):
     FPS = 25
     SR = 16_000
 
-    def __init__(self, time_interval: int = 3):
+    def __init__(self):
         super().__init__()
 
     def do(self, metadata_dict: dict, time_interval: int) -> dict:

@@ -31,7 +31,7 @@ def get_args() -> argparse.Namespace:
     parser.add_argument(
         '--decode',
         required=False,
-        default=True,
+        default=False,
         action='store_true',
         help='decode phase.'
     )
@@ -126,7 +126,7 @@ def infer(args: argparse.Namespace):
 
         if _return_code:
             logger.error(f'Error when {k}')
-            exit()
+            exit(1)
 
     logger.info('Combine video and transcript.')
     _output_video_path = embedder.do(samples)

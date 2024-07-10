@@ -54,6 +54,8 @@ class Embedder(Tasker):
             _AUDIO_DIR,
             _VISUAL_DIR,
             _VIDEO_DIR,
+            _OUTPUT_DIR,
+            _FLAGGED_DIR,
         ]
 
         if clear_framents:

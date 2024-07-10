@@ -181,9 +181,9 @@ def _main(cfg, output_file):
             continue
 
         if sample['net_input']['source']['video'] is not None:
-            sample['net_input']['source']['video'] = sample['net_input']['source']['video'].to(torch.float32)
+            sample['net_input']['source']['video'] = sample['net_input']['source']['video'].to(torch.half)
         if sample['net_input']['source']['audio'] is not None:
-            sample['net_input']['source']['audio'] = sample['net_input']['source']['audio'].to(torch.float32)
+            sample['net_input']['source']['audio'] = sample['net_input']['source']['audio'].to(torch.half)
 
         best_hypo = model.generate(
             target_list=sample["target"],

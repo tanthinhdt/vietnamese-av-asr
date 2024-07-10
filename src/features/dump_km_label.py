@@ -53,7 +53,6 @@ def get_feat_iterator(feat_dir, split, nshard, rank):
 
     def iterate():
         feat = np.load(feat_path, mmap_mode="r")
-        #import pdb;pdb.set_trace()
         assert feat.shape[0] == (offsets[-1] + lengs[-1])
         for offset, leng in zip(offsets, lengs):
             yield feat[offset: offset + leng]
@@ -70,7 +69,6 @@ def dump_label(feat_dir, split, km_path, nshard, rank, lab_dir):
     os.makedirs(lab_dir, exist_ok=True)
     with open(lab_path, "w") as f:
         for feat in tqdm.tqdm(iterator, total=num):
-            # feat = torch.from_numpy(feat).cuda()
             lab = apply_kmeans(feat).tolist()
             f.write(" ".join(map(str, lab)) + "\n")
     logger.info("finished successfully")

@@ -21,8 +21,6 @@ def predict(video_path: str):
         'python',
         inference_file,
         video_path,
-        '--time-interval', '3',
-        '--n-cluster', '25',
         '--clear-fragments',
         '--decode'
     ]
@@ -43,9 +41,9 @@ def predict(video_path: str):
 
     return output_file
 
-# setup_environment()
 
 if __name__ == "__main__":
+    setup_environment()
     app = gr.Interface(
         fn=predict,
         inputs=gr.Video(),

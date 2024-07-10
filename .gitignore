@@ -95,6 +95,10 @@ flagged/
 onnx/
 decode/
 results/
+docs/
+tools/
+models/
+notebooks/
 src/data/databases/
 src/modules/
 src/models/checkpoints/*.pt
