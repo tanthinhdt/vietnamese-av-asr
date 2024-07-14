@@ -13,18 +13,7 @@ from fairseq.data.fairseq_dataset import FairseqDataset
 from python_speech_features import logfbank
 from scipy.io import wavfile
 
-DBG = True if len(sys.argv) == 1 else False
-
-if DBG:
-    import src.utils as custom_utils
-    logging.basicConfig(
-        format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S",
-        level=os.environ.get("LOGLEVEL", "DEBUG").upper(),
-        stream=sys.stdout,
-    )
-else:
-    from src.utils import utils_vsp_llm as custom_utils
+from src.models.utils import vsp_llm as custom_utils
 
 logger = logging.getLogger(__name__)
 

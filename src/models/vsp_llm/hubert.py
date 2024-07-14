@@ -15,32 +15,12 @@ from copy import deepcopy
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Tuple
 
-DBG = True if len(sys.argv) == 1 else False
-
-if DBG:
-    from .hubert_pretraining import (
+from .hubert_pretraining import (
         AVHubertPretrainingConfig,
         AVHubertPretrainingTask,
     )
-    from .resnet import ResEncoder
-    logging.basicConfig(
-        format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S",
-        level=os.environ.get("LOGLEVEL", "INFO").upper(),
-        stream=sys.stdout,
-    )
-    from src.utils import compute_mask_indices
-    from .decoder import TransformerDecoder
-
-else:
-    from .hubert_pretraining import (
-        AVHubertPretrainingConfig,
-        AVHubertPretrainingTask,
-    )
-    from .resnet import ResEncoder
-    from src.utils.utils_vsp_llm import compute_mask_indices
-    from .decoder import TransformerDecoder
-
+from .resnet import ResEncoder
+from src.models.utils.vsp_llm import compute_mask_indices
 from omegaconf import II
 
 logger = logging.getLogger(__name__)

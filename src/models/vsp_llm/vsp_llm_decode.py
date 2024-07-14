@@ -127,7 +127,7 @@ def _main(cfg, output_file):
             model.half()
     model = models[0]
 
-    root_dir = pathlib.Path(__file__).parent.parent.parent
+    root_dir = pathlib.Path(__file__).parent.parent.parent.parent
     encoder_dir = os.path.join(root_dir, "onnx", "encoder")
     os.makedirs(encoder_dir, exist_ok=True)
     if os.listdir(encoder_dir):

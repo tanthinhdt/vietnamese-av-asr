@@ -202,7 +202,7 @@ class avhubert_llm_seq2seq_cluster_count(BaseFairseqModel):
     @classmethod
     def build_model(cls, cfg, task):
         """Build a new model instance."""
-        root_dir = pathlib.Path(__file__).parent.parent.parent
+        root_dir = pathlib.Path(__file__).parent.parent.parent.parent
         encoder_dir = os.path.join(root_dir, "onnx", "encoder")
         os.makedirs(encoder_dir, exist_ok=True)
         encoder = None

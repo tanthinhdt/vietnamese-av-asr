@@ -66,18 +66,18 @@ def infer(args: argparse.Namespace):
     k_mean_path = "src/models/checkpoints/kmean_model.km"
 
     # dump hubert feature
-    dump_h_f_cmd = (f"python src/features/dump_hubert_feature.py {manifest_dir} test "
+    dump_h_f_cmd = (f"python src/models/features/dump_hubert_feature.py {manifest_dir} test "
                     f"src/models/checkpoints/large_vox_iter5.pt 12 1 0 "
                     f"{manifest_dir} --user_dir . --modalities {modalities}").split(' ')
 
     # dump label
-    dump_l_cmd = f"python src/features/dump_km_label.py {manifest_dir} test {k_mean_path} 1 0 {manifest_dir}".split(' ')
+    dump_l_cmd = f"python src/models/features/dump_km_label.py {manifest_dir} test {k_mean_path} 1 0 {manifest_dir}".split(' ')
 
     # rename dumped label file
     rename_l_cmd = f"for rank in $(seq 0 $((1 - 1))); do   cat {manifest_dir}/test_0_1.km; done > {manifest_dir}/test.km"
 
     # cluster count
-    cl_count_cmd = "python src/features/cluster_counts.py".split(' ')
+    cl_count_cmd = "python src/models/features/cluster_counts.py".split(' ')
 
     # vsp_llm decode
     decode_cmd = [
@@ -93,7 +93,7 @@ def infer(args: argparse.Namespace):
         'dump_l': dump_l_cmd,
         'rename_l': rename_l_cmd,
         'cl_count': cl_count_cmd,
-        'decode': decode_cmd,
+        #'decode': decode_cmd,
     }
 
     for k in _cmd_dict:
@@ -106,7 +106,7 @@ def infer(args: argparse.Namespace):
         if _return_code:
             logger.error(f'Error when {k}')
             exit(1)
-
+    exit(1)
     logger.info('Combine video and transcript.')
     _output_video_path = embedder.do(samples)
 

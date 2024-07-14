@@ -178,7 +178,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     sys.path.append(args.user_dir)
     logger.info(args)
-    from src.utils import utils_vsp_llm as custom_utils
+    from src.models.utils import vsp_llm as custom_utils
     kwargs = vars(args)
     kwargs.update({'custom_utils': custom_utils})
     dump_feature(**kwargs)
