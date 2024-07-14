@@ -37,10 +37,9 @@ class Splitter(Tasker):
         os.makedirs(os.path.join(_AUDIO_DIR, 'origin'), exist_ok=True)
         _samples = dict()
         _samples['result_video_path'] = metadata_dict['result_video_path']
-        _samples['samples'] = []
         i = 0
 
-        for i, timestamp in enumerate(range(0, int(metadata_dict['duration']), time_interval)):
+        for timestamp in range(0, int(metadata_dict['duration']), time_interval):
             _video_name = "video_%.5d" % i
             _video_path = os.path.join(
                 _VIDEO_DIR, 'origin', _video_name + '.mp4'
@@ -57,32 +56,32 @@ class Splitter(Tasker):
                 pa_path = _video_path.replace('video', 'audio').replace('mp4', 'wav')
 
                 _sample = dict()
-                _sample['id'] = [i]
-                _sample['chunk_visual_id'] = [_video_name.replace('video', 'visual')]
+                _sample['index'] = i
+                _sample['chunk_visual_id'] = _video_name.replace('video', 'visual')
                 dur = get_duration(_video_path)
-                _sample['timestamp'] = [(timestamp, timestamp+int(dur))]
-                _sample['visual_output_dir'] = [_VISUAL_DIR]
-                _sample['audio_output_dir'] = [_AUDIO_DIR]
-                _sample['visual_fps'] = [self.FPS]
-                _sample['visual_num_frames'] = [math.ceil(dur * self.FPS)]
-                _sample['audio_num_frames'] = [math.ceil(dur * self.SR)]
+                _sample['timestamp'] = (timestamp, timestamp+int(dur))
+                _sample['visual_output_dir'] = _VISUAL_DIR
+                _sample['audio_output_dir'] = _AUDIO_DIR
+                _sample['visual_fps'] = self.FPS
+                _sample['visual_num_frames'] = math.ceil(dur * self.FPS)
+                _sample['audio_num_frames'] = math.ceil(dur * self.SR)
                 if metadata_dict['has_v']:
-                    _sample['visual_path'] = [self._detach_visual(
+                    _sample['visual_path'] = self._detach_visual(
                         video_path=_video_path,
                         output_path=pv_path,
-                    )]
+                    )
                 else:
-                    _sample['visual_path'] = [self._create_placeholder_visual(file=pv_path, duration=dur)]
+                    _sample['visual_path'] = self._create_placeholder_visual(file=pv_path, duration=dur)
 
                 if metadata_dict['has_a']:
-                    _sample['audio_path'] = [self._detach_audio(
+                    _sample['audio_path'] = self._detach_audio(
                         video_path=_video_path,
                         output_path=pa_path
-                    )]
+                    )
                 else:
-                    _sample['audio_path'] = [self._create_placeholder_audio(file=pa_path, duration=dur)]
+                    _sample['audio_path'] = self._create_placeholder_audio(file=pa_path, duration=dur)
 
-                _samples['samples'].append(_sample)
+                _samples[i] = _sample
 
                 i += 1
 

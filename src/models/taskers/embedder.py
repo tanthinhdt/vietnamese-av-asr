@@ -29,7 +29,7 @@ class Embedder(Tasker):
     def do(self, samples: dict, *args, **kwargs) -> Any:
         _f_output_paths = []
         _o_output_paths = []
-        decode_file = glob.glob(_DECODE_DIR + '/hypo*.json')[0]
+        decode_file = glob.glob(_DECODE_DIR + '/hypo.json')[0]
 
         with open(decode_file, 'r') as f:
             _hypo_dict = json.load(f)
@@ -48,7 +48,7 @@ class Embedder(Tasker):
 
         return _output_path
 
-    def post_do(self, clear_framents: bool = True):
+    def post_do(self):
         dirs = [
             _DATASET_DIR,
             _AUDIO_DIR,
@@ -58,8 +58,7 @@ class Embedder(Tasker):
             _FLAGGED_DIR,
         ]
 
-        if clear_framents:
-            clean_dirs(*dirs)
+        clean_dirs(*dirs)
 
     def _embed_subtitle(
             self,

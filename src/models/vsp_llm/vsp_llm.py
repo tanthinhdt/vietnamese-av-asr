@@ -1,8 +1,10 @@
 import logging
 import os.path
+import pathlib
 
 import torch
 import torch.nn as nn
+import onnxruntime as ort
 
 from peft import LoraConfig, get_peft_model
 from argparse import Namespace
@@ -159,8 +161,8 @@ class HubertEncoderWrapper(FairseqEncoder):
             "source": source,
             "padding_mask": padding_mask,
         }
-        with torch.autocast(device_type='cpu'):
-            x, padding_mask = self.w2v_model.extract_finetune(**w2v_args)
+        #with torch.autocast(device_type='cpu'):
+        x, padding_mask = self.w2v_model.extract_finetune(**w2v_args)
 
         return {
             "encoder_out": x,  # T x B x C
@@ -185,11 +187,14 @@ class HubertEncoderWrapper(FairseqEncoder):
 
 @register_model("vsp_llm", dataclass=VSPLLMConfig)
 class avhubert_llm_seq2seq_cluster_count(BaseFairseqModel):
-    def __init__(self, encoder, decoder, cfg):
+    def __init__(self, encoder=None, decoder=None, cfg=None):
         super().__init__()
-        self.cfg = cfg
-        self.encoder = encoder
-        self.decoder = decoder
+        if cfg is not None:
+            self.cfg = cfg
+        if encoder is not None:
+            self.encoder = encoder
+        if decoder is not None:
+            self.decoder = decoder
         self.avfeat_to_llm = nn.Linear(1024, 2560,)
         self.freeze_finetune_updates = cfg.freeze_finetune_updates
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -197,63 +202,67 @@ class avhubert_llm_seq2seq_cluster_count(BaseFairseqModel):
     @classmethod
     def build_model(cls, cfg, task):
         """Build a new model instance."""
+        root_dir = pathlib.Path(__file__).parent.parent.parent
+        encoder_dir = os.path.join(root_dir, "onnx", "encoder")
+        os.makedirs(encoder_dir, exist_ok=True)
+        encoder = None
+        if not os.listdir(encoder_dir):
+            arg_overrides = {
+                "dropout": cfg.dropout,
+                "activation_dropout": cfg.activation_dropout,
+                "dropout_input": cfg.dropout_input,
+                "attention_dropout": cfg.attention_dropout,
+                "mask_length": cfg.mask_length,
+                "mask_prob": cfg.mask_prob,
+                "mask_selection": cfg.mask_selection,
+                "mask_other": cfg.mask_other,
+                "no_mask_overlap": cfg.no_mask_overlap,
+                "mask_channel_length": cfg.mask_channel_length,
+                "mask_channel_prob": cfg.mask_channel_prob,
+                "mask_channel_selection": cfg.mask_channel_selection,
+                "mask_channel_other": cfg.mask_channel_other,
+                "no_mask_channel_overlap": cfg.no_mask_channel_overlap,
+                "encoder_layerdrop": cfg.layerdrop,
+                "feature_grad_mult": cfg.feature_grad_mult,
+            }
 
-        arg_overrides = {
-            "dropout": cfg.dropout,
-            "activation_dropout": cfg.activation_dropout,
-            "dropout_input": cfg.dropout_input,
-            "attention_dropout": cfg.attention_dropout,
-            "mask_length": cfg.mask_length,
-            "mask_prob": cfg.mask_prob,
-            "mask_selection": cfg.mask_selection,
-            "mask_other": cfg.mask_other,
-            "no_mask_overlap": cfg.no_mask_overlap,
-            "mask_channel_length": cfg.mask_channel_length,
-            "mask_channel_prob": cfg.mask_channel_prob,
-            "mask_channel_selection": cfg.mask_channel_selection,
-            "mask_channel_other": cfg.mask_channel_other,
-            "no_mask_channel_overlap": cfg.no_mask_channel_overlap,
-            "encoder_layerdrop": cfg.layerdrop,
-            "feature_grad_mult": cfg.feature_grad_mult,
-        }
-
-        if cfg.w2v_args is None:
-            state = checkpoint_utils.load_checkpoint_to_cpu(
-                cfg.w2v_path, arg_overrides
-            )
-            w2v_args = state.get("cfg", None)
-            if w2v_args is None:
-                w2v_args = convert_namespace_to_omegaconf(state["args"])
-            cfg.w2v_args = w2v_args
-        else:
-            state = None
-            w2v_args = cfg.w2v_args
-            if isinstance(w2v_args, Namespace):
-                cfg.w2v_args = w2v_args = convert_namespace_to_omegaconf(
-                    w2v_args
+            if cfg.w2v_args is None:
+                state = checkpoint_utils.load_checkpoint_to_cpu(
+                    cfg.w2v_path, arg_overrides
                 )
+                w2v_args = state.get("cfg", None)
+                if w2v_args is None:
+                    w2v_args = convert_namespace_to_omegaconf(state["args"])
+                cfg.w2v_args = w2v_args
+            else:
+                state = None
+                w2v_args = cfg.w2v_args
+                if isinstance(w2v_args, Namespace):
+                    cfg.w2v_args = w2v_args = convert_namespace_to_omegaconf(
+                        w2v_args
+                    )
 
-        assert cfg.normalize == w2v_args.task.normalize, (
-            "Fine-tuning works best when data normalization is the same. "
-            "Please check that --normalize is set or unset for "
-            "both pre-training and here"
-        )
-        w2v_args.task.data = cfg.data
+            assert cfg.normalize == w2v_args.task.normalize, (
+                "Fine-tuning works best when data normalization is the same. "
+                "Please check that --normalize is set or unset for "
+                "both pre-training and here"
+            )
+            w2v_args.task.data = cfg.data
 
-        task_pretrain = tasks.setup_task(w2v_args.task)
-        if state is not None:
-            task_pretrain.load_state_dict(state['task_state'])
+            task_pretrain = tasks.setup_task(w2v_args.task)
+            if state is not None:
+                task_pretrain.load_state_dict(state['task_state'])
 
-        encoder_ = task_pretrain.build_model(w2v_args.model)
+            encoder_ = task_pretrain.build_model(w2v_args.model)
 
-        encoder = HubertEncoderWrapper(encoder_)
-        if state is not None and not cfg.no_pretrained_weights:
-            # set strict=False because we omit some modules
-            del state['model']['mask_emb']
-            encoder.w2v_model.load_state_dict(state["model"], strict=False)
+            encoder = HubertEncoderWrapper(encoder_)
+            if state is not None and not cfg.no_pretrained_weights:
+                # set strict=False because we omit some modules
+                del state['model']['mask_emb']
+                encoder.w2v_model.load_state_dict(state["model"], strict=False)
 
-        encoder.w2v_model.remove_pretraining_modules()
-        
+            encoder.w2v_model.remove_pretraining_modules()
+
         bnb_config = BitsAndBytesConfig(
             load_in_4bit=True,
             bnb_4bit_use_double_quant=True,
@@ -317,6 +326,39 @@ class avhubert_llm_seq2seq_cluster_count(BaseFairseqModel):
         
         return llm_out.loss, llm_out.logits
 
+    @torch.no_grad()
+    def generate_use_encoder_session(
+            self,
+            encoder_session: ort.InferenceSession,
+            num_beams=20,
+            max_length=30,
+            min_length=1,
+            top_p=0.9,
+            repetition_penalty=1.0,
+            length_penalty=0.0,
+            **kwargs,
+    ):
+        encoder_input_feed = dict()
+        if kwargs['source']['video'] is not None:
+            encoder_input_feed["video"] = kwargs['source']['video'].numpy()
+        if kwargs['source']['audio'] is not None:
+            encoder_input_feed["audio"] = kwargs['source']['audio'].numpy()
+
+        encoder_output = torch.from_numpy(encoder_session.run(
+            None,
+            input_feed=encoder_input_feed,
+        )[0])
+
+        return self.decoder_generate(
+            encoder_output,
+            num_beams=num_beams,
+            max_length=max_length,
+            min_length=min_length,
+            top_p=top_p,
+            repetition_penalty=repetition_penalty,
+            length_penalty=length_penalty,
+            **kwargs
+        )
 
     @torch.no_grad()
     def generate(
@@ -334,8 +376,31 @@ class avhubert_llm_seq2seq_cluster_count(BaseFairseqModel):
             audio=kwargs['source']['audio'],
             padding_mask=kwargs['padding_mask']
         )
+
+        return self.decoder_generate(
+            encoder_output=output['encoder_out'],
+            num_beams=num_beams,
+            max_length=max_length,
+            min_length=min_length,
+            top_p=top_p,
+            repetition_penalty=repetition_penalty,
+            length_penalty=length_penalty,
+            **kwargs
+        )
+
+    def decoder_generate(
+            self,
+            encoder_output: torch.Tensor,
+            num_beams=20,
+            max_length=30,
+            min_length=1,
+            top_p=0.9,
+            repetition_penalty=1.0,
+            length_penalty=0.0,
+            **kwargs,
+    ):
         with torch.autocast(device_type='cpu'):
-            output['encoder_out'] = self.avfeat_to_llm(output['encoder_out'])
+            encoder_output = self.avfeat_to_llm(encoder_output)
         cluster_counts = kwargs['source']['cluster_counts'][0]
 
         results_tensor = []
@@ -343,12 +408,12 @@ class avhubert_llm_seq2seq_cluster_count(BaseFairseqModel):
 
         for clutser_num in cluster_counts:
             end_idx = start_idx + clutser_num
-            slice = output['encoder_out'][:, start_idx:end_idx, :]
+            slice = encoder_output[:, start_idx:end_idx, :]
             mean_tensor = torch.mean(slice, dim=1, keepdim=True)
             results_tensor.append(mean_tensor)
             start_idx = end_idx
 
-        assert (cluster_counts.sum().item() == output['encoder_out'].size()[1])
+        assert (cluster_counts.sum().item() == encoder_output.size()[1])
 
         reduced_enc_out = torch.cat(results_tensor, dim=1).to(device=self.device)
         instruction = kwargs['source']['text']
@@ -368,6 +433,62 @@ class avhubert_llm_seq2seq_cluster_count(BaseFairseqModel):
         )
 
         return outputs
+
+    def export_encoder_onnx(
+            self,
+            encoder_path: str,
+            modalities: list,
+    ):
+        args = []
+        input_names = []
+        dynamic_axes = dict()
+        input_feed = dict()
+        batch_size = 1
+        seq_len = 10
+        v_channel = 1
+        height = 88
+        width = 88
+        a_dim = 104
+
+        if "visual" in modalities:
+            v = torch.randn(batch_size, v_channel, seq_len, height, width)
+            input_names.append('video')
+            args.append(v)
+            input_feed['video'] = v.numpy()
+            dynamic_axes['video'] = {
+                0: "batch_size",
+                2: "seq_len",
+                3: "height",
+                4: "width",
+            }
+        else:
+            args.append(None)
+        if "audio" in modalities:
+            a = torch.randn(batch_size, a_dim, seq_len)
+            input_names.append('audio')
+            args.append(a)
+            input_feed['audio'] = a.numpy()
+            dynamic_axes['audio'] = {
+                0: "batch_size",
+                2: "seq_len",
+            }
+        else:
+            args.append(None)
+        dynamic_axes['features'] = {
+            0: "batch_size",
+            1: "seq_len",
+        }
+
+        if not os.path.isfile(encoder_path):
+            torch.onnx.export(
+                model=self.encoder,
+                args=tuple(args),
+                f=encoder_path,
+                export_params=True,
+                input_names=input_names,
+                output_names=['features'],
+                dynamic_axes=dynamic_axes
+            )
 
     def get_ctc_target(self, sample):
         return sample["target"], sample["target_lengths"]

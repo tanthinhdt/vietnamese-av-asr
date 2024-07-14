@@ -1,17 +1,15 @@
-from itertools import chain
 import logging
 import os
+import pathlib
 import sys
 import json
-import hashlib
-import editdistance
-from argparse import Namespace
-
-import numpy as np
 import torch
 import hydra
-import sacrebleu
+import numpy as np
+import onnxruntime as ort
 
+from itertools import chain
+from argparse import Namespace
 from pathlib import Path
 from hydra.core.config_store import ConfigStore
 from fairseq import checkpoint_utils, utils, distributed_utils
@@ -129,6 +127,28 @@ def _main(cfg, output_file):
             model.half()
     model = models[0]
 
+    root_dir = pathlib.Path(__file__).parent.parent.parent
+    encoder_dir = os.path.join(root_dir, "onnx", "encoder")
+    os.makedirs(encoder_dir, exist_ok=True)
+    if os.listdir(encoder_dir):
+        logger.info(f"Encoders are exported, to re-export, let delete encoder dir '{os.path.abspath(encoder_dir)}' and re-run.\n"
+                    f"Decoding is keep going, using the exported previously encoder onnx.")
+    else:
+        for modalities in [['visual', 'audio'], ['visual'], ['audio']]:
+            onnx_name = '_'.join(modalities)
+            encoder_path = os.path.join(encoder_dir, f"{onnx_name}_encoder.onnx")
+            model.export_encoder_onnx(modalities=modalities, encoder_path=encoder_path)
+        logger.info("Exported encoders to onnx. Let re-run inference to use encoder onnx to avoid memory issue.")
+        del model.encoder
+
+    use_encoder_path = os.path.join(
+        encoder_dir, f"{'_'.join(cfg.override.modalities)}_encoder.onnx"
+    )
+    if not os.path.isfile(use_encoder_path):
+        logger.critical(f"Not exist encoder onnx '{use_encoder_path}'")
+        exit(1)
+    encoder_session = ort.InferenceSession(path_or_bytes=use_encoder_path)
+
     task = tasks.setup_task(saved_cfg.task)
     task.build_tokenizer(saved_cfg.tokenizer)
     task.build_bpe(saved_cfg.bpe)
@@ -181,15 +201,15 @@ def _main(cfg, output_file):
             continue
 
         if sample['net_input']['source']['video'] is not None:
-            sample['net_input']['source']['video'] = sample['net_input']['source']['video'].to(torch.half)
+            sample['net_input']['source']['video'] = sample['net_input']['source']['video'].to(torch.float32)
         if sample['net_input']['source']['audio'] is not None:
-            sample['net_input']['source']['audio'] = sample['net_input']['source']['audio'].to(torch.half)
+            sample['net_input']['source']['audio'] = sample['net_input']['source']['audio'].to(torch.float32)
 
-        best_hypo = model.generate(
-            target_list=sample["target"],
+        best_hypo = model.generate_use_encoder_session(
+            encoder_session=encoder_session,
             num_beams=cfg.generation.beam,
             length_penalty=cfg.generation.lenpen,
-            **sample["net_input"],
+            **sample["net_input"]
         )
 
         best_hypo = llm_tokenizer.batch_decode(
@@ -213,35 +233,8 @@ def _main(cfg, output_file):
                 result_dict['ref'].append(ref_sent)
                 logger.info(f"\nINST:{instruction}\nREF:{ref_sent}\nHYP:{hypo_str}\n")
 
-    yaml_str = OmegaConf.to_yaml(cfg.generation)
-    fid = int(hashlib.md5(yaml_str.encode("utf-8")).hexdigest(), 16)
-    fid = fid % 1000000
-    result_fn = f"{cfg.common_eval.results_path}/hypo-{fid}.json"
+    result_fn = f"{cfg.common_eval.results_path}/hypo.json"
     json.dump(result_dict, open(result_fn, 'w'), indent=4)
-
-    if not cfg.override.demo:
-        if not cfg.override.eval_bleu:
-            n_err, n_total = 0, 0
-            assert len(result_dict['hypo']) == len(result_dict['ref'])
-            for hypo, ref in zip(result_dict['hypo'], result_dict['ref']):
-                hypo, ref = hypo.strip().split(), ref.strip().split()
-                n_err += editdistance.eval(hypo, ref)
-                n_total += len(ref)
-            wer = 100 * n_err / n_total
-            wer_fn = f"{cfg.common_eval.results_path}/wer.{fid}"
-            with open(wer_fn, "w") as fo:
-                fo.write(f"WER: {wer}\n")
-                fo.write(f"err / num_ref_words = {n_err} / {n_total}\n\n")
-                fo.write(f"{yaml_str}")
-            logger.info(f"WER: {wer}%")
-        else:
-            bleu = sacrebleu.corpus_bleu(result_dict['hypo'], [result_dict['ref']])
-            bleu_score = bleu.score
-            bleu_fn = f"{cfg.common_eval.results_path}/bleu.{fid}"
-            with open(bleu_fn, "w") as fo:
-                fo.write(f"BLEU: {bleu_score}\n")
-                fo.write(f"{yaml_str}")
-            logger.info(f"BLEU: {bleu_score}\n")
 
 
 @hydra.main(config_path=config_path, config_name="infer")

@@ -5,7 +5,7 @@ sys.path.append(os.getcwd())
 import argparse
 
 from src.models.utils.manifest import create_demo_manifest
-from src.models.taskers import Checker, Normalizer, Splitter, FaceCropper, MouthCropper, Embedder
+from src.models.taskers import Checker, Normalizer, Splitter, MouthCropper, Embedder
 from src.models.utils import get_logger, get_spent_time
 
 logger = get_logger('inference', is_stream=True)
@@ -28,30 +28,13 @@ def get_args() -> argparse.Namespace:
         help='Time interval to split',
     )
 
-    parser.add_argument(
-        '--decode',
-        required=False,
-        default=False,
-        action='store_true',
-        help='decode phase.'
-    )
-
-    parser.add_argument(
-        '--clear-fragments',
-        required=False,
-        default=False,
-        action='store_true',
-        help='Clear fragments(intermediate results made by inferencing progress).'
-    )
-
     return parser.parse_args()
 
 
 @get_spent_time(message='Inferencing time: ')
 def infer(args: argparse.Namespace):
-    checker = Checker(duration_threshold=30)
+    checker = Checker(duration_threshold=60)
     normalizer = Normalizer(checker=checker)
-    face_cropper = FaceCropper()
     mouth_cropper = MouthCropper()
     splitter = Splitter()
     embedder = Embedder()
@@ -74,14 +57,12 @@ def infer(args: argparse.Namespace):
     logger.info(f"Split into segments")
     samples = splitter.do(metadata_dict=normalized_metadata, time_interval=args.time_interval)
 
-    logger.info(f"Crop face of speaker")
-    samples = face_cropper.do(samples=samples, need_to_crop=checked_metadata['has_v'])
-
     logger.info(f"Crop mouth of speaker")
     samples = mouth_cropper.do(samples, need_to_crop=checked_metadata['has_v'])
 
     logger.info('Create manifest file')
     manifest_dir = create_demo_manifest(samples_dict=samples)
+
     k_mean_path = "src/models/checkpoints/kmean_model.km"
 
     # dump hubert feature
@@ -118,8 +99,6 @@ def infer(args: argparse.Namespace):
     for k in _cmd_dict:
         logger.info(f"Doing step {k}")
         shell = False
-        if k == 'decode' and not args.decode:
-            continue
         if k == 'rename_l':
             shell = True
         _return_code = subprocess.run(_cmd_dict[k], shell=shell, stdout=sys.stdout, capture_output=False).returncode
@@ -131,9 +110,8 @@ def infer(args: argparse.Namespace):
     logger.info('Combine video and transcript.')
     _output_video_path = embedder.do(samples)
 
-    if args.clear_fragments:
-        logger.info('Clear fragments')
-        embedder.post_do(clear_framents=args.clear_fragments)
+    logger.info("Clear fragments.")
+    embedder.post_do()
 
     logger.info(f"Output path: '{_output_video_path}'")
     logger.info('Inference DONE!')

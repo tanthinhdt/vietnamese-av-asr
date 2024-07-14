@@ -15,14 +15,8 @@ from fairseq.tasks import register_task
 from fairseq.tasks.fairseq_task import FairseqTask
 from fairseq.sequence_generator import SequenceGeneratorWithAlignment
 
-DBG = True if len(sys.argv) == 1 else False
-
-if DBG:
-    from src.data.vsp_llm.hubert_dataset import AVHubertDataset
-    from .sequence_generator import SequenceGenerator
-else:
-    from src.data.vsp_llm.hubert_dataset import AVHubertDataset
-    from .sequence_generator import SequenceGenerator
+from .hubert_dataset import AVHubertDataset
+from .sequence_generator import SequenceGenerator
 
 logger = logging.getLogger(__name__)
 
