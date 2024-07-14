@@ -1,1 +1,0 @@
-### The folder containing log files to keep logs for each processor that process on each example.
