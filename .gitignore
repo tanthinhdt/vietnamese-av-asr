@@ -107,3 +107,4 @@ test.py
 /src/data/
 /src/weights/
 /src/models/checkpoints/*.pt
+/app.py
