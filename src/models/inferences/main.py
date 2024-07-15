@@ -93,7 +93,7 @@ def infer(args: argparse.Namespace):
         'dump_l': dump_l_cmd,
         'rename_l': rename_l_cmd,
         'cl_count': cl_count_cmd,
-        #'decode': decode_cmd,
+        'decode': decode_cmd,
     }
 
     for k in _cmd_dict:

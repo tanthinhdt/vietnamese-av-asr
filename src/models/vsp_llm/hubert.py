@@ -295,8 +295,8 @@ class SubModel(nn.Module):
     def forward(self, x):
         if self.resnet is not None:
             x = self.resnet(x)
-        # with torch.autocast(device_type='cpu'):
-        x = self.proj(x.transpose(1, 2))
+        with torch.autocast(device_type='cpu'):
+            x = self.proj(x.transpose(1, 2))
         if self.encoder is not None:
             x = self.encoder(x)[0].transpose(1, 2)
         else:
@@ -600,8 +600,8 @@ class AVHubertModel(BaseFairseqModel):
         if padding_mask is not None:
             padding_mask = self.forward_padding_mask(features, padding_mask)
         if self.post_extract_proj is not None:
-            #with torch.autocast(device_type='cpu'):
-            features = self.post_extract_proj(features)
+            with torch.autocast(device_type='cpu'):
+                features = self.post_extract_proj(features)
 
         features = self.dropout_input(features)
         if self.masking_type == 'feature' and mask:
@@ -613,12 +613,12 @@ class AVHubertModel(BaseFairseqModel):
         # x: (B, T, D), float
         # padding_mask: (B, T), bool
         # mask_indices: (B, T), bool
-        #with torch.autocast(device_type='cpu'):
-        x, _ = self.encoder(
-            x,
-            padding_mask=padding_mask,
-            layer=None if output_layer is None else output_layer - 1
-        )
+        with torch.autocast(device_type='cpu'):
+            x, _ = self.encoder(
+                x,
+                padding_mask=padding_mask,
+                layer=None if output_layer is None else output_layer - 1
+            )
 
         if features_only:
             return {"x": x, "padding_mask": padding_mask, "features": features}
@@ -710,8 +710,8 @@ class AVHubertModel(BaseFairseqModel):
         if padding_mask is not None:
             padding_mask = self.forward_padding_mask(features, padding_mask)
         if self.post_extract_proj is not None:
-            #with torch.autocast(device_type='cpu'):
-            features = self.post_extract_proj(features)
+            with torch.autocast(device_type='cpu'):
+                features = self.post_extract_proj(features)
 
         features = self.dropout_input(features)
         x = features

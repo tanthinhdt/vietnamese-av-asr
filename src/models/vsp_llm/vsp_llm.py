@@ -161,8 +161,8 @@ class HubertEncoderWrapper(FairseqEncoder):
             "source": source,
             "padding_mask": padding_mask,
         }
-        #with torch.autocast(device_type='cpu'):
-        x, padding_mask = self.w2v_model.extract_finetune(**w2v_args)
+        with torch.autocast(device_type='cpu'):
+            x, padding_mask = self.w2v_model.extract_finetune(**w2v_args)
 
         return {
             "encoder_out": x,  # T x B x C
