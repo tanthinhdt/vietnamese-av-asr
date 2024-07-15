@@ -126,28 +126,6 @@ def _main(cfg, output_file):
             model.half()
     model = models[0]
 
-    root_dir = pathlib.Path(__file__).parent.parent.parent.parent
-    encoder_dir = os.path.join(root_dir, "onnx", "encoder")
-    os.makedirs(encoder_dir, exist_ok=True)
-    if os.listdir(encoder_dir):
-        logger.info(f"Encoders are exported, to re-export, let delete encoder dir '{os.path.abspath(encoder_dir)}' and re-run.\n"
-                    f"Decoding is keep going, using the exported previously encoder onnx.")
-    else:
-        for modalities in [['visual', 'audio'], ['visual'], ['audio']]:
-            onnx_name = '_'.join(modalities)
-            encoder_path = os.path.join(encoder_dir, f"{onnx_name}_encoder.onnx")
-            model.export_encoder_onnx(modalities=modalities, encoder_path=encoder_path)
-        logger.info("Exported encoders to onnx. Let re-run inference to use encoder onnx to avoid memory issue.")
-        del model.encoder
-
-    use_encoder_path = os.path.join(
-        encoder_dir, f"{'_'.join(cfg.override.modalities)}_encoder.onnx"
-    )
-    if not os.path.isfile(use_encoder_path):
-        logger.critical(f"Not exist encoder onnx '{use_encoder_path}'")
-        exit(1)
-    encoder_session = ort.InferenceSession(path_or_bytes=use_encoder_path)
-
     task = tasks.setup_task(saved_cfg.task)
     task.build_tokenizer(saved_cfg.tokenizer)
     task.build_bpe(saved_cfg.bpe)
@@ -204,8 +182,7 @@ def _main(cfg, output_file):
         if sample['net_input']['source']['audio'] is not None:
             sample['net_input']['source']['audio'] = sample['net_input']['source']['audio'].to(torch.float32)
 
-        best_hypo = model.generate_use_encoder_session(
-            encoder_session=encoder_session,
+        best_hypo = model.generate(
             num_beams=cfg.generation.beam,
             length_penalty=cfg.generation.lenpen,
             **sample["net_input"]
