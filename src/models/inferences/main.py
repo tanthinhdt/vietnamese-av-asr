@@ -106,7 +106,7 @@ def infer(args: argparse.Namespace):
         if _return_code:
             logger.error(f'Error when {k}')
             exit(1)
-    exit(1)
+
     logger.info('Combine video and transcript.')
     _output_video_path = embedder.do(samples)
 

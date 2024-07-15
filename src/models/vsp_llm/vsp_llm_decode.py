@@ -32,7 +32,6 @@ from omegaconf import OmegaConf, MISSING, DictConfig
 
 logging.root.setLevel(logging.INFO)
 logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
 
 config_path = Path(__file__).resolve().parent.parent / "configs"
 
