@@ -88,6 +88,7 @@ target/
 .mypy_cache/
 
 test.py
+app.py
 /data/
 /tmp/
 /outputs/
@@ -101,10 +102,8 @@ test.py
 /src/tools/
 /src/utils/
 /src/visualization/
-/src/data/databases/
 /src/modules/
 /src/models/dataset/
 /src/data/
 /src/weights/
 /src/models/checkpoints/*.pt
-/app.py

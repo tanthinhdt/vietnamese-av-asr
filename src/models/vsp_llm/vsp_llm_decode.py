@@ -1,12 +1,10 @@
 import logging
 import os
-import pathlib
 import sys
 import json
 import torch
 import hydra
 import numpy as np
-import onnxruntime as ort
 
 from itertools import chain
 from argparse import Namespace
@@ -32,6 +30,7 @@ from omegaconf import OmegaConf, MISSING, DictConfig
 
 logging.root.setLevel(logging.INFO)
 logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 config_path = Path(__file__).resolve().parent.parent / "configs"
 
@@ -178,9 +177,9 @@ def _main(cfg, output_file):
             continue
 
         if sample['net_input']['source']['video'] is not None:
-            sample['net_input']['source']['video'] = sample['net_input']['source']['video'].to(torch.float32)
+            sample['net_input']['source']['video'] = sample['net_input']['source']['video'].to(torch.half)
         if sample['net_input']['source']['audio'] is not None:
-            sample['net_input']['source']['audio'] = sample['net_input']['source']['audio'].to(torch.float32)
+            sample['net_input']['source']['audio'] = sample['net_input']['source']['audio'].to(torch.half)
 
         best_hypo = model.generate(
             num_beams=cfg.generation.beam,

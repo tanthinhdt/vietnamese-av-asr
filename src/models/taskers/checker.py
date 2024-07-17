@@ -11,6 +11,7 @@ logger = get_logger(
     log_path=None,
 )
 
+
 class Checker(Tasker):
     """Check condition of sample"""
 
@@ -18,7 +19,7 @@ class Checker(Tasker):
     _FRAME_RATE: int = 25
     _EXTENSION: str = '.mp4'
 
-    def __init__(self, duration_threshold: int = 3,  *args, **kwargs):
+    def __init__(self, duration_threshold: int = 3, **kwargs):
         """
         Initialize checker
 

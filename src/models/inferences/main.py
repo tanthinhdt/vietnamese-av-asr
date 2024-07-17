@@ -1,8 +1,8 @@
 import os
 import subprocess
 import sys
-sys.path.append(os.getcwd())
 import argparse
+sys.path.append(os.getcwd())
 
 from src.models.utils.manifest import create_demo_manifest
 from src.models.taskers import Checker, Normalizer, Splitter, MouthCropper, Embedder
@@ -107,7 +107,7 @@ def infer(args: argparse.Namespace):
             logger.error(f'Error when {k}')
             exit(1)
 
-    logger.info('Combine video and transcript.')
+    logger.info('Embed transcript into video.')
     _output_video_path = embedder.do(samples)
 
     logger.info("Clear fragments.")

@@ -1,4 +1,3 @@
-import math
 import os
 import subprocess
 
@@ -61,10 +60,6 @@ class Splitter(Tasker):
                 dur = get_duration(_video_path)
                 _sample['timestamp'] = (timestamp, timestamp+int(dur))
                 _sample['visual_output_dir'] = _VISUAL_DIR
-                _sample['audio_output_dir'] = _AUDIO_DIR
-                _sample['visual_fps'] = self.FPS
-                _sample['visual_num_frames'] = math.ceil(dur * self.FPS)
-                _sample['audio_num_frames'] = math.ceil(dur * self.SR)
                 if metadata_dict['has_v']:
                     _sample['visual_path'] = self._detach_visual(
                         video_path=_video_path,

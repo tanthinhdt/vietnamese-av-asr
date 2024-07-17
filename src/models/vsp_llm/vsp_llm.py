@@ -1,10 +1,6 @@
 import logging
-import os.path
-import pathlib
-
 import torch
 import torch.nn as nn
-import onnxruntime as ort
 
 from peft import LoraConfig, get_peft_model
 from argparse import Namespace
@@ -323,40 +319,6 @@ class avhubert_llm_seq2seq_cluster_count(BaseFairseqModel):
         return llm_out.loss, llm_out.logits
 
     @torch.no_grad()
-    def generate_use_encoder_session(
-            self,
-            encoder_session: ort.InferenceSession,
-            num_beams=20,
-            max_length=30,
-            min_length=1,
-            top_p=0.9,
-            repetition_penalty=1.0,
-            length_penalty=0.0,
-            **kwargs,
-    ):
-        encoder_input_feed = dict()
-        if kwargs['source']['video'] is not None:
-            encoder_input_feed["video"] = kwargs['source']['video'].numpy()
-        if kwargs['source']['audio'] is not None:
-            encoder_input_feed["audio"] = kwargs['source']['audio'].numpy()
-
-        encoder_output = torch.from_numpy(encoder_session.run(
-            None,
-            input_feed=encoder_input_feed,
-        )[0])
-
-        return self.decoder_generate(
-            encoder_output,
-            num_beams=num_beams,
-            max_length=max_length,
-            min_length=min_length,
-            top_p=top_p,
-            repetition_penalty=repetition_penalty,
-            length_penalty=length_penalty,
-            **kwargs
-        )
-
-    @torch.no_grad()
     def generate(
             self,
             num_beams=20,
@@ -429,62 +391,6 @@ class avhubert_llm_seq2seq_cluster_count(BaseFairseqModel):
         )
 
         return outputs
-
-    def export_encoder_onnx(
-            self,
-            encoder_path: str,
-            modalities: list,
-    ):
-        args = []
-        input_names = []
-        dynamic_axes = dict()
-        input_feed = dict()
-        batch_size = 1
-        seq_len = 10
-        v_channel = 1
-        height = 88
-        width = 88
-        a_dim = 104
-
-        if "visual" in modalities:
-            v = torch.randn(batch_size, v_channel, seq_len, height, width)
-            input_names.append('video')
-            args.append(v)
-            input_feed['video'] = v.numpy()
-            dynamic_axes['video'] = {
-                0: "batch_size",
-                2: "seq_len",
-                3: "height",
-                4: "width",
-            }
-        else:
-            args.append(None)
-        if "audio" in modalities:
-            a = torch.randn(batch_size, a_dim, seq_len)
-            input_names.append('audio')
-            args.append(a)
-            input_feed['audio'] = a.numpy()
-            dynamic_axes['audio'] = {
-                0: "batch_size",
-                2: "seq_len",
-            }
-        else:
-            args.append(None)
-        dynamic_axes['features'] = {
-            0: "batch_size",
-            1: "seq_len",
-        }
-
-        if not os.path.isfile(encoder_path):
-            torch.onnx.export(
-                model=self.encoder,
-                args=tuple(args),
-                f=encoder_path,
-                export_params=True,
-                input_names=input_names,
-                output_names=['features'],
-                dynamic_axes=dynamic_axes
-            )
 
     def get_ctc_target(self, sample):
         return sample["target"], sample["target_lengths"]

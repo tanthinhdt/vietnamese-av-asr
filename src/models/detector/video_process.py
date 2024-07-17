@@ -15,19 +15,6 @@ def linear_interpolate(landmarks, start_idx, stop_idx):
     return landmarks
 
 
-def warp_img(src, dst, img, std_size):
-    tform = tf.estimate_transform("similarity", src, dst)
-    warped = tf.warp(img, inverse_map=tform.inverse, output_shape=std_size)
-    warped = (warped * 255).astype("uint8")
-    return warped, tform
-
-
-def apply_transform(transform, img, std_size):
-    warped = tf.warp(img, inverse_map=transform.inverse, output_shape=std_size)
-    warped = (warped * 255).astype("uint8")
-    return warped
-
-
 def cut_patch(img, landmarks, height, width, threshold=5):
     center_x, center_y = np.mean(landmarks, axis=0)
     # Check for too much bias in height and width
@@ -127,7 +114,7 @@ class VideoProcess:
             landmarks[: valid_frames_idx[0]] = [
                 landmarks[valid_frames_idx[0]]
             ] * valid_frames_idx[0]
-            landmarks[valid_frames_idx[-1] :] = [landmarks[valid_frames_idx[-1]]] * (
+            landmarks[valid_frames_idx[-1]:] = [landmarks[valid_frames_idx[-1]]] * (
                 len(landmarks) - valid_frames_idx[-1]
             )
 

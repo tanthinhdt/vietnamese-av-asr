@@ -10,7 +10,7 @@ Usage:
   exit 1
 }
 
-platform="kaggle"
+platform="any"
 
 while [[ "$#" -gt 0 ]]; do
   case "$1" in

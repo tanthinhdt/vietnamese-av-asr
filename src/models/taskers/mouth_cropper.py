@@ -15,7 +15,8 @@ logger = get_logger(__name__, is_stream=True, log_path=None)
 
 
 class MouthCropper(Tasker):
-    def __init__(self, convert_gray=False):
+    def __init__(self, convert_gray=False, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self.landmarks_detector = LandmarksDetector()
         self.video_process = VideoProcess(convert_gray=convert_gray)
 
@@ -56,16 +57,16 @@ class MouthCropper(Tasker):
     def do(self, samples: dict, need_to_crop: bool = True, *args, **kwargs) -> dict:
         for k in filter(lambda x: isinstance(x, numbers.Number), samples):
             if need_to_crop:
-                chunk_visual_id = samples[k]['chunk_visual_id']
                 _v_mouth_dir = os.path.join(samples[k]['visual_output_dir'], 'mouth')
                 os.makedirs(_v_mouth_dir, exist_ok=True)
-                _v_mouth_path = os.path.join(_v_mouth_dir, chunk_visual_id + '.avi')
-                samples[k]['visual_path'] = self.write_video(video_path=samples[k]['visual_path'], mouth_video_path=_v_mouth_path)
+                _v_mouth_path = os.path.join(_v_mouth_dir, samples[k]['chunk_visual_id'] + '.avi')
+                samples[k]['visual_path'] = self.write_video(
+                    video_path=samples[k]['visual_path'],
+                    mouth_video_path=_v_mouth_path
+                )
                 if samples[k]['visual_path'] is None:
                     samples.pop(k)
                     continue
-            else:
-                samples[k]['visual_path'] = samples[k]['visual_path']
 
             dur = get_duration(samples[k]['visual_path'])
             fps = get_fps(samples[k]['visual_path'])
@@ -73,7 +74,6 @@ class MouthCropper(Tasker):
             samples[k]['visual_num_frames'] = math.ceil(dur * fps)
             samples[k]['audio_num_frames'] = math.ceil(dur * sr)
             samples[k].pop('visual_output_dir')
-            samples[k].pop('audio_output_dir')
 
         if not samples:
             logger.critical('No mouth of speakers can be cropped.')

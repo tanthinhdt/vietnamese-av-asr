@@ -49,7 +49,7 @@ class TransformerDecoder(FairseqIncrementalDecoder):
         self.max_target_positions = cfg.max_target_positions
 
         self.embed_tokens = embed_tokens
-        # self.embed_scale = math.sqrt(embed_dim)  # todo: try with input_embed_dim
+        # todo: try with input_embed_dim
         self.embed_scale = 1.0 if cfg.no_scale_embedding else math.sqrt(embed_dim)
 
         self.project_in_dim = (

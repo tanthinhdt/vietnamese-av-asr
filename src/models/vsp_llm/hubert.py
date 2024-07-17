@@ -1,4 +1,3 @@
-import os, sys
 import logging
 import torch
 import torch.nn as nn
@@ -408,8 +407,7 @@ class AVHubertModel(BaseFairseqModel):
     def build_model(cls, cfg: AVHubertConfig, task: AVHubertPretrainingTask):
         """Build a new model instance."""
 
-        kwargs = {}
-        model = AVHubertModel(cfg, task.cfg, task.dictionaries, **kwargs)
+        model = AVHubertModel(cfg, task.cfg, task.dictionaries)
         return model
 
     def apply_input_mask(self, x, padding_mask, target_list):
@@ -562,7 +560,7 @@ class AVHubertModel(BaseFairseqModel):
 
     def forward(
         self,
-        source: torch.Tensor,
+        source: dict,
         target_list: Optional[List[torch.Tensor]] = None,
         padding_mask: Optional[torch.Tensor] = None,
         mask: bool = True,
@@ -645,7 +643,7 @@ class AVHubertModel(BaseFairseqModel):
 
     def extract_features(
         self,
-        source: torch.Tensor,
+        source: dict,
         padding_mask: Optional[torch.Tensor] = None,
         mask: bool = False,
         ret_conv: bool = False,
