@@ -78,6 +78,9 @@ target/
 # exclude data from source control by default
 /data/
 
+# exclude libs from source control by default
+libs/
+
 # Mac OS-specific storage files
 .DS_Store
 
