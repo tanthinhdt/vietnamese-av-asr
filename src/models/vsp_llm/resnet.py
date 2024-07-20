@@ -56,15 +56,31 @@ class BasicBlock(nn.Module):
 
     def forward(self, x):
         residual = x
+        print('\t\t\t\tconv1 input', x.shape)
         out = self.conv1(x)
+        print('\t\t\t\tconv1 output', out.shape)
+        print('\t\t\t\tbn1 input', out.shape)
         out = self.bn1(out)
+        print('\t\t\t\tbn1 output', out.shape)
+        print('\t\t\t\trelu1 input', out.shape)
         out = self.relu1(out)
+        print('\t\t\t\trelu1 output', out.shape)
+        print('\t\t\t\tconv2 input', out.shape)
         out = self.conv2(out)
+        print('\t\t\t\tconv2 output', out.shape)
+        print('\t\t\t\tbn2 input', out.shape)
         out = self.bn2(out)
+        print('\t\t\t\tbn2 output', out.shape)
         if self.downsample is not None:
+            print('\t\t\t\tdownsample input', residual.shape)
             residual = self.downsample(x)
+            print('\t\t\t\tdownsample output', residual.shape)
+        print('\t\t\t\tresidual input', out.shape)
         out += residual
+        print('\t\t\t\tresidual output', out.shape)
+        print('\t\t\t\trelu2 intput', out.shape)
         out = self.relu2(out)
+        print('\t\t\t\trelu2 output', out.shape)
 
         return out
 
@@ -111,12 +127,24 @@ class ResNet(nn.Module):
         return nn.Sequential(*layers)
 
     def forward(self, x):
+        print('\t\t\tlayer 1 input', x.shape)
         x = self.layer1(x)
+        print('\t\t\tlayer 1 output', x.shape)
+        print('\t\t\tlayer 2 intput', x.shape)
         x = self.layer2(x)
+        print('\t\t\tlayer 2 output', x.shape)
+        print('\t\t\tlayer 3 intput', x.shape)
         x = self.layer3(x)
+        print('\t\t\tlayer 3 output', x.shape)
+        print('\t\t\tlayer 4 input', x.shape)
         x = self.layer4(x)
+        print('\t\t\tlayer 4 output', x.shape)
+        print('\t\t\tavgpool input', x.shape)
         x = self.avgpool(x)
+        print('\t\t\tavgpool output', x.shape)
+        print('\t\t\tview input', x.shape)
         x = x.view(x.size(0), -1)
+        print('\t\t\tview output', x.shape)
         return x
 
 
@@ -148,12 +176,22 @@ class ResEncoder(nn.Module):
     def forward(self, x):
         B, C, T, H, W = x.size()
         with torch.autocast(device_type='cpu'):
+            print(f'\t\tfrontend3D input', x.shape)
             x = self.frontend3D(x)
+            print(f'\t\tfrontend3D output', x.shape)
         Tnew = x.shape[2]
+        print('\t\tthreeD_to_2D_tensor input', x.shape)
         x = self.threeD_to_2D_tensor(x)
+        print('\t\tthreeD_to_2D_tensor output', x.shape)
+        print('\t\ttrunk input', x.shape)
         x = self.trunk(x)
+        print('\t\ttrunk output', x.shape)
+        print('\t\tview input', x.shape)
         x = x.view(B, Tnew, x.size(1))
+        print('\t\tview output', x.shape)
+        print('\t\ttranspose input', x.shape)
         x = x.transpose(1, 2).contiguous()
+        print('\t\ttranspose output', x.shape)
         return x
 
     def threeD_to_2D_tensor(self, x):
