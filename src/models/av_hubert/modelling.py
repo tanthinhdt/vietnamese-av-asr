@@ -19,7 +19,7 @@ class AVHubertVideoFeatureEncoder(nn.Module):
     def __init__(self, config: AVHubertConfig) -> None:
         super().__init__()
         self.resnet = ResNetEncoder(relu_type=config.resnet_relu_type)
-        self.proj = nn.Linear(config.audio_feat_dim, self.resnet.backend_out)
+        self.proj = nn.Linear(self.resnet.backend_out, config.encoder_embed_dim)
         self.encoder = (
             TransformerEncoder(config)
             if config.sub_encoder_layers > 0
