@@ -73,6 +73,7 @@ class AVHubertConfig(PretrainedConfig):
         max_target_positions: int = 2048,
         share_decoder_input_output_embed: bool = False,
         no_scale_embedding: bool = True,
+        num_classes: int = 2004,
         **kwargs,
     ) -> None:
         super().__init__(**kwargs)
@@ -142,4 +143,5 @@ class AVHubertConfig(PretrainedConfig):
         self.max_target_positions = max_target_positions
         self.share_decoder_input_output_embed = share_decoder_input_output_embed
         self.no_scale_embedding = no_scale_embedding
+        self.num_classes = num_classes
         self.feature_ds_rate = 1

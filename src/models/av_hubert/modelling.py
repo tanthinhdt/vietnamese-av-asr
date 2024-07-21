@@ -118,13 +118,13 @@ class AVHubertModel(PreTrainedModel):
 
         # modules below are not needed during fine-tuning
         if any([d is None for d in dictionaries]):
-            logging.info("cannot find dictionary. assume will be used for fine-tuning")
+            self.num_classes = config.num_classes
         else:
-            self.num_classes = [len(d) for d in dictionaries]
-            self.label_embs_concat = nn.Parameter(
-                torch.FloatTensor(sum(self.num_classes), final_dim)
-            )
-            nn.init.uniform_(self.label_embs_concat)
+            self.num_classes = sum([len(d) for d in dictionaries])
+        self.label_embs_concat = nn.Parameter(
+            torch.FloatTensor(self.num_classes, final_dim)
+        )
+        nn.init.uniform_(self.label_embs_concat)
 
     def apply_input_mask(
         self,
