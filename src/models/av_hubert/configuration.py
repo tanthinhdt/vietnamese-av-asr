@@ -13,7 +13,7 @@ class AVHubertConfig(PretrainedConfig):
         extractor_mode: str = "default",
         encoder_layers: int = 12,
         encoder_embed_dim: int = 1024,
-        encoder_ffn_embed_dim: int = 3072,
+        encoder_ffn_embed_dim: int = 4096,
         encoder_attention_heads: int = 16,
         activation_fn: str = "gelu",
         dropout: float = 0.1,
