@@ -22,7 +22,7 @@ class AVHubertConfig(PretrainedConfig):
         encoder_layerdrop: float = 0.0,
         dropout_input: float = 0.0,
         dropout_features: float = 0.0,
-        final_dim: int = 0,
+        final_dim: int = 256,
         untie_final_proj: bool = False,
         layer_norm_first: bool = False,
         conv_feature_layers: str = "[(512,10,5)] + [(512,3,2)] * 4 + [(512,2,2)] * 2",
