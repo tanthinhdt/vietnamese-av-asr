@@ -11,7 +11,7 @@ class AVHubertConfig(PretrainedConfig):
         sample_rate: int = 25,
         input_modality: str = "video",
         extractor_mode: str = "default",
-        encoder_layers: int = 12,
+        encoder_layers: int = 24,
         encoder_embed_dim: int = 1024,
         encoder_ffn_embed_dim: int = 4096,
         encoder_attention_heads: int = 16,
