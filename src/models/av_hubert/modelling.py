@@ -3,11 +3,10 @@ import logging
 import numpy as np
 import torch.nn as nn
 from .resnet import ResNetEncoder
+from .encoder import TransformerEncoder
 from .configuration import AVHubertConfig
 from typing import Optional, Tuple, List, Dict
 from transformers import FeatureExtractionMixin, PreTrainedModel
-from fairseq.modules import GradMultiply, LayerNorm
-from fairseq.models.wav2vec.wav2vec2 import TransformerEncoder
 from fairseq.modules import GradMultiply, LayerNorm
 
 
@@ -225,7 +224,7 @@ class AVHubertModel(PreTrainedModel):
     def __init__(
         self,
         config: AVHubertConfig = AVHubertConfig(),
-        dictionaries: dict = None,
+        dictionaries: List = [None],
     ) -> None:
         super().__init__(config=config)
         label_rate = config.label_rate
@@ -237,9 +236,9 @@ class AVHubertModel(PreTrainedModel):
         self.feature_extractor_audio = AVHubertAudioFeatureEncoder(config)
 
         if config.modality_fuse == "concat":
-            self.encoder_embed_dim = config.feat_proj_dim * 2
+            self.encoder_embed_dim = config.encoder_embed_dim * 2
         elif config.modality_fuse == "add":
-            self.encoder_embed_dim = config.feat_proj_dim
+            self.encoder_embed_dim = config.encoder_embed_dim
 
         self.post_extract_proj = (
             nn.Linear(self.encoder_embed_dim, config.encoder_embed_dim)
@@ -257,15 +256,15 @@ class AVHubertModel(PreTrainedModel):
 
         self.mask_emb = nn.Parameter(
             torch.FloatTensor(config.audio_feat_dim).uniform_()
-            if self.masking_type == "input"
+            if config.masking_type == "input"
             else torch.FloatTensor(config.encoder_embed_dim).uniform_()
         )
 
         self.encoder = TransformerEncoder(self.config)
-        self.layer_norm = LayerNorm(config.embed)
+        self.layer_norm = LayerNorm(self.encoder_embed_dim)
 
         self.target_glu = None
-        if self.config.target_glu:
+        if config.target_glu:
             self.target_glu = nn.Sequential(
                 nn.Linear(config.final_dim, config.final_dim * 2),
                 nn.GLU(),
