@@ -1,2 +1,2 @@
-from .configuration import AVHubertConfig
-from .modelling import AVHubertFeatureExtractor, AVHubertModel
+from .configuration import AVSPLLMConfig
+from .modelling import AVSPLLMModel

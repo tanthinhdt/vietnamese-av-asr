@@ -25,6 +25,11 @@ class AVHubertFeatureExtractor(FeatureExtractionMixin):
         super().__init__(**kwargs)
 
 
+class AVSPLLMFeatureExtractor(AVHubertFeatureExtractor):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+
 class AVHubertVideoFeatureEncoder(nn.Module):
     def __init__(self, config: AVHubertConfig) -> None:
         super().__init__()
