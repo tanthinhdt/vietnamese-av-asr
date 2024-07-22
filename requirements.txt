@@ -29,6 +29,8 @@ scipy==1.10.0
 sentencepiece==0.1.96
 submitit==1.4.1
 tqdm
+simple_parsing
+onnxruntime
 transformers
 typing_extensions==4.9.0
 hf-transfer
