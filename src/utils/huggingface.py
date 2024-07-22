@@ -221,7 +221,7 @@ def download_from_hf(
     output_dir: Union[str, Path],
     overwrite: bool = False,
     repo_type: str = "dataset",
-) -> None:
+) -> Path:
     """
     Download files from HuggingFace repository.
 
@@ -237,6 +237,11 @@ def download_from_hf(
         Overwrite existing files.
     repo_type : str, 'dataset'
         Type of the repository.
+
+    Returns
+    -------
+    Path
+        Path to the downloaded file or directory.
     """
     fs = HfFileSystem()
     output_dir = Path(output_dir)
@@ -264,3 +269,5 @@ def download_from_hf(
                 raise KeyboardInterrupt
         else:
             logging.info(f"\tFile exists in {file_output_dir}")
+
+    return output_dir / Path(path_in_repo).name
