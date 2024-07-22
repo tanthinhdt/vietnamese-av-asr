@@ -75,11 +75,10 @@ target/
 # Jupyter NB Checkpoints
 .ipynb_checkpoints/
 
-# exclude data from source control by default
+# exclude root folders from source control by default
 /data/
-
-# exclude data from source control by default
 /models/
+/scripts/
 
 # exclude libs from source control by default
 libs/
