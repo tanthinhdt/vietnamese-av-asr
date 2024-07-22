@@ -20,7 +20,7 @@ def get_args() -> Namespace:
 
 def main(args: Namespace) -> None:
     config = args.config
-    logger.info("Uploading files to HuggingFace Hub")
+    logger.info(config)
 
     if "*" in config.path.name or "." in config.path.name:
         folder_path = config.path.parent
