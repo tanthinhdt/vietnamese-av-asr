@@ -3,10 +3,10 @@ import logging
 from loguru import logger
 from argparse import Namespace
 from simple_parsing import ArgumentParser
+from huggingface_hub import hf_hub_download
 from configs import ModelConfig
-from tempfile import TemporaryDirectory
 from tools import load_model
-from utils import config_logger, download_from_hf
+from utils import config_logger
 
 
 config_logger()
@@ -27,21 +27,21 @@ def main(args: Namespace) -> None:
     _, _, model = load_model(config, do_train=True)
     logger.info("Model loaded")
 
-    with TemporaryDirectory() as tmp_dir:
-        checkpoint_file = download_from_hf(
-            repo_id=config.pretrained,
-            path_in_repo="checkpoints/checkpoint_best.pt",
-            output_dir=tmp_dir,
-            repo_type="model",
-        )
+    checkpoint_file = hf_hub_download(
+        repo_id=config.pretrained,
+        filename="checkpoints/checkpoint_best.pt",
+        repo_type="model",
+        cache_dir="models/huggingface",
+    )
+    logger.info("Checkpoint file downloaded")
 
-        model_state_dict = torch.load(checkpoint_file)["model"]
-        model_state_dict = model.state_dict().update(model_state_dict)
-        model.load_state_dict(model_state_dict)
-        logging.info("Model state dict loaded")
+    model_state_dict = model.state_dict()
+    model_state_dict.update(torch.load(checkpoint_file)["model"])
+    model.load_state_dict(model_state_dict)
+    logger.info("Model state dict loaded")
 
-        model.push_to_hub(config.pretrained)
-        logging.info("Model pushed to HuggingFace")
+    model.push_to_hub(config.pretrained)
+    logger.info("Model pushed to HuggingFace")
 
 
 if __name__ == "__main__":
