@@ -14,7 +14,8 @@ def get_args() -> Namespace:
     return parser.parse_args()
 
 
-def main(config: UploadingConfig) -> None:
+def main(args: Namespace) -> None:
+    config = args.config
     logging.info("Uploading files to HuggingFace Hub")
 
     if "*" in config.path.name or "." in config.path.name:
@@ -48,6 +49,5 @@ def main(config: UploadingConfig) -> None:
 
 if __name__ == "__main__":
     args = get_args()
-    config = args.config
-    config_logger(config.log_path)
-    main(config=config)
+    config_logger(args.config.log_path)
+    main(args=args)
