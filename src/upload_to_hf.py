@@ -55,4 +55,4 @@ if __name__ == "__main__":
     try:
         main(args=args)
     except Exception:
-        logger.info(f"Uploading files interrupted:\n{traceback.format_exc()}")
+        logger.error(f"Uploading files interrupted:\n{traceback.format_exc()}")
