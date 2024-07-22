@@ -3,8 +3,6 @@ import logging
 from time import time
 from typing import Union
 import onnxruntime as ort
-from configs import ModelConfig, InferenceConfig
-from utils import MODELS
 from transformers import (
     FeatureExtractionMixin,
     AutoModel,
@@ -12,12 +10,14 @@ from transformers import (
     pipeline,
 )
 from transformers.pipelines import PIPELINE_REGISTRY
-from tools import draw_text_on_image
+from configs import ModelConfig, InferenceConfig
 from models import (
     AVHubertConfig, AVHubertFeatureExtractor, AVHubertModel,
     AVSPLLMConfig, AVSPLLMFeatureExtractor, AVSPLLMModel,
 )
 from pipelines import AutomaticSpeechRecognitionPipeline
+from .constants import MODELS
+from .visualization import draw_text_on_image
 
 
 def load_model(
