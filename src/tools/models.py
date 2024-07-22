@@ -39,9 +39,8 @@ def load_model(
             exit(1)
 
         config_class.register_for_auto_class()
-        processor_class.register_for_auto_class("AutoImageProcessor")
+        processor_class.register_for_auto_class("AutoFeatureExtractor")
         model_class.register_for_auto_class("AutoModel")
-        model_class.register_for_auto_class("AutoModelForVideoClassification")
         logging.info(f"{model_config.arch} classes registered")
 
         config = config_class(**vars(model_config))
