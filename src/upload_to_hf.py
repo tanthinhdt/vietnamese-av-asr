@@ -2,7 +2,7 @@ import logging
 import traceback
 from loguru import logger
 from argparse import Namespace
-from configs import UploadingConfig
+from configs import UploadConfig
 from simple_parsing import ArgumentParser
 from utils import config_logger, UploadScheduler
 
@@ -14,7 +14,7 @@ def get_args() -> Namespace:
     parser = ArgumentParser(
         description="Upload files to HuggingFace.",
     )
-    parser.add_arguments(UploadingConfig, "config")
+    parser.add_arguments(UploadConfig, "config")
     return parser.parse_args()
 
 
