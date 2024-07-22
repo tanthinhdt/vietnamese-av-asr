@@ -1,11 +1,15 @@
 import torch
 import logging
+from loguru import logger
 from argparse import Namespace
 from simple_parsing import ArgumentParser
 from configs import ModelConfig
 from tempfile import TemporaryDirectory
 from tools import load_model
 from utils import config_logger, download_from_hf
+
+
+config_logger()
 
 
 def get_args() -> Namespace:
@@ -18,10 +22,10 @@ def get_args() -> Namespace:
 
 def main(args: Namespace) -> None:
     config = args.config
-    logging.info(config)
+    logger.info(config)
 
-    _, _, model = load_model(config)
-    logging.info("Model loaded")
+    _, _, model = load_model(config, do_train=True)
+    logger.info("Model loaded")
 
     with TemporaryDirectory() as tmp_dir:
         checkpoint_file = download_from_hf(
@@ -42,5 +46,4 @@ def main(args: Namespace) -> None:
 
 if __name__ == "__main__":
     args = get_args()
-    config_logger()
     main(args=args)
