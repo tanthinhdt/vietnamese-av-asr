@@ -22,12 +22,10 @@ from pipelines import AutomaticSpeechRecognitionPipeline
 
 def load_model(
     model_config: ModelConfig,
-    label2id: dict = None,
-    id2label: dict = None,
     do_train: bool = False,
 ) -> tuple:
-    '''
-    '''
+    """
+    """
     if do_train:
         if model_config.arch == "av_hubert":
             config_class = AVHubertConfig
@@ -49,7 +47,7 @@ def load_model(
 
         config = config_class(**vars(model_config))
         processor = processor_class(config=config)
-        model = model_class(config=config, label2id=label2id, id2label=id2label)
+        model = model_class(config=config)
 
         return config, processor, model
 
@@ -147,7 +145,7 @@ def get_predictions(
     id2gloss: dict,
     k: int = 3,
 ) -> Predictions:
-    '''
+    """
     Get the top-k predictions.
     Parameters
     ----------
@@ -163,7 +161,7 @@ def get_predictions(
     -------
     tuple
         List of top-k predictions and inference time.
-    '''
+    """
     if inputs is None:
         return Predictions()
 
@@ -191,37 +189,27 @@ def get_predictions(
     return Predictions(predictions=predictions, inference_time=inference_time)
 
 
-def register_pipeline(model_config: ModelConfig) -> Pipeline:
-    '''
-    '''
-    _, processor, model = load_model(model_config)
-
-    if model_config.arch not in MODELS:
-        logging.error(f"Model {model_config.arch} is not supported")
-        exit(1)
-
-    PIPELINE_REGISTRY.register_pipeline(
-        "automatic-speech-recognition",
-        pipeline_class=AutomaticSpeechRecognitionPipeline,
-        pt_model=AutoModel,
-        default={"pt": ("tanthinhdt/ViAVSP-LLM_v2.0", "main")},
-        type="multimodal",
-    )
-    return AutomaticSpeechRecognitionPipeline(
-        model=model,
-        feature_extractor=processor,
-    )
-
-
 def load_pipeline(
     model_config: ModelConfig,
-    inference_config: InferenceConfig,
+    inference_config: InferenceConfig = None,
 ) -> Pipeline:
-    '''
-    '''
-    if model_config.arch not in MODELS:
-        logging.error(f"Model {model_config.arch} is not supported")
-        exit(1)
+    """
+    """
+    assert model_config.arch in MODELS, f"Model {model_config.arch} is not supported"
+
+    if inference_config is None:
+        _, processor, model = load_model(model_config)
+        PIPELINE_REGISTRY.register_pipeline(
+            "automatic-speech-recognition",
+            pipeline_class=AutomaticSpeechRecognitionPipeline,
+            pt_model=AutoModel,
+            default={"pt": ("tanthinhdt/ViAVSP-LLM_v2.0", "main")},
+            type="multimodal",
+        )
+        return AutomaticSpeechRecognitionPipeline(
+            model=model,
+            feature_extractor=processor,
+        )
 
     return pipeline(
         "automatic-speech-recognition",
@@ -241,7 +229,7 @@ def get_input_shape(
     processor: Union[FeatureExtractionMixin],
     batch_size: int = 1,
 ) -> tuple:
-    '''
+    """
     Get the input shape for the model.
     Parameters
     ----------
@@ -253,7 +241,9 @@ def get_input_shape(
     -------
     tuple
         Input shape.
-    '''
+    """
+    assert arch in MODELS, f"Model {arch} is not supported"
+
     if arch == "avsp_llm":
         return (
             batch_size,
@@ -262,6 +252,3 @@ def get_input_shape(
             processor.size["height"],
             processor.size["width"]
         )
-    else:
-        logging.error(f"Model {arch} is not supported")
-        exit(1)
