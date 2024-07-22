@@ -639,7 +639,7 @@ class AVSPLLMModel(PreTrainedModel):
     ) -> None:
         super().__init__(config=config)
         self.encoder = HubertEncoderWrapper(config, dictionaries)
-        self.encoder.remove_pretraining_modules()
+        self.encoder.w2v_model.remove_pretraining_modules()
 
         self.avfeat_to_llm = nn.Linear(
             config.encoder_embed_dim, config.decoder_embed_dim
