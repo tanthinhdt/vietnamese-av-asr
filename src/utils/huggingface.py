@@ -1,8 +1,8 @@
 import os
-import logging
 from glob import glob
 from typing import Union
 from pathlib import Path
+from loguru import logger
 from tempfile import TemporaryDirectory
 from huggingface_hub import HfApi, HfFileSystem, CommitScheduler
 from .zipping import zip_dir
@@ -33,7 +33,7 @@ class UploadScheduler(CommitScheduler):
         self.zip = zip
         self.reverse = reverse
         self.is_done = False
-        logging.info(f"Created UploadScheduler for {self.repo_id} repo")
+        logger.info(f"Created UploadScheduler for {self.repo_id} repo")
 
     def push_to_hub(self):
         """
@@ -60,7 +60,7 @@ class UploadScheduler(CommitScheduler):
                 repo_type=self.repo_type,
             ):
                 continue
-            logging.info(f"[{i + 1}/{len(paths)}] Uploading {path}")
+            logger.info(f"[{i + 1}/{len(paths)}] Uploading {path}")
 
             if zipping:
                 with TemporaryDirectory() as temp_dir:
@@ -78,7 +78,7 @@ class UploadScheduler(CommitScheduler):
                         repo_type=self.repo_type,
                     )
                     os.remove(src_path)
-                    logging.info(f"Deleted {src_path}")
+                    logger.info(f"Deleted {src_path}")
             else:
                 src_path = path
                 upload_to_hf(
@@ -90,7 +90,7 @@ class UploadScheduler(CommitScheduler):
 
             if self.delete_after_upload:
                 os.remove(path)
-                logging.info(f"Deleted {path}")
+                logger.info(f"Deleted {path}")
 
         self.is_done = True
 
@@ -131,7 +131,7 @@ def upload_to_hf(
             repo_id=repo_id,
             repo_type=repo_type,
         )
-    logging.info(f"Uploaded {src_path} to {repo_id} repository")
+    logger.info(f"Uploaded {src_path} to {repo_id} repository")
 
 
 def get_hf_path(
@@ -257,18 +257,18 @@ def download_from_hf(
             file, root = root.name, root.parent
         else:
             file_output_dir = output_dir / root.relative_to(hf_root_path.name)
-        logging.info(f"[{i + 1}/{len(hf_paths)}] Processing {root}/{file}")
+        logger.info(f"[{i + 1}/{len(hf_paths)}] Processing {root}/{file}")
 
         file_output_dir.mkdir(parents=True, exist_ok=True)
 
         if overwrite or not (file_output_dir / file).exists():
             try:
                 fs.download(str(root / file), str(file_output_dir))
-                logging.info(f"\tDownloaded to {file_output_dir}")
+                logger.info(f"\tDownloaded to {file_output_dir}")
             except KeyboardInterrupt:
                 os.remove(file_output_dir / file)
                 raise KeyboardInterrupt
         else:
-            logging.info(f"\tFile exists in {file_output_dir}")
+            logger.info(f"\tFile exists in {file_output_dir}")
 
     return output_dir / Path(path_in_repo).name
