@@ -11,6 +11,37 @@ EXTENSIONS = (
 
 
 @dataclass
+class ProcessingConfig:
+    path: str = None    # Path to the file or directory to process
+    log_path: str = None    # Path to the log file
+    overwrite: bool = False     # Overwrite existing files
+    reverse: bool = False   # Reverse the order of the files
+
+    def __post_init__(self):
+        self.path = Path(self.path)
+        assert self.path.exists(), f"Path {self.path} does not exist."
+        if self.log_path is not None:
+            self.log_path = Path(self.log_path)
+
+
+@dataclass
+class UploadingConfig(ProcessingConfig):
+    repo_id: str = None     # HuggingFace repository ID
+    dir_in_repo: str = "."      # Path to upload in the repository
+    repo_type: str = "dataset"      # Type of the repository
+    every_minutes: float = 1    # Upload every F minutes
+    delete_after_upload: bool = False   # Delete the file or directory after uploading
+    zip: bool = False   # Zip the directory before uploading
+
+    def __post_init__(self):
+        assert self.repo_id is not None, "Repository ID is required"
+        self.dir_in_repo = Path(self.dir_in_repo)
+        assert self.repo_type in ["dataset", "model"], \
+            "Only Dataset and Model repositories are supported"
+        assert self.every_minutes > 0, "Upload interval should be positive"
+
+
+@dataclass
 class TransformConfig:
     horizontal_flip_prob: float = 0.5
     aug_type: str = "augmix"
