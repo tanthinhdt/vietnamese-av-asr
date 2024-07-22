@@ -1,9 +1,9 @@
 import os
 import logging
-import tempfile
 from glob import glob
 from typing import Union
 from pathlib import Path
+from tempfile import TemporaryDirectory
 from huggingface_hub import HfApi, HfFileSystem, CommitScheduler
 from .zipping import zip_dir
 
@@ -63,7 +63,7 @@ class UploadScheduler(CommitScheduler):
             logging.info(f"[{i + 1}/{len(paths)}] Uploading {path}")
 
             if zipping:
-                with tempfile.TemporaryDirectory() as temp_dir:
+                with TemporaryDirectory() as temp_dir:
                     temp_dir = Path(temp_dir)
                     src_path = temp_dir / path.name
                     zip_dir(
