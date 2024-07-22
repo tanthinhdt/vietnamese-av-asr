@@ -204,7 +204,7 @@ class AVHubertModel(PreTrainedModel):
             mask_indices = None
 
         if self.config.mask_channel_prob > 0:
-            logging.info("No mask channel prob for input masking")
+            logging.warn("No mask channel prob for input masking")
         return x, mask_indices
 
     def apply_feature_mask(
