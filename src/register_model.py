@@ -1,6 +1,8 @@
 import torch
+import logging
 from loguru import logger
 from argparse import Namespace
+from traceback import format_exc
 from simple_parsing import ArgumentParser
 from huggingface_hub import hf_hub_download
 from configs import ModelConfig
@@ -8,7 +10,7 @@ from tools import load_model
 from utils import config_logger
 
 
-config_logger()
+logging.root.setLevel(logging.WARNING)
 
 
 def get_args() -> Namespace:
@@ -45,4 +47,9 @@ def main(args: Namespace) -> None:
 
 if __name__ == "__main__":
     args = get_args()
-    main(args=args)
+    config_logger()
+
+    try:
+        main(args=args)
+    except Exception:
+        logger.error(f"Registering model interrupted:\n{format_exc()}")
