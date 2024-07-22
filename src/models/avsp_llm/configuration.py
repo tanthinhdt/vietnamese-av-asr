@@ -59,7 +59,7 @@ class AVHubertConfig(PretrainedConfig):
         modality_fuse: str = "concat",
         selection_type: str = "same_other_seq",
         masking_type: str = "input",
-        decoder_embed_dim: int = 4096,
+        decoder_embed_dim: int = 2560,
         decoder_ffn_embed_dim: int = 3072,
         decoder_layers: int = 6,
         decoder_layerdrop: float = 0.0,
