@@ -102,18 +102,18 @@ def upload_to_hf(
     repo_type: str,
 ) -> None:
     """
-    Upload a file or directory to HuggingFace repository
+    Upload a file or directory to HuggingFace repository.
 
     Parameters
     ----------
     src_path : Union[str, Path]
-        Path to the file or directory to upload
+        Path to the file or directory to upload.
     dest_path : Union[str, Path]
-        Path to upload in the repository
+        Path to upload in the repository.
     repo_id : str
-        HuggingFace repository ID
+        HuggingFace repository ID.
     repo_type : str
-        Type of the repository
+        Type of the repository.
     """
     api = HfApi()
     if Path(src_path).is_dir():
@@ -144,11 +144,11 @@ def get_hf_path(
     Parameters
     ----------
     repo_id : str
-        HuggingFace repository ID
+        HuggingFace repository ID.
     path_in_repo : Union[str, Path]
-        Path to check in the repository
+        Path to check in the repository.
     repo_type : str
-        Type of the repository
+        Type of the repository.
 
     Returns
     -------

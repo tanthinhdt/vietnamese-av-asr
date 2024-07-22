@@ -15,7 +15,7 @@ def get_args() -> Namespace:
 
 
 def main(config: UploadingConfig) -> None:
-    logging.info("Uploading files to HuggingFace Hub.")
+    logging.info("Uploading files to HuggingFace Hub")
 
     if "*" in config.path.name or "." in config.path.name:
         folder_path = config.path.parent
@@ -41,7 +41,7 @@ def main(config: UploadingConfig) -> None:
             if upload_scheduler.is_done:
                 upload_scheduler.stop()
                 break
-        logging.info("Uploading files completed.")
+        logging.info("Uploading files completed")
     except Exception:
         logging.info(f"Uploading files interrupted:\n{traceback.format_exc()}")
 
