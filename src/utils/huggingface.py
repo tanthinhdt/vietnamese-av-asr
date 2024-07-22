@@ -6,6 +6,7 @@ from loguru import logger
 from tempfile import TemporaryDirectory
 from huggingface_hub import HfApi, HfFileSystem, CommitScheduler
 from .zipping import zip_dir
+from .misc import delete_file_or_dir
 
 
 os.environ["HF_HUB_ENABLE_HF_TRANSFER"] = "1"
@@ -89,7 +90,7 @@ class UploadScheduler(CommitScheduler):
                 )
 
             if self.delete_after_upload:
-                os.remove(path)
+                delete_file_or_dir(path)
                 logger.info(f"Deleted {path}")
 
         self.is_done = True
