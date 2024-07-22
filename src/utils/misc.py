@@ -1,5 +1,8 @@
+import os
 import torch
-import logging
+import shutil
+from pathlib import Path
+from typing import Union
 
 
 def check_compatibility_with_bf16(
@@ -28,33 +31,16 @@ def check_compatibility_with_bf16(
     return False
 
 
-def get_logger(name: str, log_path: str = None) -> logging.Logger:
+def delete_file_or_dir(path: Union[str, Path]) -> None:
     """
-    Get a logger.
+    Remove a file or directory.
 
     Parameters
     ----------
-    name : str
-        Name of the logger
-    log_path : str
-        Path to the log file
-
-    Returns
-    -------
-    logging.Logger
-        Logger
+    path : Union[str, Path]
+        Path to the file or directory to remove.
     """
-    logger = logging.getLogger(name)
-    logger.setLevel(logging.INFO)
-    formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-
-    stream_handler = logging.StreamHandler()
-    stream_handler.setFormatter(formatter)
-    logger.addHandler(stream_handler)
-
-    if log_path is not None:
-        file_handler = logging.FileHandler(log_path)
-        file_handler.setFormatter(formatter)
-        logger.addHandler(file_handler)
-
-    return logger
+    if Path(path).is_dir():
+        shutil.rmtree(path)
+    else:
+        os.remove(path)
