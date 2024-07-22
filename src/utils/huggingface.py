@@ -57,7 +57,7 @@ class UploadScheduler(CommitScheduler):
                 zipping = True
             else:
                 zipping = False
-            if not self.overwrite and exist_in_hf(
+            if not self.overwrite and exists_on_hf(
                 repo_id=self.repo_id,
                 path_in_repo=dest_path,
                 repo_type=self.repo_type,
@@ -139,7 +139,7 @@ def upload_to_hf(
     logger.info(f"Uploaded {src_path} to {repo_id} repository")
 
 
-def exist_in_hf(
+def exists_on_hf(
     repo_id: str,
     path_in_repo: str,
     repo_type: str,
