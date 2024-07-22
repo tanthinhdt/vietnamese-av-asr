@@ -260,8 +260,7 @@ def download_from_hf(
                 fs.download(root / file, file_output_dir, verbose=False)
                 logging.info(f"\tDownloaded to {file_output_dir}")
             except KeyboardInterrupt:
-                logging.info("\tInterrupted by user")
                 os.remove(file_output_dir / file)
-                exit()
+                raise KeyboardInterrupt
         else:
             logging.info(f"\tFile exists in {file_output_dir}")
