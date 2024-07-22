@@ -262,7 +262,7 @@ def download_from_hf(
 
         if overwrite or not (file_output_dir / file).exists():
             try:
-                fs.download(str(root / file), str(file_output_dir), verbose=False)
+                fs.download(str(root / file), str(file_output_dir))
                 logging.info(f"\tDownloaded to {file_output_dir}")
             except KeyboardInterrupt:
                 os.remove(file_output_dir / file)
