@@ -11,7 +11,7 @@ EXTENSIONS = (
 
 
 @dataclass
-class ProcessingConfig:
+class ProcessConfig:
     path: str = None    # Path to the file or directory to process
     log_path: str = None    # Path to the log file
     overwrite: bool = False     # Overwrite existing files
@@ -25,7 +25,7 @@ class ProcessingConfig:
 
 
 @dataclass
-class UploadingConfig(ProcessingConfig):
+class UploadConfig(ProcessConfig):
     repo_id: str = None     # HuggingFace repository ID
     dir_in_repo: str = "."      # Path to upload in the repository
     repo_type: str = "dataset"      # Type of the repository
@@ -34,6 +34,7 @@ class UploadingConfig(ProcessingConfig):
     zip: bool = False   # Zip the directory before uploading
 
     def __post_init__(self):
+        super().__post_init__()
         assert self.repo_id is not None, "Repository ID is required"
         self.dir_in_repo = Path(self.dir_in_repo)
         assert self.repo_type in ["dataset", "model"], \
@@ -91,7 +92,7 @@ class ModelConfig:
 
 
 @dataclass
-class TrainingConfig:
+class TrainConfig:
     output_dir: str = "experiments"
     remove_unused_columns: bool = False
     do_train: bool = True
