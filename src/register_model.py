@@ -1,5 +1,4 @@
 import torch
-import logging
 from loguru import logger
 from argparse import Namespace
 from simple_parsing import ArgumentParser
