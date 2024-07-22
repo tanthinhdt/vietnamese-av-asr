@@ -48,7 +48,7 @@ class UploadScheduler(CommitScheduler):
 
         for i, path in enumerate(paths):
             path = Path(path)
-            dest_path = self.path_in_repo / path.relative_to(self.folder_path)
+            dest_path = self.path_in_repo / path.name
             if path.is_dir() and self.zip:
                 dest_path += ".zip"
                 zipping = True
