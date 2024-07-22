@@ -16,8 +16,7 @@ from models import (
     AVSPLLMConfig, AVSPLLMFeatureExtractor, AVSPLLMModel,
 )
 from pipelines import AutomaticSpeechRecognitionPipeline
-from .constants import MODELS
-from .visualization import draw_text_on_image
+from utils import MODELS, draw_text_on_image
 
 
 def load_model(
