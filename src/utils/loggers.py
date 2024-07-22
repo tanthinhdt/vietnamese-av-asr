@@ -1,18 +1,12 @@
-import sys
 import logging
+from loguru import logger
 from pathlib import Path
+from typing import Union
 
 
-def config_logger(log_file: str = None) -> None:    
-    handlers = [logging.StreamHandler(sys.stdout)]
+def config_logger(log_file: Union[Path, str] = None) -> None:
+    logging.root.setLevel(logging.WARNING)
     if log_file is not None:
-        log_dir = Path(log_file).parent
-        if not log_dir.exists():
-            log_dir.mkdir(parents=True, exist_ok=True)
-        handlers.append(logging.FileHandler(filename=log_file))
-    logging.basicConfig(
-        datefmt="%m/%d/%Y %H:%M:%S",
-        level=logging.INFO,
-        format="[%(asctime)s] [%(filename)s:%(lineno)d] [%(levelname)s] - %(message)s", 
-        handlers=handlers
-    )
+        log_file = Path(log_file)
+        log_file.mkdir(parents=True, exist_ok=True)
+        logger.add(log_file)
