@@ -12,8 +12,7 @@ from transformers import (
     pipeline,
 )
 from transformers.pipelines import PIPELINE_REGISTRY
-from visualization import draw_text_on_image
-from utils import exists_on_hf
+from tools import draw_text_on_image
 from models import (
     AVHubertConfig, AVHubertFeatureExtractor, AVHubertModel,
     AVSPLLMConfig, AVSPLLMFeatureExtractor, AVSPLLMModel,
