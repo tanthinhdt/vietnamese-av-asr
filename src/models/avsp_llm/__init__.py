@@ -1,2 +1,2 @@
 from .configuration import AVSPLLMConfig
-from .modelling import AVSPLLMModel
+from .modelling import AVSPLLMFeatureExtractor, AVSPLLMModel
