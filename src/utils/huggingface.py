@@ -39,9 +39,9 @@ class UploadScheduler(CommitScheduler):
         """
         Push files to HuggingFace repository.
         """
-        logging.info("Start new pushing cycle")
-        paths = sorted(glob(self.folder_path), reverse=self.reverse)
-        logging.info(f"Found {len(paths)} to be pushed")
+        logger.info("Start new pushing cycle")
+        paths = sorted(glob(str(self.folder_path)), reverse=self.reverse)
+        logger.info(f"Found {len(paths)} to be pushed")
         if len(paths) == 0:
             self.is_done = True
             return
@@ -116,6 +116,7 @@ def upload_to_hf(
         Type of the repository.
     """
     api = HfApi()
+    dest_path = str(dest_path)
     if Path(src_path).is_dir():
         api.upload_folder(
             repo_id=repo_id,
