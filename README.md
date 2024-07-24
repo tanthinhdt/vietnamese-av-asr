@@ -28,19 +28,19 @@ Try our VSP-LLM demo using colab
     conda create -n vasr python=3.9.19 -y
     conda activate vasr
     ```
-2. Install other requirements
-    ```
-    pip install -r requirements.txt
-    ```
-3. Install `torch`, `torchvision` and `torchaudio`
+2. Install `torch`, `torchvision` and `torchaudio`
     ```
     pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
     ```
-4. Install `fairseq`
+3. Install `fairseq`
     ```
     cd src/libs
     git clone https://github.com/pytorch/fairseq
     pip install -e fairseq
+    ```
+4. Install other requirements
+    ```
+    pip install -r requirements.txt
     ```
 
 
