@@ -14,28 +14,35 @@ We propose a novel framework, namely Visual Speech Processing incorporated with 
 
 ## Model checkpoint
 
-You can find checkpoint of our model in [here](https://drive.google.com/file/d/1fQarnmP5MEMzYCodphisr4QuViqVwuI5/view?usp=sharing)
+- You can find checkpoint of our model in [here](https://drive.google.com/file/d/1fQarnmP5MEMzYCodphisr4QuViqVwuI5/view?usp=sharing)
+- Download AV-HuBERT pre-trained model `AV-HuBERT Large (LSR3 + VoxCeleb2)` from [here](http://facebookresearch.github.io/av_hubert).
+- Download LLaMA2-7B from [here](https://huggingface.co/meta-llama/Llama-2-7b-chat-hf).
 
 ## Demo
 
 Try our VSP-LLM demo using colab
 
-## Preparation
+## Installation
+1. Create an environment with `python==3.9.19`
+    ```
+    conda create -n vasr python=3.9.19 -y
+    conda activate vasr
+    ```
+2. Install other requirements
+    ```
+    pip install -r requirements.txt
+    ```
+3. Install `torch`, `torchvision` and `torchaudio`
+    ```
+    pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+    ```
+4. Install `fairseq`
+    ```
+    cd src/libs
+    git clone https://github.com/pytorch/fairseq
+    pip install -e fairseq
+    ```
 
-```
-conda create -n vsp-llm python=3.9.19 -y
-conda activate vsp-llm
-git clone https://github.com/Sally-SH/VSP-LLM.git
-cd VSP-LLM
-pip install -r requirements.txt
-pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
-git submodule init
-git submodule update
-pip install -e src/modules/fairseq
-```
-
-- Download AV-HuBERT pre-trained model `AV-HuBERT Large (LSR3 + VoxCeleb2)` from [here](http://facebookresearch.github.io/av_hubert).
-- Download LLaMA2-7B from [here](https://huggingface.co/meta-llama/Llama-2-7b-chat-hf).
 
 ## Data preprocessing
 Follow [Auto-AVSR preparation](https://github.com/mpc001/auto_avsr/tree/main/preparation) to preprocess the LRS3 dataset.\
