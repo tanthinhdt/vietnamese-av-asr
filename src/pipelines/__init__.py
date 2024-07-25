@@ -1,0 +1,1 @@
+from .automatic_speech_recognition import AutomaticSpeechRecognitionPipeline
