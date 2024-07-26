@@ -7,7 +7,7 @@ from argparse import Namespace
 from configs import ModelConfig
 from dataclasses import dataclass, field
 from simple_parsing import ArgumentParser
-from tools import load_model, get_input_shape
+from tools import load_model, get_dummy_input
 from utils import config_logger, upload_to_hf
 
 
@@ -43,6 +43,24 @@ class ONNXConfig:
 
 @dataclass
 class AVSPLLMONNXConfig(ONNXConfig):
+    input_names: list = field(default_factory=lambda: ["source"])
+    dynamic_axes: dict = field(
+        default_factory=lambda: {
+            "source": {
+                "video": {
+                    0: "batch_size",
+                    1: "num_frames",
+                    2: "num_channels",
+                    3: "height",
+                    4: "width",
+                }
+            }
+        }
+    )
+
+
+@dataclass
+class AVHubertONNXConfig(ONNXConfig):
     input_names: list = field(default_factory=lambda: ["pixel_values"])
     dynamic_axes: dict = field(
         default_factory=lambda: {
@@ -68,9 +86,6 @@ def main(args: Namespace) -> None:
     _, processor, model = load_model(model_config)
     logger.info("Model loaded")
 
-    batch_size = 1
-    input_shape = get_input_shape(model_config.arch, processor, batch_size)
-
     if model_config.arch == "avsp_llm":
         config_class = AVSPLLMONNXConfig
     else:
@@ -78,7 +93,12 @@ def main(args: Namespace) -> None:
     config = config_class(f=str(output_file))
     logger.info("Config loaded")
 
-    torch.onnx.export(model, torch.randn(*input_shape), **vars(config))
+    batch_size = 1
+    torch.onnx.export(
+        model=model,
+        args=get_dummy_input(model_config.arch, processor, batch_size),
+        **vars(config),
+    )
     logger.info(f"Model exported to {config.f}")
 
     if args.upload_to_hf:
