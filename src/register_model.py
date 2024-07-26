@@ -25,7 +25,7 @@ def main(args: Namespace) -> None:
     config = args.config
     logger.info(config)
 
-    _, _, model = load_model(config, do_train=True)
+    _, processor, model = load_model(config, do_train=True)
     logger.info("Model loaded")
 
     checkpoint_file = hf_hub_download(
@@ -41,6 +41,7 @@ def main(args: Namespace) -> None:
     model.load_state_dict(model_state_dict)
     logger.info("Model state dict loaded")
 
+    processor.push_to_hub(config.pretrained)
     model.push_to_hub(config.pretrained)
     logger.info("Model pushed to HuggingFace")
 
