@@ -80,6 +80,9 @@ target/
 /models/
 /scripts/
 
+# exclude cache folders
+models--*/
+
 # exclude libs from source control by default
 libs/
 
