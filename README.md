@@ -30,12 +30,12 @@ Try our VSP-LLM demo using colab
     ```
 2. Install `torch`, `torchvision` and `torchaudio`
     ```
-    pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+    pip install torch==2.3.1 torchvision==0.18.1 torchaudio==2.3.1 --index-url https://download.pytorch.org/whl/cu118
     ```
 3. Install `fairseq`
     ```
     cd src/libs
-    git clone https://github.com/pytorch/fairseq
+    git clone https://github.com/pytorch/fairseq.git
     pip install -e fairseq
     ```
 4. Install other requirements
