@@ -222,19 +222,21 @@ def load_pipeline(
     )
 
 
-def get_input_shape(
+def get_dummy_input(
     arch: str,
     processor: Union[FeatureExtractionMixin],
     batch_size: int = 1,
 ) -> tuple:
     """
     Get the input shape for the model.
+
     Parameters
     ----------
     processor : Union[FeatureExtractionMixin]
         Model processor.
     batch_size : int, optional
         Batch size, by default 1.
+
     Returns
     -------
     tuple
@@ -243,10 +245,27 @@ def get_input_shape(
     assert arch in MODELS, f"Model {arch} is not supported"
 
     if arch == "avsp_llm":
-        return (
-            batch_size,
-            processor.num_frames,
-            3,
-            processor.size["height"],
-            processor.size["width"]
-        )
+        source = {
+            "audio": torch.randn(
+                batch_size,
+                processor.audio_feat_dim,
+                processor.num_frames,
+            ),
+            "video": torch.randn(
+                batch_size,
+                processor.num_channels,
+                processor.num_frames,
+                processor.height,
+                processor.width,
+            ),
+            "cluster_counts": [torch.randn(processor.cluster_counts_dim)],
+            "text": torch.randn(batch_size, processor.text_feat_dim),
+        }
+
+        net_input = {
+            "source": source,
+            "padding_mask": torch.zeros(batch_size, processor.num_frames),
+            "text_attn_mask": torch.zeros(batch_size, processor.text_feat_dim),
+        }
+
+        return net_input
