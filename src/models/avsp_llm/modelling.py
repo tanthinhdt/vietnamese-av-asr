@@ -1,4 +1,5 @@
 import torch
+import joblib
 import logging
 import contextlib
 import numpy as np
@@ -18,6 +19,9 @@ from transformers import (
     AutoModelForCausalLM,
     GenerationConfig,
 )
+
+
+logging.root.setLevel(logging.WARNING)
 
 
 class AVHubertFeatureExtractor(FeatureExtractionMixin):
@@ -647,6 +651,10 @@ class AVSPLLMModel(PreTrainedModel):
         dictionaries: List = [None],
     ) -> None:
         super().__init__(config=config)
+        kmeans_model = joblib.load(config.km_path)
+        self.C = torch.from_numpy(kmeans_model.cluster_centers_.transpose())
+        self.Cnorm = self.C.pow(2).sum(0, keepdim=True)
+
         self.encoder = HubertEncoderWrapper(config, dictionaries)
         self.encoder.w2v_model.remove_pretraining_modules()
 
@@ -675,44 +683,77 @@ class AVSPLLMModel(PreTrainedModel):
         self.decoder = get_peft_model(decoder_4bit, lora_config)
         self.decoder.print_trainable_parameters()
 
-    def forward(
+    def apply_kmeans(self, feat: torch.Tensor) -> torch.Tensor:
+        dist = (
+            feat.squeeze(0).pow(2).sum(1, keepdim=True)
+            - 2 * torch.matmul(feat.squeeze(0), self.C)
+            + self.Cnorm
+        )
+        cluster_counts = dist.argmin(dim=1)
+
+        current_counts = 1
+        counts = []
+        for i in range(1, len(cluster_counts)):
+            if cluster_counts[i] == cluster_counts[i - 1]:
+                current_counts += 1
+            else:
+                counts.append(current_counts)
+                current_counts = 1
+        counts.append(current_counts)
+
+        return torch.tensor(counts)
+
+    def deduplicate(
         self,
-        source: Dict[str, torch.Tensor],
-        target_list: torch.Tensor,
-        padding_mask: torch.Tensor,
-        **kwargs,
-    ) -> CausalLMOutputWithPast:
-        ft = self.config.freeze_finetune_updates <= kwargs.get("num_updates", -1)
-        with torch.no_grad() if not ft else contextlib.ExitStack():
-            output = self.encoder(source, padding_mask, **kwargs)
-
-        output["encoder_out"] = self.avfeat_to_llm(output["encoder_out"])
-        cluster_counts = source["cluster_counts"][0]  # tensor list
-
+        feat: torch.Tensor,
+        cluster_counts: torch.Tensor,
+    ) -> torch.Tensor:
         results_tensor = []
         start_idx = 0
         for clutser_num in cluster_counts:
             end_idx = start_idx + clutser_num
-            slice = output["encoder_out"][:, start_idx:end_idx, :]
+            slice = feat[:, start_idx:end_idx, :]
             mean_tensor = torch.mean(slice, dim=1, keepdim=True)
             results_tensor.append(mean_tensor)
             start_idx = end_idx
 
-        assert cluster_counts.sum().item() == output["encoder_out"].size()[1], \
-            f"{cluster_counts.sum().item()} != {output['encoder_out'].size()[1]}"
+        assert cluster_counts.sum().item() == feat.size()[1], \
+            f"{cluster_counts.sum().item()} != {feat.size()[1]}"
 
-        reduced_enc_out = torch.cat(results_tensor, dim=1)
+        return torch.cat(results_tensor, dim=1)
+
+    def embed(
+        self,
+        source: Dict[str, torch.Tensor],
+        padding_mask: torch.Tensor,
+        target_list: torch.Tensor = None,
+        **kwargs,
+    ) -> torch.Tensor:
+        ft = self.config.freeze_finetune_updates <= kwargs.get("num_updates", -1)
+        with torch.no_grad() if not ft else contextlib.ExitStack():
+            output = self.encoder(source, padding_mask, **kwargs)
+
+        cluster_counts = self.apply_kmeans(output["encoder_out"])
+
+        output["encoder_out"] = self.avfeat_to_llm(output["encoder_out"])
+
+        reduced_enc_out = self.deduplicate(output["encoder_out"], cluster_counts)
+        reduced_enc_out = reduced_enc_out.to(self.decoder.device)
         B, T, D = reduced_enc_out.size()
 
         instruction = source["text"]
         instruction_embedding = self.decoder.model.model.embed_tokens(instruction)
 
+        llm_input = torch.cat((instruction_embedding, reduced_enc_out), dim=1)
+
+        if target_list is None:
+            return llm_input, None
+
         labels = target_list.clone()
         labels_embedding = self.decoder.model.model.embed_tokens(labels)
 
-        llm_input = torch.cat(
-            (instruction_embedding, reduced_enc_out, labels_embedding), dim=1
-        )
+        llm_input = torch.cat((llm_input, labels_embedding), dim=1)
+
         llm_labels = labels.clone()
         llm_labels[llm_labels == 0] = -100
 
@@ -721,6 +762,19 @@ class AVSPLLMModel(PreTrainedModel):
             torch.full((B, T + instruction_embedding_t), -100).long().to(labels.device)
         )
         llm_labels = torch.cat((target_ids, llm_labels), dim=1)
+
+        return llm_input, llm_labels
+
+    def forward(
+        self,
+        source: Dict[str, torch.Tensor],
+        padding_mask: torch.Tensor,
+        target_list: torch.Tensor = None,
+        **kwargs,
+    ) -> CausalLMOutputWithPast:
+        llm_input, llm_labels = self.embed(
+            source, padding_mask, target_list, **kwargs
+        )
         return self.decoder(
             inputs_embeds=llm_input, labels=llm_labels, return_dict=True
         )
@@ -732,28 +786,7 @@ class AVSPLLMModel(PreTrainedModel):
         generation_config: Optional[GenerationConfig] = None,
         **kwargs,
     ) -> Any:
-        output = self.encoder(**inputs)
-        output["encoder_out"] = self.avfeat_to_llm(output["encoder_out"])
-        cluster_counts = inputs["source"]["cluster_counts"][0]  # tensor list
-
-        results_tensor = []
-        start_idx = 0
-
-        for clutser_num in cluster_counts:
-            end_idx = start_idx + clutser_num
-            slice = output["encoder_out"][:, start_idx:end_idx, :]
-            mean_tensor = torch.mean(slice, dim=1, keepdim=True)
-            results_tensor.append(mean_tensor)
-            start_idx = end_idx
-
-        assert cluster_counts.sum().item() == output["encoder_out"].size()[1]
-
-        reduced_enc_out = torch.cat(results_tensor, dim=1)
-        B, T, D = reduced_enc_out.size()
-        instruction = inputs["source"]["text"]
-        instruction_embedding = self.decoder.model.model.embed_tokens(instruction)
-        llm_input = torch.cat((instruction_embedding, reduced_enc_out), dim=1)
-
+        llm_input, _ = self.embed(**inputs, **kwargs)
         self.decoder.config.use_cache = True
         return self.decoder.generate(
             inputs_embeds=llm_input,
