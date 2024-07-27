@@ -1,18 +1,11 @@
 import torch
 import joblib
 import numpy as np
-from pathlib import Path
 from typing import Tuple, Optional
 
 
 def load_kmeans_model(km_path: str) -> Tuple[torch.Tensor, torch.Tensor]:
     """Load the k-means model."""
-    km_path = Path(km_path)
-
-    if not km_path.exists():
-        current_dir = Path(__file__).resolve().parent
-        km_path = current_dir / km_path
-
     kmeans_model = joblib.load(km_path)
     C = torch.from_numpy(kmeans_model.cluster_centers_.transpose())
     Cnorm = C.pow(2).sum(0, keepdim=True)

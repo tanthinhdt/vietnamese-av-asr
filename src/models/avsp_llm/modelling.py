@@ -3,6 +3,7 @@ import logging
 import contextlib
 import numpy as np
 import torch.nn as nn
+from pathlib import Path
 from .resnet import ResNetEncoder
 from .encoder import TransformerEncoder
 from .configuration import AVHubertConfig, AVSPLLMConfig
@@ -651,7 +652,9 @@ class AVSPLLMModel(PreTrainedModel):
         dictionaries: List = [None],
     ) -> None:
         super().__init__(config=config)
-        km_path = km_path if km_path is not None else config.km_path
+        if km_path is None:
+            current_dir = Path(__file__).resolve().parent
+            km_path = str(current_dir / config.km_path)
         self.C, self.Cnorm = load_kmeans_model(km_path)
 
         self.encoder = HubertEncoderWrapper(config, dictionaries)
