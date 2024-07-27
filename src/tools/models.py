@@ -258,14 +258,7 @@ def get_dummy_input(
                 processor.height,
                 processor.width,
             ),
-            "cluster_counts": [torch.randn(processor.cluster_counts_dim)],
-            "text": torch.randn(batch_size, processor.text_feat_dim),
+            "text": torch.randint(1, 1000, (batch_size, processor.text_feat_dim)),
         }
-
-        net_input = {
-            "source": source,
-            "padding_mask": torch.zeros(batch_size, processor.num_frames),
-            "text_attn_mask": torch.zeros(batch_size, processor.text_feat_dim),
-        }
-
-        return net_input
+        padding_mask = torch.zeros(batch_size, processor.num_frames)
+        return source, padding_mask
