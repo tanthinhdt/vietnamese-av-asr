@@ -164,7 +164,7 @@ class AVSPLLMConfig(AVHubertConfig):
         data: str = None,
         w2v_args: dict = None,
         freeze_finetune_updates: int = 0,
-        km_path: str = "train.km",
+        km_path: str = "model.km",
         **kwargs,
     ) -> None:
         super().__init__(**kwargs)
