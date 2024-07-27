@@ -1,13 +1,12 @@
 import torch
-import joblib
 import logging
 import contextlib
 import numpy as np
 import torch.nn as nn
 from .resnet import ResNetEncoder
-from .utils import compute_mask_indices
 from .encoder import TransformerEncoder
 from .configuration import AVHubertConfig, AVSPLLMConfig
+from .utils import compute_mask_indices, load_kmeans_model
 from typing import Optional, Tuple, List, Dict, Any
 from peft import get_peft_model, LoraConfig
 from fairseq.modules import GradMultiply, LayerNorm
@@ -651,9 +650,7 @@ class AVSPLLMModel(PreTrainedModel):
         dictionaries: List = [None],
     ) -> None:
         super().__init__(config=config)
-        kmeans_model = joblib.load(config.km_path)
-        self.C = torch.from_numpy(kmeans_model.cluster_centers_.transpose())
-        self.Cnorm = self.C.pow(2).sum(0, keepdim=True)
+        self.C, self.Cnorm = load_kmeans_model(config.km_path)
 
         self.encoder = HubertEncoderWrapper(config, dictionaries)
         self.encoder.w2v_model.remove_pretraining_modules()
@@ -776,7 +773,7 @@ class AVSPLLMModel(PreTrainedModel):
             source, padding_mask, target_list, **kwargs
         )
         return self.decoder(
-            inputs_embeds=llm_input, labels=llm_labels, return_dict=True
+            inputs_embeds=llm_input.to(torch.float16), labels=llm_labels, return_dict=True
         )
 
     @torch.no_grad()
