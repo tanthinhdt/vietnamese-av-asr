@@ -647,10 +647,12 @@ class AVSPLLMModel(PreTrainedModel):
     def __init__(
         self,
         config: AVSPLLMConfig = AVSPLLMConfig(),
+        km_path: str = None,
         dictionaries: List = [None],
     ) -> None:
         super().__init__(config=config)
-        self.C, self.Cnorm = load_kmeans_model(config.km_path)
+        km_path = km_path if km_path is not None else config.km_path
+        self.C, self.Cnorm = load_kmeans_model(km_path)
 
         self.encoder = HubertEncoderWrapper(config, dictionaries)
         self.encoder.w2v_model.remove_pretraining_modules()
