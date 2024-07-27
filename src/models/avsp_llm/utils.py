@@ -1,12 +1,24 @@
 import torch
 import joblib
 import numpy as np
+from io import BytesIO
+from pathlib import Path
 from typing import Tuple, Optional
+from huggingface_hub import HfFileSystem
 
 
 def load_kmeans_model(km_path: str) -> Tuple[torch.Tensor, torch.Tensor]:
     """Load the k-means model."""
-    kmeans_model = joblib.load(km_path)
+    fs = HfFileSystem()
+
+    if Path(km_path).exists():
+        km_file = Path(km_path)
+    elif fs.exists(km_path):
+        km_file = BytesIO(fs.read_bytes(km_path))
+    else:
+        raise FileNotFoundError(f"K-means model not found at {km_path}")
+
+    kmeans_model = joblib.load(km_file)
     C = torch.from_numpy(kmeans_model.cluster_centers_.transpose())
     Cnorm = C.pow(2).sum(0, keepdim=True)
     return C, Cnorm

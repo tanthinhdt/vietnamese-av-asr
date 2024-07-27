@@ -648,14 +648,16 @@ class AVSPLLMModel(PreTrainedModel):
     def __init__(
         self,
         config: AVSPLLMConfig = AVSPLLMConfig(),
-        km_path: str = None,
         dictionaries: List = [None],
     ) -> None:
         super().__init__(config=config)
-        if km_path is None:
-            current_dir = Path(__file__).resolve().parent
-            km_path = str(current_dir / config.km_path)
-        self.C, self.Cnorm = load_kmeans_model(km_path)
+        current_dir = Path(__file__).resolve().parent
+        self.km_path = current_dir / config.km_path
+        if not self.km_path.is_file():
+            repo_id = self.config._name_or_path
+            self.km_path = f"{repo_id}/model.km"
+        self.km_path = str(self.km_path)
+        self.C, self.Cnorm = load_kmeans_model(self.km_path)
 
         self.encoder = HubertEncoderWrapper(config, dictionaries)
         self.encoder.w2v_model.remove_pretraining_modules()
