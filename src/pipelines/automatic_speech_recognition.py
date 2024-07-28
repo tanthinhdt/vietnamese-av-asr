@@ -13,12 +13,15 @@ class AutomaticSpeechRecognitionPipeline(Pipeline):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-        model_kwargs = kwargs.pop("model_kwargs", {})
-        self.assistant_model = ORTModelForCausalLM.from_pretrained(
-            kwargs.pop("assistant_model", "vilm/vinallama-2.7b"),
-            trust_remote_code=True,
-            cache_dir=model_kwargs.pop("cache_dir", None),
-        )
+        if kwargs.pop("use_onnx", False):
+            model_kwargs = kwargs.pop("model_kwargs", {})
+            self.assistant_model = ORTModelForCausalLM.from_pretrained(
+                kwargs.pop("assistant_model", "vilm/vinallama-2.7b"),
+                trust_remote_code=True,
+                cache_dir=model_kwargs.pop("cache_dir", None),
+            )
+        else:
+            self.assistant_model = None
 
         self.instructions = {
             "vi": "Hãy nhận diện câu tiếng Việt này. Đầu vào: ",
@@ -104,8 +107,11 @@ class AutomaticSpeechRecognitionPipeline(Pipeline):
         llm_input, _ = self.model.embed(**inputs)
         return llm_input
 
-    def postprocess(self, llm_inputs: torch.Tensor, **kwargs) -> str:
-        return self.assistant_model.generate(llm_inputs, **kwargs)
+    def postprocess(self, llm_input: torch.Tensor, **kwargs) -> str:
+        if self.assistant_model is None:
+            self.model.decoder.config.use_cache = True
+            return self.model.decoder.generate(inputs_embeds=llm_input, **kwargs)
+        return self.assistant_model.generate(inputs_embeds=llm_input, **kwargs)
 
 
 class Sanitize:
