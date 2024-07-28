@@ -1,42 +1,28 @@
 import torch
-import joblib
 import numpy as np
-import onnxruntime as ort
 import torch.nn.functional as F
 import torchaudio.transforms as TA
 import torchvision.transforms.v2 as TV
 from typing import Dict, Any, Tuple
-from transformers import Pipeline, AutoConfig, AutoModel
-from huggingface_hub import hf_hub_download
+from transformers import Pipeline
 from python_speech_features import logfbank
-from sklearn.cluster import MiniBatchKMeans
+from optimum.onnxruntime import ORTModelForCausalLM
 
 
 class AutomaticSpeechRecognitionPipeline(Pipeline):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        repo_id = self.model.config._name_or_path
 
-        if kwargs.pop("use_onnx", False):
-            model_kwargs = kwargs.get("model_kwargs", {})
-            model_file = hf_hub_download(
-                repo_id=repo_id,
-                filename=f"{repo_id.split('/')[1]}.onnx",
-                cache_dir=model_kwargs.get("cache_dir", "models/huggingface"),
-            )
-            self.config = AutoConfig.from_pretrained(
-                repo_id,
-                trust_remote_code=True,
-                cache_dir=model_kwargs.get("cache_dir", "models/huggingface"),
-            )
-            self.model = ort.InferenceSession(model_file)
-
-        kmeans_model_file = hf_hub_download(
-            repo_id=repo_id,
-            filename=f"{repo_id.split('/')[1]}.km",
-            cache_dir=model_kwargs.get("cache_dir", "models/huggingface"),
+        model_kwargs = kwargs.pop("model_kwargs", {})
+        self.assistant_model = ORTModelForCausalLM.from_pretrained(
+            kwargs.pop("assistant_model", "vilm/vinallama-2.7b"),
+            trust_remote_code=True,
+            cache_dir=model_kwargs.pop("cache_dir", None),
         )
-        kmeans_model = joblib.load(kmeans_model_file)
+
+        self.instructions = {
+            "vi": "Hãy nhận diện câu tiếng Việt này. Đầu vào: ",
+        }
 
         crop_size = (
             self.feature_extractor.size["height"],
@@ -56,19 +42,13 @@ class AutomaticSpeechRecognitionPipeline(Pipeline):
                     label_rate=self.feature_extractor.label_rate,
                 ),
                 Collate(),
-                KMeans(
-                    avsp_llm_model=self.model,
-                    kmeans_model=kmeans_model,
-                    layer=self.feature_extractor.layer,
+                Pad(
+                    max_sample_size=self.feature_extractor.max_sample_size,
+                    pad_audio=self.feature_extractor.pad_audio
                 ),
-                Deduplicate(kmeans_model),
-                Pad(),
+                ToDevice(device=self.device),
             ]
         )
-
-        self.instructions = {
-            "vi": "Hãy nhận diện câu tiếng Việt này. Đầu vào: ",
-        }
 
     def _sanitize_parameters(self, **kwargs):
         # Sanitize the parameters for preprocessing
@@ -79,7 +59,7 @@ class AutomaticSpeechRecognitionPipeline(Pipeline):
         # Sanitize the parameters for the forward pass
         forward_kwargs = {}
         # Sanitize the parameters for postprocessing
-        postprocess_kwargs = {}
+        postprocess_kwargs = kwargs
 
         return preprocess_kwargs, forward_kwargs, postprocess_kwargs
 
@@ -121,26 +101,11 @@ class AutomaticSpeechRecognitionPipeline(Pipeline):
         return self.transforms(inputs)
 
     def _forward(self, inputs: torch.Tensor) -> torch.Tensor:
-        if isinstance(self.model, ort.InferenceSession):
-            inputs = inputs.cpu().numpy()
-            return torch.from_numpy(self.model.run(None, {"pixel_values": inputs})[0])
-        return self.model(inputs.to(self.device)).logits
+        llm_input, _ = self.model.embed(**inputs)
+        return llm_input
 
-    def postprocess(self, logits: torch.Tensor, top_k: int = 3) -> list:
-        logits = logits.cpu()
-
-        topk_scores, topk_indices = torch.topk(logits, top_k, dim=1)
-        topk_scores = torch.nn.functional.softmax(topk_scores, dim=1)
-        topk_scores = topk_scores.squeeze().detach().numpy()
-        topk_indices = topk_indices.squeeze().detach().numpy()
-
-        return [
-            {
-                'gloss': self.id2label[str(topk_indices[i])],
-                'score': topk_scores[i],
-            }
-            for i in range(top_k)
-        ]
+    def postprocess(self, llm_inputs: torch.Tensor, **kwargs) -> str:
+        return self.assistant_model.generate(llm_inputs, **kwargs)
 
 
 class Sanitize:
@@ -246,17 +211,15 @@ class Tokenize:
         self.eos_token_id = eos_token_id
         self.label_rate = label_rate
 
-    def __collate_tokens(
+    def __call__(
         self,
         values: torch.Tensor,
-        pad_idx: int,
-        eos_idx: int = None,
         left_pad: bool = False,
         move_eos_to_beginning: bool = False,
         pad_to_length: int = None,
         pad_to_multiple: int = 1,
     ) -> torch.Tensor:
-        """Convert a list of 1d tensors into a padded 2d tensor."""
+
         def copy_tensor(src, dst):
             assert dst.numel() == src.numel()
             if move_eos_to_beginning:
@@ -269,6 +232,11 @@ class Tokenize:
             else:
                 dst.copy_(src)
 
+        if self.label_rate != -1:
+            raise NotImplementedError("not yet")
+
+        pad_idx, eos_idx = 0, self.eos_token_id
+
         size = values.size(0)
         size = size if pad_to_length is None else max(size, pad_to_length)
         if pad_to_multiple != 1 and size % pad_to_multiple != 0:
@@ -278,35 +246,6 @@ class Tokenize:
 
         copy_tensor(values, res[size - len(values):] if left_pad else res[: len(values)])
         return res
-
-    def __collater_seq_label_llm(self, inputs: torch.Tensor) -> Tuple:
-        length = torch.LongTensor([len(inputs)])
-        ntokens = length.item()
-
-        pad, eos = 0, self.eos_token_id
-        curr_tokens = self.__collate_tokens(inputs, pad_idx=pad, eos_idx=eos, left_pad=False)
-
-        prev_tokens = self.__collate_tokens(
-            inputs[1:],
-            pad_idx=pad,
-            eos_idx=eos,
-            left_pad=False,
-            move_eos_to_beginning=False,
-        )
-
-        padding_start_idx = torch.sum(prev_tokens == 0) * -1
-        if padding_start_idx == 0:
-            prev_tokens = torch.cat((prev_tokens, torch.tensor([2]).long()))
-        else:
-            prev_tokens[padding_start_idx] = 2
-            prev_tokens = torch.cat((prev_tokens, torch.tensor([0]).long()))
-
-        return (curr_tokens, prev_tokens), length, ntokens
-
-    def __call__(self, inputs: torch.Tensor) -> Tuple:
-        if self.label_rate != -1:
-            raise NotImplementedError("not yet")
-        return self.__collater_seq_label_llm(inputs)
 
 
 class Extract:
@@ -353,15 +292,13 @@ class Extract:
             inputs["video"] = self.video_transforms(inputs["video"]["data"])
         if inputs["audio"] is not None:
             inputs["audio"] = self.audio_transforms(inputs["audio"])
-        tokens, _, _ = self.text_transforms(inputs["text_source"])
-        attn_mask = tokens[0] != 0
+        tokens = self.text_transforms(inputs["text_source"])
         return {
             "source": {
                 "audio": inputs["audio"],
                 "video": inputs["video"],
-                "text": tokens[0],
+                "text": tokens,
             },
-            "text_attn_mask": attn_mask,
         }
 
 
@@ -373,69 +310,7 @@ class Collate:
                 "video": torch.stack([inputs["source"]["video"]]),
                 "text": torch.stack([inputs["source"]["text"]]),
             },
-            "text_attn_mask": torch.stack([inputs["text_attn_mask"]]),
         }
-
-
-class KMeans:
-    def __init__(
-        self,
-        avsp_llm_model: AutoModel,
-        kmeans_model: MiniBatchKMeans,
-        layer: int = 12,
-    ) -> None:
-        self.model = avsp_llm_model
-        self.C = torch.from_numpy(kmeans_model.cluster_centers_.transpose())
-        self.Cnorm = self.C.pow(2).sum(0, keepdim=True)
-        self.layer = layer
-
-    def __call__(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
-        video_feats = (
-            inputs["source"]["video"]
-            .permute((0, 4, 1, 2, 3))
-            .contiguous()
-        )
-        audio_feats = inputs["source"]["audio"].transpose(1, 2)
-
-        source = {"audio": audio_feats, "video": video_feats}
-        if self.layer == 0:
-            ret_conv, output_layer = True, None
-        else:
-            ret_conv, output_layer = False, self.layer
-
-        feat, _ = self.model.extract_features(
-            source=source,
-            padding_mask=None,
-            mask=False,
-            output_layer=output_layer,
-            ret_conv=ret_conv,
-        )
-        feat = feat.squeeze(0)
-
-        dist = (
-            inputs.pow(2).sum(1, keepdim=True)
-            - 2 * torch.matmul(inputs, self.C)
-            + self.Cnorm
-        )
-        inputs["source"]["cluster_counts"] = dist.argmin(dim=1).cpu()
-
-        return inputs
-
-
-class Deduplicate:
-    def __call__(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
-        cluster_counts = inputs["source"]["cluster_counts"]
-        current_counts = 1
-        counts = []
-        for i in range(1, len(cluster_counts)):
-            if cluster_counts[i] == cluster_counts[i - 1]:
-                current_counts += 1
-            else:
-                counts.append(current_counts)
-                current_counts = 1
-        counts.append(current_counts)
-        inputs["source"]["cluster_counts"] = torch.tensor(counts)
-        return inputs
 
 
 class Pad:
@@ -494,7 +369,7 @@ class Pad:
 
         return inputs, padding_mask, start
 
-    def __call__(self, inputs: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
+    def __call__(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
         video = inputs["source"]["video"]
         audio = inputs["source"]["audio"]
 
@@ -524,8 +399,6 @@ class Pad:
             audio_size = max(audio_size, self.max_sample_size)
 
         if audio is not None:
-            if video is None:
-                audio_size = inputs["cluster_counts"].sum().item()
             audio, audio_mask, audio_start = self.__generate_padding_mask(
                 audio, audio_size
             )
@@ -544,9 +417,22 @@ class Pad:
             "source": {
                 "audio": audio,
                 "video": video,
-                "cluster_counts": inputs["cluster_counts"],
                 "text": inputs["text"],
             },
             "padding_mask": audio_mask,
-            "text_attn_mask": inputs["text_attn_mask"],
+        }
+
+
+class ToDevice:
+    def __init__(self, device: torch.device) -> None:
+        self.device = device
+
+    def __call__(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
+        return {
+            "source": {
+                "audio": inputs["source"]["audio"].to(self.device),
+                "video": inputs["source"]["video"].to(self.device),
+                "text": inputs["source"]["text"].to(self.device),
+            },
+            "padding_mask": inputs["padding_mask"].to(self.device),
         }
