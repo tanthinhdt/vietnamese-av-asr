@@ -74,9 +74,11 @@ class AVHubertConfig(PretrainedConfig):
         share_decoder_input_output_embed: bool = False,
         no_scale_embedding: bool = True,
         num_classes: int = 2004,
+        feature_ds_rate: int = 1,
         **kwargs,
     ) -> None:
         super().__init__(**kwargs)
+
         self.label_rate = label_rate
         self.sample_rate = sample_rate
         self.input_modality = input_modality
@@ -144,7 +146,7 @@ class AVHubertConfig(PretrainedConfig):
         self.share_decoder_input_output_embed = share_decoder_input_output_embed
         self.no_scale_embedding = no_scale_embedding
         self.num_classes = num_classes
-        self.feature_ds_rate = 1
+        self.feature_ds_rate = feature_ds_rate
 
 
 class AVSPLLMConfig(AVHubertConfig):
@@ -168,6 +170,7 @@ class AVSPLLMConfig(AVHubertConfig):
         **kwargs,
     ) -> None:
         super().__init__(**kwargs)
+
         self.llm_ckpt_path = llm_ckpt_path
         self.no_pretrained_weights = no_pretrained_weights
         self.final_dropout = final_dropout

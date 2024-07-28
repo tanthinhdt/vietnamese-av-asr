@@ -31,7 +31,7 @@ def load_model(
         config_class.register_for_auto_class()
         processor_class.register_for_auto_class("AutoFeatureExtractor")
         model_class.register_for_auto_class("AutoModel")
-        logging.info(f"{model_config.arch} classes registered")
+        logging.info("Classes registered")
 
         config = config_class(**vars(model_config))
         processor = processor_class(config=config)
