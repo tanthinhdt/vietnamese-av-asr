@@ -1,5 +1,6 @@
 from pathlib import Path
 from typing import Any, List
+from glob import glob
 from dataclasses import dataclass, field
 
 
@@ -17,8 +18,8 @@ class ProcessConfig:
     reverse: bool = False   # Reverse the order of the files
 
     def __post_init__(self):
+        assert glob(self.path), f"Path {self.path} does not exist."
         self.path = Path(self.path)
-        assert self.path.exists(), f"Path {self.path} does not exist."
         if self.log_path is not None:
             self.log_path = Path(self.log_path)
 
@@ -81,6 +82,75 @@ class DataConfig:
 @dataclass
 class ModelConfig:
     pretrained: str = "DEFAULT"
+
+    label_rate: int = 25
+    sample_rate: int = 25
+    input_modality: str = "video"
+    extractor_mode: str = "default"
+    encoder_layers: int = 24
+    encoder_embed_dim: int = 1024
+    encoder_ffn_embed_dim: int = 4096
+    encoder_attention_heads: int = 16
+    activation_fn: str = "gelu"
+    dropout: float = 0.1
+    attention_dropout: float = 0.1
+    activation_dropout: float = 0.1
+    encoder_layerdrop: float = 0.0
+    dropout_input: float = 0.0
+    dropout_features: float = 0.0
+    final_dim: int = 256
+    untie_final_proj: bool = False
+    layer_norm_first: bool = False
+    conv_feature_layers: str = "[(512,10,5)] + [(512,3,2)] * 4 + [(512,2,2)] * 2"
+    conv_bias: bool = False
+    logit_temp: float = 0.1
+    target_glu: bool = False
+    feature_grad_mult: float = 1.0
+    mask_length_audio: int = 10
+    mask_prob_audio: float = 0.65
+    mask_length_image: int = 10
+    mask_prob_image: float = 0.65
+    mask_selection: str = "static"
+    mask_other: float = 0.0
+    no_mask_overlap: bool = False
+    mask_min_space: int = 1
+    mask_channel_length: int = 64
+    mask_channel_prob: float = 0.5
+    mask_channel_selection: str = "static"
+    mask_channel_other: float = 0.0
+    no_mask_channel_overlap: bool = False
+    mask_channel_min_space: int = 1
+    conv_pos: int = 128
+    conv_pos_groups: int = 16
+    latent_temp: tuple = field(default_factory=lambda: (2.0, 0.5, 0.999995))
+    skip_masked: bool = False
+    skip_nomask: bool = False
+    resnet_relu_type: str = "prelu"
+    resnet_weights: str = None
+    sim_type: str = "cosine"
+    sub_encoder_layers: int = 0
+    audio_feat_dim: int = 104
+    modality_dropout: float = 0.0
+    audio_dropout: float = 0.0
+    modality_fuse: str = "concat"
+    selection_type: str = "same_other_seq"
+    masking_type: str = "input"
+    decoder_embed_dim: int = 2560
+    decoder_ffn_embed_dim: int = 3072
+    decoder_layers: int = 6
+    decoder_layerdrop: float = 0.0
+    decoder_attention_heads: int = 4
+    decoder_learned_pos: bool = False
+    decoder_normalize_before: bool = False
+    no_token_positional_embeddings: bool = False
+    decoder_dropout: float = 0.1
+    decoder_attention_dropout: float = 0.1
+    decoder_activation_dropout: float = 0.0
+    max_target_positions: int = 2048
+    share_decoder_input_output_embed: bool = False
+    no_scale_embedding: bool = True
+    num_classes: int = 2004
+    feature_ds_rate: int = 1
 
 
 @dataclass
