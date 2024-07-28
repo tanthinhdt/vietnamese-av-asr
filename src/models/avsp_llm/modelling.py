@@ -675,6 +675,8 @@ class AVSPLLMModel(PreTrainedModel):
         decoder_4bit = AutoModelForCausalLM.from_pretrained(
             config.llm_ckpt_path,
             quantization_config=bnb_config,
+            cache_dir=config.cache_dir,
+            trust_remote_code=True,
         )
         lora_config = LoraConfig(
             r=16,

@@ -155,6 +155,7 @@ class AVSPLLMConfig(AVHubertConfig):
     def __init__(
         self,
         llm_ckpt_path: str = "vilm/vinallama-2.7b",
+        cache_dir: str = "models/huggingface",
         no_pretrained_weights: bool = False,
         final_dropout: float = 0.1,
         apply_mask: bool = False,
@@ -172,6 +173,7 @@ class AVSPLLMConfig(AVHubertConfig):
         super().__init__(**kwargs)
 
         self.llm_ckpt_path = llm_ckpt_path
+        self.cache_dir = cache_dir
         self.no_pretrained_weights = no_pretrained_weights
         self.final_dropout = final_dropout
         self.apply_mask = apply_mask
