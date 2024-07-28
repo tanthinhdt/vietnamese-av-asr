@@ -1,7 +1,6 @@
 from pathlib import Path
 from typing import Any, List
 from dataclasses import dataclass, field
-from utils import MODELS
 
 
 EXTENSIONS = (
@@ -81,14 +80,7 @@ class DataConfig:
 
 @dataclass
 class ModelConfig:
-    arch: str = "avsp_llm"
     pretrained: str = "DEFAULT"
-    num_frozen_layers: int = 0
-    ignored_weights: List[str] = field(default_factory=lambda: [])
-    num_frames: int = 16
-
-    def __post_init__(self):
-        assert self.arch in MODELS, f"Model {self.arch} is not supported"
 
 
 @dataclass
