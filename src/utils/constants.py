@@ -1,3 +1,0 @@
-MODELS = [
-    "avsp_llm",
-]
