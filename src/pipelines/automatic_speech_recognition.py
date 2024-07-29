@@ -1,5 +1,6 @@
 import torch
 import numpy as np
+import mediapipe as mp
 import torch.nn.functional as F
 import torchaudio.transforms as TA
 import torchvision.transforms.v2 as TV
@@ -158,6 +159,34 @@ class Sanitize:
         return inputs
 
 
+class CropMouth:
+    def __init__(self, crop_size: tuple) -> None:
+        self.crop_size = crop_size
+        self.landmark_detector = mp.solutions.face_mesh.FaceMesh()
+        self.mouth_landmark_idxes = [
+            61, 185, 40, 39, 37, 0, 267, 269, 270, 409,
+            291, 146, 91, 181, 84, 17, 314, 405, 321, 375,
+        ]
+
+    def __call__(self, inputs: torch.Tensor) -> torch.Tensor:
+        mouths = []
+        for frame in inputs:
+            face_landmarks = self.landmark_detector.process(frame).multi_face_landmarks
+            if face_landmarks is None:
+                continue
+            mouth_landmarks = np.array([
+                [landmark.x, landmark.y] for landmark in face_landmarks[0].landmark
+            ])[self.mouth_landmark_idxes, :]
+            center_x = np.mean(mouth_landmarks[:, 0]) * frame.shape[1]
+            min_x = int(center_x - self.crop_size / 2)
+            max_x = int(center_x + self.crop_size / 2)
+            center_y = np.mean(mouth_landmarks[:, 1]) * frame.shape[0]
+            min_y = int(center_y - self.crop_size / 2)
+            max_y = int(center_y + self.crop_size / 2)
+            mouths.append(frame[min_y:max_y, min_x:max_x])
+        return torch.stack(mouths)
+
+
 class Resample:
     def __init__(self, sampling_rate: int) -> None:
         self.sampling_rate = sampling_rate
@@ -268,6 +297,7 @@ class Extract:
     ) -> None:
         self.video_transforms = TV.Compose(
             [
+                CropMouth(crop_size),
                 TV.Lambda(lambda x: x.permute(0, 3, 1, 2)),
                 TV.Grayscale(num_output_channels=1),
                 TV.Normalize(0.0, 255.0),
