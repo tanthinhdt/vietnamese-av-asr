@@ -6,7 +6,7 @@ sys.path.append(os.getcwd())
 
 from src.models.utils.manifest import create_demo_manifest
 from src.models.taskers import Checker, Normalizer, Splitter, MouthCropper, Embedder
-from src.models.utils import get_logger, get_spent_time
+from src.models.utils import get_logger, get_spent_time, clean_dirs
 
 logger = get_logger('inference', is_stream=True)
 
@@ -33,7 +33,7 @@ def get_args() -> argparse.Namespace:
 
 @get_spent_time(message='Inferencing time: ')
 def infer(args: argparse.Namespace):
-    checker = Checker(duration_threshold=60)
+    checker = Checker(duration_threshold=180)
     normalizer = Normalizer(checker=checker)
     mouth_cropper = MouthCropper()
     splitter = Splitter()
@@ -108,12 +108,11 @@ def infer(args: argparse.Namespace):
             exit(1)
 
     logger.info('Embed transcript into video.')
-    _output_video_path = embedder.do(samples)
+    #_output_video_path = embedder.do(samples)
 
     logger.info("Clear fragments.")
-    embedder.post_do()
 
-    logger.info(f"Output path: '{_output_video_path}'")
+    #logger.info(f"Output path: '{_output_video_path}'")
     logger.info('Inference DONE!')
 
 

@@ -8,7 +8,7 @@ Steps to clone repo, prepare environment and run inference demo.
 ## Clone Repository
 Clone branch 'inference' from project repo. Use accessible token to clone.  
 ```bash
-git clone -b inference <repo-link>
+git clone -b inference https://github.com/minhnv4099/vietnamese-av-asr.git
 ```
 
 ## Prepare environment
@@ -27,11 +27,9 @@ cd vietnamese-av-asr/
 ```bash
 python src/models/inferences/main.py 
     <video-path>
-    [--time-interval <time-interval>]
 ```
 ##### Arguments:
 - `<video-path>`: Path to video file. It can be video/visual/audio clip. It is required duration not to be greater than **30** seconds, because of resource constraints.
-- `--time-interval`: Time interval to split. Default 3s.
 
 ## Video with embedded transcript
 ### Output video and transcript are located in `result/` dir

@@ -293,21 +293,13 @@ class SubModel(nn.Module):
 
     def forward(self, x):
         if self.resnet is not None:
-            print('\tresnet intput', x.shape)
             x = self.resnet(x)
-            print('\tresnet output', x.shape)
         with torch.autocast(device_type='cpu'):
-            print('\tproj intput', x.shape)
             x = self.proj(x.transpose(1, 2))
-            print('\tproj out', x.shape)
         if self.encoder is not None:
-            print('\tencoder input', x.shape)
             x = self.encoder(x)[0].transpose(1, 2)
-            print('\tencoder output', x.shape)
         else:
-            print('\tno encoder input', x.shape)
             x = x.transpose(1, 2)
-            print('\tno encoder output', x.shape)
         return x
 
 
@@ -415,7 +407,8 @@ class AVHubertModel(BaseFairseqModel):
     def build_model(cls, cfg: AVHubertConfig, task: AVHubertPretrainingTask):
         """Build a new model instance."""
 
-        model = AVHubertModel(cfg, task.cfg, task.dictionaries)
+        kwargs = {}
+        model = AVHubertModel(cfg, task.cfg, task.dictionaries, **kwargs)
         return model
 
     def apply_input_mask(self, x, padding_mask, target_list):
@@ -651,7 +644,7 @@ class AVHubertModel(BaseFairseqModel):
 
     def extract_features(
         self,
-        source: dict,
+        source: torch.Tensor,
         padding_mask: Optional[torch.Tensor] = None,
         mask: bool = False,
         ret_conv: bool = False,
@@ -688,8 +681,6 @@ class AVHubertModel(BaseFairseqModel):
         return units
 
     def extract_finetune(self, source, padding_mask=None, mask=False, output_layer=None):
-        print('video', source['video'].shape)
-        print('audio', source['audio'].shape)
         src_audio, src_video = source['audio'], source['video']
         if mask and self.masking_type == 'input':
             src_video, mask_indices_video = self.apply_input_mask(src_video, padding_mask, target_list=None)
@@ -706,34 +697,28 @@ class AVHubertModel(BaseFairseqModel):
         elif src_audio is not None and src_video is not None:
             features_video = self.forward_features(src_video, modality='video')
             features_audio = self.forward_features(src_audio, modality='audio')  # features: [B, F, T]
-        print('video', features_video.shape)
-        print('audio', features_audio.shape)
-
+        print(features_video.shape, features_audio.shape)
         if self.modality_fuse == 'concat':
             features = torch.cat([features_audio, features_video], dim=1)
         elif self.modality_fuse == 'add':
             features = features_audio + features_video
-        print('concat', features.shape)
+
         features = features.transpose(1, 2)
-        print('transpose', features.shape)
         features = self.layer_norm(features)
-        print('layer_norm', features.shape)
+
         if padding_mask is not None:
             padding_mask = self.forward_padding_mask(features, padding_mask)
         if self.post_extract_proj is not None:
-            print('post_extract_proj', 'input', features.shape)
             with torch.autocast(device_type='cpu'):
                 features = self.post_extract_proj(features)
-            print('post_extract_proj', 'output', features.shape)
+
         features = self.dropout_input(features)
         x = features
-        print('encoder', 'input', x.shape)
         x, _ = self.encoder(
             x,
             padding_mask=padding_mask,
             layer=None if output_layer is None else output_layer - 1
         )
-        print('encoder', 'output', x.shape)
 
         return x, padding_mask
 

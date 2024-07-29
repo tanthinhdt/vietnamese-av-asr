@@ -180,13 +180,14 @@ def _main(cfg, output_file):
             sample['net_input']['source']['video'] = sample['net_input']['source']['video'].to(torch.half)
         if sample['net_input']['source']['audio'] is not None:
             sample['net_input']['source']['audio'] = sample['net_input']['source']['audio'].to(torch.half)
+        sample["net_input"]["padding_mask"] = None
 
         best_hypo = model.generate(
             num_beams=cfg.generation.beam,
             length_penalty=cfg.generation.lenpen,
             **sample["net_input"]
         )
-
+        continue
         best_hypo = llm_tokenizer.batch_decode(
             best_hypo, skip_special_tokens=True, clean_up_tokenization_spaces=False
         )
@@ -207,7 +208,7 @@ def _main(cfg, output_file):
             else:
                 result_dict['ref'].append(ref_sent)
                 logger.info(f"\nINST:{instruction}\nREF:{ref_sent}\nHYP:{hypo_str}\n")
-
+    exit(1)
     result_fn = f"{cfg.common_eval.results_path}/hypo.json"
     json.dump(result_dict, open(result_fn, 'w'), indent=4)
 

@@ -58,6 +58,7 @@ class Splitter(Tasker):
                 _sample['index'] = i
                 _sample['chunk_visual_id'] = _video_name.replace('video', 'visual')
                 dur = get_duration(_video_path)
+                print(dur)
                 _sample['timestamp'] = (timestamp, timestamp+int(dur))
                 _sample['visual_output_dir'] = _VISUAL_DIR
                 if metadata_dict['has_v']:

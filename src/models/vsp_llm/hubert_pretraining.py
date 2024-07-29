@@ -1,6 +1,8 @@
 import logging
 import os
 import sys
+
+import fairseq.tasks
 import numpy as np
 from argparse import Namespace
 
@@ -224,7 +226,7 @@ class AVHubertPretrainingTask(FairseqTask):
         ]
         image_aug = self.cfg.image_aug if split == 'train' else False
         noise_fn, noise_snr = f"{self.cfg.noise_wav}/{split}.tsv" if self.cfg.noise_wav is not None else None, eval(self.cfg.noise_snr)
-        noise_num = self.cfg.noise_num # 
+        noise_num = self.cfg.noise_num
         self.datasets[split] = AVHubertDataset(
             manifest,
             sample_rate=self.cfg.sample_rate,

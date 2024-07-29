@@ -11,7 +11,6 @@ from typing import Any
 
 from src.models.taskers.tasker import Tasker
 from src.models.utils.dirs import *
-from src.models.utils.dirs import clean_dirs
 from src.models.utils.logging import get_logger
 
 logger = get_logger(
@@ -47,18 +46,6 @@ class Embedder(Tasker):
         self._embed_subtitle(samples['result_video_path'], _srt_path, _output_path)
 
         return _output_path
-
-    def post_do(self):
-        dirs = [
-            _DATASET_DIR,
-            _AUDIO_DIR,
-            _VISUAL_DIR,
-            _VIDEO_DIR,
-            _OUTPUT_DIR,
-            _FLAGGED_DIR,
-        ]
-
-        clean_dirs(*dirs)
 
     def _embed_subtitle(
             self,

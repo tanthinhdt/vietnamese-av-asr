@@ -85,6 +85,7 @@ class HubertFeatureReader(object):
 
     def get_feats(self, path, modalities: list):
         video_feats, audio_feats = self.load_feature(path, modalities)
+        print(video_feats.shape, audio_feats.shape)
         with torch.no_grad():
             audio_feats = torch.from_numpy(audio_feats.astype(np.float32)).to(device=self.device)
             video_feats = torch.from_numpy(video_feats.astype(np.float32)).to(device=self.device)

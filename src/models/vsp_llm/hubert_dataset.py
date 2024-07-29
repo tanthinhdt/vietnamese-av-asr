@@ -35,7 +35,7 @@ def load_audio_visual(manifest_path, max_keep, min_keep, frame_rate, label_paths
         root = f.readline().strip()
         for ind, line in enumerate(f):
             items = line.strip().split("\t")
-            sz = int(items[-2]) # 
+            sz = int(items[-2])
             if min_keep is not None and sz < min_keep:
                 n_short += 1
             elif max_keep is not None and sz > max_keep:

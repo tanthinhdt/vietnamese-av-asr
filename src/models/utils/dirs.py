@@ -32,7 +32,16 @@ __all__ = [
 ]
 
 
-def clean_dirs(*dirs):
+def clean_dirs():
+    dirs = [
+        _DATASET_DIR,
+        _AUDIO_DIR,
+        _VISUAL_DIR,
+        _VIDEO_DIR,
+        _OUTPUT_DIR,
+        _FLAGGED_DIR,
+        _DECODE_DIR,
+    ]
     for _dir in dirs:
         if os.path.isdir(_dir):
             shutil.rmtree(_dir, ignore_errors=True)

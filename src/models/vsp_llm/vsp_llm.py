@@ -1,3 +1,4 @@
+import contextlib
 import logging
 import torch
 import torch.nn as nn
@@ -160,11 +161,7 @@ class HubertEncoderWrapper(FairseqEncoder):
         with torch.autocast(device_type='cpu'):
             x, padding_mask = self.w2v_model.extract_finetune(**w2v_args)
 
-        return {
-            "encoder_out": x,  # T x B x C
-            "encoder_padding_mask": padding_mask,  # B x T
-            "padding_mask": padding_mask
-        }
+        return x
 
     def reorder_encoder_out(self, encoder_out, new_order):
         if encoder_out["encoder_out"] is not None:
@@ -271,7 +268,7 @@ class avhubert_llm_seq2seq_cluster_count(BaseFairseqModel):
             target_modules=["q_proj", "v_proj", "k_proj"], 
             lora_dropout=0.05, 
             bias="none", 
-            task_type="CAUSAL_LM" 
+            task_type="CAUSAL_LM"
         )
 
         decoder_4bit = get_peft_model(decoder_4bit, config)
@@ -284,7 +281,7 @@ class avhubert_llm_seq2seq_cluster_count(BaseFairseqModel):
         with torch.no_grad() if not ft else contextlib.ExitStack():
             output = self.encoder(**kwargs)
     
-        output['encoder_out'] = self.avfeat_to_llm(output['encoder_out'])
+        output = self.avfeat_to_llm(output)
         
         cluster_counts = kwargs['source']['cluster_counts'][0] # tensor list
         
@@ -292,12 +289,12 @@ class avhubert_llm_seq2seq_cluster_count(BaseFairseqModel):
         start_idx = 0
         for clutser_num in cluster_counts:
             end_idx = start_idx + clutser_num
-            slice = output['encoder_out'][:,start_idx:end_idx,:]
+            slice = output[:,start_idx:end_idx,:]
             mean_tensor = torch.mean(slice, dim=1, keepdim=True)
             results_tensor.append(mean_tensor)            
             start_idx = end_idx
 
-        assert(cluster_counts.sum().item() == output['encoder_out'].size()[1])
+        assert(cluster_counts.sum().item() == output.size()[1])
 
         reduced_enc_out = torch.cat(results_tensor, dim=1)      
         B, T, D = reduced_enc_out.size()
@@ -329,22 +326,47 @@ class avhubert_llm_seq2seq_cluster_count(BaseFairseqModel):
             length_penalty=0.0,
             **kwargs,
     ):
-        output = self.encoder(
+        encoder_output = self.encoder(
             visual=kwargs['source']['video'],
             audio=kwargs['source']['audio'],
             padding_mask=kwargs['padding_mask']
         )
 
-        return self.decoder_generate(
-            encoder_output=output['encoder_out'],
-            num_beams=num_beams,
-            max_length=max_length,
-            min_length=min_length,
+        with torch.autocast(device_type='cpu'):
+            encoder_output = self.avfeat_to_llm(encoder_output)
+
+        cluster_counts = kwargs['source']['cluster_counts'][0]
+        results_tensor = []
+        start_idx = 0
+
+        for clutser_num in cluster_counts:
+            end_idx = start_idx + clutser_num
+            slice = encoder_output[:, start_idx:end_idx, :]
+            mean_tensor = torch.mean(slice, dim=1, keepdim=True)
+            results_tensor.append(mean_tensor)
+            start_idx = end_idx
+
+        print(cluster_counts.sum().item(), encoder_output.size()[1])
+        return
+
+        reduced_enc_out = torch.cat(results_tensor, dim=1).to(device=self.device)
+        instruction = kwargs['source']['text']
+        instruction_embedding = self.decoder.model.model.embed_tokens(instruction).to(device=self.device)
+        llm_input = torch.cat((instruction_embedding, reduced_enc_out), dim=1)
+
+        self.decoder.config.use_cache = True
+        outputs = self.decoder.generate(
+            inputs_embeds=llm_input,
             top_p=top_p,
+            num_beams=num_beams,
+            max_new_tokens=max_length,
+            min_length=min_length,
             repetition_penalty=repetition_penalty,
+            do_sample=True,
             length_penalty=length_penalty,
-            **kwargs
         )
+
+        return outputs
 
     def decoder_generate(
             self,
@@ -359,8 +381,8 @@ class avhubert_llm_seq2seq_cluster_count(BaseFairseqModel):
     ):
         with torch.autocast(device_type='cpu'):
             encoder_output = self.avfeat_to_llm(encoder_output)
-        cluster_counts = kwargs['source']['cluster_counts'][0]
 
+        cluster_counts = kwargs['source']['cluster_counts'][0]
         results_tensor = []
         start_idx = 0
 
