@@ -27,15 +27,11 @@ class AutomaticSpeechRecognitionPipeline(Pipeline):
             "vi": "Hãy nhận diện câu tiếng Việt này. Đầu vào: ",
         }
 
-        crop_size = (
-            self.feature_extractor.size["height"],
-            self.feature_extractor.size["width"]
-        )
         self.transforms = TV.Compose(
             [
                 Sanitize(),
                 Extract(
-                    crop_size=crop_size,
+                    crop_size=self.feature_extractor.size,
                     mean=self.feature_extractor.mean,
                     std=self.feature_extractor.std,
                     sampling_rate=self.feature_extractor.sampling_rate,
@@ -85,7 +81,7 @@ class AutomaticSpeechRecognitionPipeline(Pipeline):
                 "audio":
                     "sampling_rate": int,
                     "data": np.ndarray or torch.Tensor
-                        (time, channels).
+                        (time,).
 
         Returns
         -------
@@ -135,7 +131,7 @@ class Sanitize:
             assert "data" in inputs, \
                 f"Expected video input to have 'data' key, got {inputs.keys()}"
             assert "sampling_rate" in inputs, \
-                f"Expected video input to have 'fps' key, got {inputs.keys()}"
+                f"Expected video input to have 'sampling_rate' key, got {inputs.keys()}"
 
             data_shape = inputs["data"].shape
             assert len(data_shape.shape) == 1, \
@@ -285,7 +281,7 @@ class Tokenize:
 class Extract:
     def __init__(
         self,
-        crop_size: tuple,
+        crop_size: int,
         mean: tuple,
         std: tuple,
         sampling_rate: int,
@@ -300,7 +296,6 @@ class Extract:
                 TV.Lambda(lambda x: x.permute(0, 3, 1, 2)),
                 TV.Grayscale(num_output_channels=1),
                 TV.Normalize(0.0, 255.0),
-                TV.CenterCrop(crop_size),
                 TV.Normalize(mean, std),
                 TV.ToDtype(torch.float32),
             ]
