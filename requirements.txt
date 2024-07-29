@@ -14,7 +14,7 @@ numba==0.59.0
 numpy==1.23.5
 oauthlib==3.2.2
 omegaconf==2.0.6
-opencv-python==4.5.4.60
+opencv-python==4.10.0.84
 packaging==23.2
 pandas==2.2.0
 peft
