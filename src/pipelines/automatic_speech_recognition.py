@@ -14,15 +14,14 @@ class AutomaticSpeechRecognitionPipeline(Pipeline):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-        if kwargs.pop("use_onnx", False):
-            model_kwargs = kwargs.pop("model_kwargs", {})
+        self.assistant_model = kwargs.pop("assistant_model", None)
+        if self.assistant_model is not None:
+            model_kwargs = kwargs.get("model_kwargs", {})
             self.assistant_model = ORTModelForCausalLM.from_pretrained(
-                kwargs.pop("assistant_model", "vilm/vinallama-2.7b"),
+                self.assistant_model,
                 trust_remote_code=True,
-                cache_dir=model_kwargs.pop("cache_dir", None),
+                cache_dir=model_kwargs.get("cache_dir", None),
             )
-        else:
-            self.assistant_model = None
 
         self.instructions = {
             "vi": "Hãy nhận diện câu tiếng Việt này. Đầu vào: ",
