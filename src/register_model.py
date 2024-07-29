@@ -77,7 +77,8 @@ def main(args: Namespace) -> None:
 
     if args.llm:
         llm_repo_id = repo_id + "_LLM"
-        model.decoder.push_to_hub(llm_repo_id)
+        llm = model.decoder.merge_and_unload()
+        llm.push_to_hub(llm_repo_id, save_config=True)
         logger.info(f"LLM pushed to HuggingFace at {llm_repo_id}")
 
 
