@@ -29,8 +29,7 @@ class AVHubertFeatureExtractor(FeatureExtractionMixin):
         super().__init__(**kwargs)
         self.audio_feat_dim = config.audio_feat_dim
 
-        self.height = 88
-        self.width = 88
+        self.size = 88
         self.num_frames = 76
         self.num_channels = 1
 
@@ -38,9 +37,6 @@ class AVHubertFeatureExtractor(FeatureExtractionMixin):
 class AVSPLLMFeatureExtractor(AVHubertFeatureExtractor):
     def __init__(self, config: AVSPLLMConfig = AVSPLLMConfig(), **kwargs) -> None:
         super().__init__(config, **kwargs)
-
-        self.cluster_counts_dim = 70
-        self.text_feat_dim = 13
 
 
 class AVHubertVideoFeatureEncoder(nn.Module):
