@@ -12,6 +12,7 @@ from npy_append_array import NpyAppendArray
 from python_speech_features import logfbank
 from utils import load_video, Compose, Normalize, CenterCrop
 from fairseq.checkpoint_utils import load_model_ensemble_and_task
+from fairseq.utils import import_user_module
 
 
 class HubertFeatureReader(object):
@@ -139,14 +140,16 @@ def get_path_iterator(tsv: Path, nshard: int, rank: int) -> tuple:
         def iterate():
             for line in lines:
                 items = line.strip().split("\t")
-                visual_path = root / items[1]
-                audio_path = root / items[2]
+                visual_path = str(root / items[1])
+                audio_path = str(root / items[2])
                 yield (visual_path, audio_path + ":" + items[0]), int(items[3])
 
         return iterate, len(lines)
 
 
 def dump_feature(config: DumpFeatureConfig) -> None:
+    import_user_module(config)
+
     reader = HubertFeatureReader(
         ckpt_path=config.ckpt_path,
         layer=config.layer,
