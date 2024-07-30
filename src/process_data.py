@@ -1,3 +1,4 @@
+import logging
 from argparse import Namespace
 from dataclasses import dataclass
 from simple_parsing import ArgumentParser, subgroups
@@ -16,6 +17,9 @@ from configs import (
     DumpLabelConfig,
     CountClustersConfig,
 )
+
+
+logging.root.setLevel(logging.WARNING)
 
 
 @dataclass
