@@ -13,6 +13,10 @@ from mediapipe.python.solutions.face_detection import FaceDetection, FaceKeyPoin
 
 
 class AutomaticSpeechRecognitionPipeline(Pipeline):
+    INSTRUCTIONS = {
+        "vi": "Hãy nhận diện câu tiếng Việt này. Đầu vào: ",
+    }
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
@@ -24,10 +28,6 @@ class AutomaticSpeechRecognitionPipeline(Pipeline):
                 trust_remote_code=True,
                 cache_dir=model_kwargs.get("cache_dir", None),
             )
-
-        self.instructions = {
-            "vi": "Hãy nhận diện câu tiếng Việt này. Đầu vào: ",
-        }
 
         crop_size = (self.feature_extractor.height, self.feature_extractor.width)
         self.transforms = TV.Compose(
@@ -56,7 +56,7 @@ class AutomaticSpeechRecognitionPipeline(Pipeline):
         # Sanitize the parameters for preprocessing
         preprocess_kwargs = {}
         preprocess_kwargs["lang"] = kwargs.pop("lang", "vi")
-        assert preprocess_kwargs["lang"] in self.instructions, \
+        assert preprocess_kwargs["lang"] in self.INSTRUCTIONS, \
             f"Language {preprocess_kwargs['lang']} is not supported"
         # Sanitize the parameters for the forward pass
         forward_kwargs = {}
@@ -96,7 +96,7 @@ class AutomaticSpeechRecognitionPipeline(Pipeline):
                     (batch, time * stack_order * channels).
         """
         tokenizer_output = self.tokenizer(
-            self.instructions[lang],
+            self.INSTRUCTIONS[lang],
             return_tensors="pt",
         )
         inputs["text_source"] = tokenizer_output.input_ids[0]
