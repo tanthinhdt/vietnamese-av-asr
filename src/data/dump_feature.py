@@ -1,26 +1,27 @@
-import math
 import os
-import sys
-import fairseq
+import math
 import torch
 import tqdm
 import numpy as np
 import torch.nn.functional as F
 from pathlib import Path
 from loguru import logger
+from scipy.io import wavfile
 from configs import DumpFeatureConfig
 from npy_append_array import NpyAppendArray
 from python_speech_features import logfbank
-from scipy.io import wavfile
+from utils import load_video, Compose, Normalize, CenterCrop
+from fairseq.checkpoint_utils import load_model_ensemble_and_task
 
 
 class HubertFeatureReader(object):
-    def __init__(self, ckpt_path, layer, max_chunk=1600000, custom_utils=None):
-        (
-            model,
-            cfg,
-            task,
-        ) = fairseq.checkpoint_utils.load_model_ensemble_and_task([ckpt_path])
+    def __init__(
+        self,
+        ckpt_path: Path,
+        layer: int,
+        max_chunk: int = 1_600_000
+    ) -> None:
+        model, _, task = load_model_ensemble_and_task([str(ckpt_path)])
         self.model = model[0].eval().cuda()
         self.task = task
         self.layer = layer
@@ -31,15 +32,14 @@ class HubertFeatureReader(object):
             self.task.cfg.image_mean,
             self.task.cfg.image_std,
         )
-        self.transform = custom_utils.Compose(
+        self.transform = Compose(
             [
-                custom_utils.Normalize(0.0, 255.0),
-                custom_utils.CenterCrop((image_crop_size, image_crop_size)),
-                custom_utils.Normalize(image_mean, image_std),
+                Normalize(0.0, 255.0),
+                CenterCrop((image_crop_size, image_crop_size)),
+                Normalize(image_mean, image_std),
             ]
         )
 
-        self.custom_utils = custom_utils
         logger.info(f"TASK CONFIG:\n{self.task.cfg}")
         logger.info(f" max_chunk = {self.max_chunk}")
         logger.info(f"Transform: {self.transform}")
@@ -59,7 +59,9 @@ class HubertFeatureReader(object):
             return feats
 
         video_fn, audio_fn = mix_name
-        video_feats = self.load_image(video_fn)
+        video_feats = load_video(video_fn)
+        video_feats = self.transform(video_feats)
+        video_feats = np.expand_dims(video_feats, axis=-1)
 
         audio_fn = audio_fn.split(":")[0]
         sample_rate, wav_data = wavfile.read(audio_fn)
@@ -82,12 +84,6 @@ class HubertFeatureReader(object):
             audio_feats = audio_feats[:-diff]
 
         return video_feats, audio_feats
-
-    def load_image(self, audio_name):
-        feats = self.custom_utils.load_video(audio_name)
-        feats = self.transform(feats)
-        feats = np.expand_dims(feats, axis=-1)
-        return feats
 
     def get_feats(self, path, ref_len=None):
         video_feats, audio_feats = self.load_feature(path, ref_len)
@@ -150,12 +146,11 @@ def get_path_iterator(tsv: Path, nshard: int, rank: int) -> tuple:
         return iterate, len(lines)
 
 
-def dump_feature(config: DumpFeatureConfig, custom_utils=None) -> None:
+def dump_feature(config: DumpFeatureConfig) -> None:
     reader = HubertFeatureReader(
         ckpt_path=config.ckpt_path,
         layer=config.layer,
         max_chunk=config.max_chunk,
-        custom_utils=custom_utils,
     )
 
     generator, num = get_path_iterator(
@@ -180,28 +175,3 @@ def dump_feature(config: DumpFeatureConfig, custom_utils=None) -> None:
             leng_f.write(f"{len(feat)}\n")
 
     logger.info("Finished successfully")
-
-
-if __name__ == "__main__":
-    import argparse
-
-    parser = argparse.ArgumentParser()
-    parser.add_argument("tsv_dir")
-    parser.add_argument("split")
-    parser.add_argument("ckpt_path")
-    parser.add_argument("layer", type=int)
-    parser.add_argument("nshard", type=int)
-    parser.add_argument("rank", type=int)
-    parser.add_argument("feat_dir")
-    parser.add_argument("--max_chunk", type=int, default=1600000)
-    parser.add_argument("--user_dir", type=str, default=None)
-
-    args = parser.parse_args()
-    logger.info(args)
-    fairseq.utils.import_user_module(args)
-    sys.path.append(args.user_dir)
-    import src.utils_vsp_llm as custom_utils
-
-    kwargs = vars(args)
-    kwargs.update({"custom_utils": custom_utils})
-    dump_feature(**kwargs)
