@@ -1,4 +1,3 @@
-import os
 import pandas as pd
 from tqdm import tqdm
 from pathlib import Path
@@ -28,7 +27,7 @@ def filter(sample: dict, split: str, data_dir: Path) -> bool:
 
 def create_manifest(config: CreateManifestConfig) -> None:
     mapping_df = pd.read_json(
-        os.path.join(config.data_dir, "mapping.json"),
+        config.data_dir / "mapping.json",
         dtype={
             "id": "string",
             "shard": "string",
@@ -63,21 +62,13 @@ def create_manifest(config: CreateManifestConfig) -> None:
 
     manifest = []
     texts = []
-    progress_bar = tqdm(enumerate(df.itertuples()), total=len(df))
-    for i, sample in progress_bar:
-        rel_visual_path = os.path.join(
-            "visual", sample.shard, f"{sample.id}.mp4",
-        )
-        rel_audio_path = os.path.join(
-            "audio", sample.shard, f"{sample.id}.wav",
-        )
-
+    for sample in tqdm(df.itertuples(), total=len(df)):
         manifest.append(
             "\t".join(
                 [
                     f"{sample.id}-{config.src_lang}-{config.dst_lang}",
-                    rel_visual_path,
-                    rel_audio_path,
+                    f"visual/{sample.shard}/{sample.id}.mp4",
+                    f"audio/{sample.shard}/{sample.id}.wav",
                     str(sample.video_num_frames),
                     str(sample.audio_num_frames),
                 ]
