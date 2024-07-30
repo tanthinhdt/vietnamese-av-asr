@@ -1,9 +1,7 @@
 import cv2
-import os
-import torchvision
 import torch
 import numpy as np
-import mediapipe as mp
+from pathlib import Path
 import torch.nn.functional as F
 import torchaudio.transforms as TA
 import torchvision.transforms.v2 as TV
@@ -11,6 +9,7 @@ from typing import Dict, Any, Tuple
 from transformers import Pipeline
 from python_speech_features import logfbank
 from optimum.onnxruntime import ORTModelForCausalLM
+from mediapipe.python.solutions.face_detection import FaceDetection, FaceKeyPoint
 
 
 class AutomaticSpeechRecognitionPipeline(Pipeline):
@@ -30,11 +29,12 @@ class AutomaticSpeechRecognitionPipeline(Pipeline):
             "vi": "Hãy nhận diện câu tiếng Việt này. Đầu vào: ",
         }
 
+        crop_size = (self.feature_extractor.height, self.feature_extractor.width)
         self.transforms = TV.Compose(
             [
                 Sanitize(),
                 Extract(
-                    crop_size=self.feature_extractor.size,
+                    crop_size=crop_size,
                     mean=self.feature_extractor.mean,
                     std=self.feature_extractor.std,
                     sampling_rate=self.feature_extractor.sampling_rate,
@@ -157,60 +157,22 @@ class Sanitize:
         return inputs
 
 
-# class CropMouth_v2:
-#     def __init__(self, crop_size: int = 88) -> None:
-#         self.crop_size = crop_size
-#         self.landmark_detector = mp.solutions.face_mesh.FaceMesh()
-#         self.mouth_landmark_idxes = [
-#             61, 185, 40, 39, 37, 0, 267, 269, 270, 409,
-#             291, 146, 91, 181, 84, 17, 314, 405, 321, 375,
-#         ]
-#
-#     def __call__(self, inputs: torch.Tensor) -> torch.Tensor:
-#         mouths = []
-#         for frame in inputs:
-#             face_landmarks = self.landmark_detector.process(frame.numpy()).multi_face_landmarks
-#             if face_landmarks is None:
-#                 continue
-#             mouth_landmarks = np.array([
-#                 [landmark.x, landmark.y] for landmark in face_landmarks[0].landmark
-#             ])[self.mouth_landmark_idxes, :]
-#             center_x = np.mean(mouth_landmarks[:, 0]) * frame.shape[1]
-#             min_x = int(center_x - self.crop_size / 2)
-#             max_x = int(center_x + self.crop_size / 2)
-#             center_y = np.mean(mouth_landmarks[:, 1]) * frame.shape[0]
-#             min_y = int(center_y - self.crop_size / 2)
-#             max_y = int(center_y + self.crop_size / 2)
-#             mouths.append(frame[min_y:max_y, min_x:max_x])
-#         return torch.stack(mouths)
-
 class CropMouth:
-    def __init__(
-            self,
-            mean_face_path="mean_face.npy",
-            crop_width=88,
-            crop_height=88,
-            start_idx=3,
-            stop_idx=4,
-            window_margin=12,
-            convert_gray=False,
-            *args,
-            **kwargs
-    ):
-        super().__init__(*args, **kwargs)
-        self.mp_face_detection = mp.solutions.face_detection
-        self.short_range_detector = self.mp_face_detection.FaceDetection(min_detection_confidence=0.5, model_selection=0)
-        self.full_range_detector = self.mp_face_detection.FaceDetection(min_detection_confidence=0.5, model_selection=1)
+    def __init__(self, crop_size: tuple) -> None:
+        self.crop_height, self.crop_width = crop_size
 
-        self.reference = np.load(
-            os.path.join(os.path.dirname(__file__), mean_face_path)
+        self.short_range_detector = FaceDetection(
+            min_detection_confidence=0.5,
+            model_selection=0,
         )
-        self.crop_width = crop_width
-        self.crop_height = crop_height
-        self.start_idx = start_idx
-        self.stop_idx = stop_idx
-        self.window_margin = window_margin
-        self.convert_gray = convert_gray
+        self.full_range_detector = FaceDetection(
+            min_detection_confidence=0.5,
+            model_selection=1,
+        )
+        self.reference = np.load(Path(__file__).parent / "mean_face.npy")
+        self.start_idx = 3
+        self.stop_idx = 4
+        self.window_margin = 12
 
     def __call__(self, video_frames: torch.Tensor):
         landmarks = self.landmarks_detector(video_frames.numpy())
@@ -223,7 +185,8 @@ class CropMouth:
         landmarks = self.detect(video_frames, self.full_range_detector)
         if all(element is None for element in landmarks):
             landmarks = self.detect(video_frames, self.short_range_detector)
-            assert any(l is not None for l in landmarks), "Cannot detect any frames in the video"
+            assert any(landmark is not None for landmark in landmarks), \
+                "Cannot detect any frames in the video"
         return landmarks
 
     def video_process(self, video, landmarks):
@@ -237,40 +200,55 @@ class CropMouth:
         assert sequence is not None, "crop an empty patch."
         return sequence
 
-    def load_video(self, data_filename):
-        return torchvision.io.read_video(data_filename, pts_unit="sec")[0]
-
-    def detect(self, video_frames, detector):
+    def detect(
+        self,
+        video_frames: np.ndarray,
+        detector: FaceDetection,
+    ) -> np.ndarray:
         landmarks = []
         for frame in video_frames:
             results = detector.process(frame)
+
             if not results.detections:
                 landmarks.append(None)
                 continue
+
             face_points = []
             for idx, detected_faces in enumerate(results.detections):
                 max_id, max_size = 0, 0
                 bboxC = detected_faces.location_data.relative_bounding_box
                 ih, iw, ic = frame.shape
-                bbox = int(bboxC.xmin * iw), int(bboxC.ymin * ih), int(bboxC.width * iw), int(bboxC.height * ih)
+                bbox = (
+                    int(bboxC.xmin * iw),
+                    int(bboxC.ymin * ih),
+                    int(bboxC.width * iw),
+                    int(bboxC.height * ih),
+                )
                 bbox_size = (bbox[2] - bbox[0]) + (bbox[3] - bbox[1])
                 if bbox_size > max_size:
                     max_id, max_size = idx, bbox_size
+
+                keypoints = detected_faces.location_data.relative_keypoints
                 lmx = [
-                    [int(detected_faces.location_data.relative_keypoints[self.mp_face_detection.FaceKeyPoint(0).value].x * iw),
-                     int(detected_faces.location_data.relative_keypoints[self.mp_face_detection.FaceKeyPoint(0).value].y * ih)],
-                    [int(detected_faces.location_data.relative_keypoints[self.mp_face_detection.FaceKeyPoint(1).value].x * iw),
-                     int(detected_faces.location_data.relative_keypoints[self.mp_face_detection.FaceKeyPoint(1).value].y * ih)],
-                    [int(detected_faces.location_data.relative_keypoints[self.mp_face_detection.FaceKeyPoint(2).value].x * iw),
-                     int(detected_faces.location_data.relative_keypoints[self.mp_face_detection.FaceKeyPoint(2).value].y * ih)],
-                    [int(detected_faces.location_data.relative_keypoints[self.mp_face_detection.FaceKeyPoint(3).value].x * iw),
-                     int(detected_faces.location_data.relative_keypoints[self.mp_face_detection.FaceKeyPoint(3).value].y * ih)],
+                    [int(keypoints[FaceKeyPoint(0).value].x * iw),
+                     int(keypoints[FaceKeyPoint(0).value].y * ih)],
+                    [int(keypoints[FaceKeyPoint(1).value].x * iw),
+                     int(keypoints[FaceKeyPoint(1).value].y * ih)],
+                    [int(keypoints[FaceKeyPoint(2).value].x * iw),
+                     int(keypoints[FaceKeyPoint(2).value].y * ih)],
+                    [int(keypoints[FaceKeyPoint(3).value].x * iw),
+                     int(keypoints[FaceKeyPoint(3).value].y * ih)],
                     ]
                 face_points.append(lmx)
+
             landmarks.append(np.array(face_points[max_id]))
         return landmarks
 
-    def crop_patch(self, video, landmarks):
+    def crop_patch(
+        self,
+        video: np.ndarray,
+        landmarks: np.ndarray,
+    ) -> np.ndarray:
         sequence = []
         for frame_idx, frame in enumerate(video):
             window_margin = min(
@@ -294,14 +272,14 @@ class CropMouth:
 
             patch = self.cut_patch(
                 transformed_frame,
-                transformed_landmarks[self.start_idx : self.stop_idx],
+                transformed_landmarks[self.start_idx: self.stop_idx],
                 self.crop_height // 2,
                 self.crop_width // 2,
             )
             sequence.append(patch)
         return np.array(sequence)
 
-    def interpolate_landmarks(self, landmarks):
+    def interpolate_landmarks(self, landmarks: np.ndarray) -> np.ndarray:
         valid_frames_idx = [idx for idx, lm in enumerate(landmarks) if lm is not None]
 
         if not valid_frames_idx:
@@ -330,16 +308,16 @@ class CropMouth:
 
     def affine_transform(
         self,
-        frame,
-        landmarks,
-        reference,
-        target_size=(256, 256),
-        reference_size=(256, 256),
-        stable_points=(0, 1, 2, 3),
-        interpolation=cv2.INTER_LINEAR,
-        border_mode=cv2.BORDER_CONSTANT,
-        border_value=0,
-    ):
+        frame: np.ndarray,
+        landmarks: np.ndarray,
+        reference: np.ndarray,
+        target_size: tuple = (256, 256),
+        reference_size: tuple = (256, 256),
+        stable_points: tuple = (0, 1, 2, 3),
+        interpolation: int = cv2.INTER_LINEAR,
+        border_mode: int = cv2.BORDER_CONSTANT,
+        border_value: int = 0,
+    ) -> tuple:
         frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
         stable_reference = self.get_stable_reference(
             reference, reference_size, target_size
@@ -356,10 +334,14 @@ class CropMouth:
             border_mode,
             border_value,
         )
-
         return transformed_frame, transformed_landmarks
 
-    def get_stable_reference(self, reference, reference_size, target_size):
+    def get_stable_reference(
+        self,
+        reference: np.ndarray,
+        reference_size: tuple,
+        target_size: tuple,
+    ) -> np.ndarray:
         # -- right eye, left eye, nose tip, mouth center
         stable_reference = np.vstack(
             [
@@ -382,14 +364,14 @@ class CropMouth:
 
     def apply_affine_transform(
         self,
-        frame,
-        landmarks,
-        transform,
-        target_size,
-        interpolation,
-        border_mode,
-        border_value,
-    ):
+        frame: np.ndarray,
+        landmarks: np.ndarray,
+        transform: np.ndarray,
+        target_size: tuple,
+        interpolation: int,
+        border_mode: int,
+        border_value: int,
+    ) -> tuple:
         transformed_frame = cv2.warpAffine(
             frame,
             transform,
@@ -404,7 +386,12 @@ class CropMouth:
         )
         return transformed_frame, transformed_landmarks
 
-    def linear_interpolate(self, landmarks, start_idx, stop_idx):
+    def linear_interpolate(
+        self,
+        landmarks: np.ndarray,
+        start_idx: int,
+        stop_idx: int,
+    ) -> np.ndarray:
         start_landmarks = landmarks[start_idx]
         stop_landmarks = landmarks[stop_idx]
         delta = stop_landmarks - start_landmarks
@@ -414,21 +401,29 @@ class CropMouth:
             )
         return landmarks
 
-    def cut_patch(self, img, landmarks, height, width, threshold=5):
+    def cut_patch(
+        self,
+        frame: np.ndarray,
+        landmarks: np.ndarray,
+        height: int,
+        width: int,
+        threshold: int = 5,
+    ) -> np.ndarray:
         center_x, center_y = np.mean(landmarks, axis=0)
         # Check for too much bias in height and width
-        if abs(center_y - img.shape[0] / 2) > height + threshold:
+        if abs(center_y - frame.shape[0] / 2) > height + threshold:
             raise OverflowError("too much bias in height")
-        if abs(center_x - img.shape[1] / 2) > width + threshold:
+        if abs(center_x - frame.shape[1] / 2) > width + threshold:
             raise OverflowError("too much bias in width")
         # Calculate bounding box coordinates
-        y_min = int(round(np.clip(center_y - height, 0, img.shape[0])))
-        y_max = int(round(np.clip(center_y + height, 0, img.shape[0])))
-        x_min = int(round(np.clip(center_x - width, 0, img.shape[1])))
-        x_max = int(round(np.clip(center_x + width, 0, img.shape[1])))
+        y_min = int(round(np.clip(center_y - height, 0, frame.shape[0])))
+        y_max = int(round(np.clip(center_y + height, 0, frame.shape[0])))
+        x_min = int(round(np.clip(center_x - width, 0, frame.shape[1])))
+        x_max = int(round(np.clip(center_x + width, 0, frame.shape[1])))
         # Cut the image
-        cutted_img = np.copy(img[y_min:y_max, x_min:x_max])
+        cutted_img = np.copy(frame[y_min:y_max, x_min:x_max])
         return cutted_img
+
 
 class Resample:
     def __init__(self, sampling_rate: int) -> None:
@@ -529,7 +524,7 @@ class Tokenize:
 class Extract:
     def __init__(
         self,
-        crop_size: int,
+        crop_size: tuple,
         mean: tuple,
         std: tuple,
         sampling_rate: int,
