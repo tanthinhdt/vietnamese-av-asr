@@ -14,7 +14,7 @@ from omegaconf import MISSING, II
 
 
 @dataclass
-class VSPLLMTrainingConfig(FairseqDataclass):
+class AVSPLLMTrainingConfig(FairseqDataclass):
     data: str = field(default=MISSING, metadata={"help": "path to data directory"})
     labels: List[str] = field(
         default_factory=lambda: ["ltr"],
@@ -194,14 +194,14 @@ class VSPLLMTrainingConfig(FairseqDataclass):
     )
 
 
-@register_task("avsp_llm_training", dataclass=VSPLLMTrainingConfig)
+@register_task("avsp_llm_training", dataclass=AVSPLLMTrainingConfig)
 class AVSPLLMTrainingTask(FairseqTask):
 
-    cfg: VSPLLMTrainingConfig
+    cfg: AVSPLLMTrainingConfig
 
     def __init__(
         self,
-        cfg: VSPLLMTrainingConfig,
+        cfg: AVSPLLMTrainingConfig,
     ) -> None:
         super().__init__(cfg)
 
@@ -226,7 +226,7 @@ class AVSPLLMTrainingTask(FairseqTask):
     @classmethod
     def setup_task(
         cls,
-        cfg: VSPLLMTrainingConfig, **kwargs
+        cfg: AVSPLLMTrainingConfig, **kwargs
     ) -> "Avhubert_Llama_Cluster_Trans_PretrainingTask":
         if cfg.pdb:
             import pdb
