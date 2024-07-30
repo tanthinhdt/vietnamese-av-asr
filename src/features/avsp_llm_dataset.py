@@ -83,7 +83,7 @@ def load_audio_visual(
     return root, names, inds, tot, sizes, cluster_counts
 
 
-class AVSP_LLM_dataset(FairseqDataset):
+class AVSPLLMDataset(FairseqDataset):
     def __init__(
         self,
         manifest_path: str,
