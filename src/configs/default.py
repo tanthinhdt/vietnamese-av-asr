@@ -204,21 +204,16 @@ class TrainConfig:
 
 @dataclass
 class InferenceConfig:
-    source: str = "webcam"
+    source: str = None
     output_dir: str = "demo"
-    use_onnx: bool = False
+    assistant_model: str = None
     device: str = "cpu"
     cache_dir: str = "models/huggingface"
-
     visualize: bool = False
-    show_skeleton: bool = False
 
     def __post_init__(self):
         self.source = Path(self.source)
-        assert any((
-            str(self.source) == "webcam",
-            (self.source.exists() and str(self.source).endswith(EXTENSIONS))
-        )), \
-            f"Only Webcam and Video sources are supported for now (got {self.source})"
+        assert self.source.exists() and str(self.source).endswith(EXTENSIONS), \
+            f"Only video sources are supported for now (got {self.source})"
         self.output_dir = Path(self.output_dir)
         self.output_dir.mkdir(parents=True, exist_ok=True)
