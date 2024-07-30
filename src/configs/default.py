@@ -46,6 +46,7 @@ class DumpFeatureConfig(ProcessConfig):
     rank: int = None
     feat_dir: str = None
     max_chunk: int = 1_600_000
+    user_dir: str = str(Path.cwd() / "src")
 
     def __post_init__(self):
         assert self.tsv_dir is not None, "TSV directory is required"
