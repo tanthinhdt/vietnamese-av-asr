@@ -538,8 +538,8 @@ class Extract:
                 CropMouth(crop_size),
                 TV.Lambda(lambda x: x.permute(0, 3, 1, 2)),
                 TV.Grayscale(num_output_channels=1),
-                TV.Normalize(0.0, 255.0),
-                TV.Normalize(mean, std),
+                TV.Normalize((0.0,), (255.0,)),
+                TV.Normalize((mean,), (std,)),
                 TV.ToDtype(torch.float32),
             ]
         )
