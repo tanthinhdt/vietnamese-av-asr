@@ -1,6 +1,6 @@
+from glob import glob
 from pathlib import Path
 from typing import Any, List
-from glob import glob
 from dataclasses import dataclass, field
 
 
@@ -8,6 +8,98 @@ EXTENSIONS = (
     ".mp4", ".avi", ".mov", ".mkv",
     ".mp3", ".wav", ".flac", ".ogg"
 )
+
+
+@dataclass
+class DumpFeatureConfig:
+    tsv_dir: str = None
+    split: str = None
+    ckpt_path: str = None
+    layer: int = None
+    nshard: int = None
+    rank: int = None
+    feat_dir: str = None
+    max_chunk: int = 1_600_000
+
+    def __post_init__(self):
+        assert self.tsv_dir is not None, "TSV directory is required"
+        self.tsv_dir = Path(self.tsv_dir)
+        assert self.split is not None, "Split is required"
+        assert self.ckpt_path is not None, "Checkpoint path is required"
+        self.ckpt_path = Path(self.ckpt_path)
+        assert self.layer is not None, "Layer is required"
+        assert self.nshard is not None, "Number of shards is required"
+        assert self.rank is not None, "Rank is required"
+        assert self.feat_dir is not None, "Feature directory is required"
+        self.feat_dir = Path(self.feat_dir)
+        self.feat_dir.mkdir(parents=True, exist_ok=True)
+
+
+@dataclass
+class LearnKmeansConfig:
+    feat_dir: str = None
+    split: str = None
+    nshard: int = None
+    km_path: str = None
+    n_clusters: int = None
+    seed: int = 0
+    percent: float = -1
+    init: str = "k-means++"
+    max_iter: int = 100
+    batch_size: int = 10_000
+    tol: float = 0.0
+    max_no_improvement: int = 100
+    n_init: int = 20
+    reassignment_ratio: float = 0.0
+
+    def __post_init__(self):
+        assert self.feat_dir is not None, "Feature directory is required"
+        self.feat_dir = Path(self.feat_dir)
+        assert self.split is not None, "Split is required"
+        assert self.nshard is not None, "Number of shards is required"
+        assert self.km_path is not None, "K-means path is required"
+        self.km_path = Path(self.km_path)
+        assert self.n_clusters is not None, "Number of clusters is required"
+        assert self.percent <= 1.0, "Percentage should be less than or equal to 1.0"
+
+
+@dataclass
+class DumpLabelConfig:
+    feat_dir: str = None
+    split: str = None
+    km_path: str = None
+    nshard: int = None
+    rank: int = None
+    lab_dir: str = None
+
+    def __post_init__(self):
+        assert self.feat_dir is not None, "Feature directory is required"
+        self.feat_dir = Path(self.feat_dir)
+        assert self.split is not None, "Split is required"
+        assert self.km_path is not None, "K-means path is required"
+        self.km_path = Path(self.km_path)
+        assert self.nshard is not None, "Number of shards is required"
+        assert self.rank is not None, "Rank is required"
+        assert self.lab_dir is not None, "Label directory is required"
+        self.lab_dir = Path(self.lab_dir)
+        self.lab_dir.mkdir(parents=True, exist_ok=True)
+
+
+@dataclass
+class CountClustersConfig:
+    split: str = None
+    nshard: int = None
+    lab_dir: str = None
+    output_dir: str = None
+
+    def __post_init__(self):
+        assert self.split is not None, "Split is required"
+        assert self.nshard is not None, "Number of shards is required"
+        assert self.lab_dir is not None, "Label directory is required"
+        self.lab_dir = Path(self.lab_dir)
+        assert self.output_dir is not None, "Output directory is required"
+        self.output_dir = Path(self.output_dir)
+        self.output_dir.mkdir(parents=True, exist_ok=True)
 
 
 @dataclass
