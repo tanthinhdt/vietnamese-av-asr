@@ -72,7 +72,7 @@ def learn_kmeans(config: LearnKMeansConfig) -> None:
 
     km_model.fit(feat)
     inertia = -km_model.score(feat) / len(feat)
-    logger.info("Total intertia: %.2f", inertia)
+    logger.info(f"Total intertia: {inertia:.2f}")
 
     joblib.dump(km_model, config.km_path)
     logger.info(f"K-means model saved to {config.km_path}")
