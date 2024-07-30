@@ -12,7 +12,7 @@ from configs import (
     ProcessConfig,
     CreateManifestConfig,
     DumpFeatureConfig,
-    LearnKmeansConfig,
+    LearnKMeansConfig,
     DumpLabelConfig,
     CountClustersConfig,
 )
@@ -24,7 +24,7 @@ class Config:
         {
             "create_manifest": CreateManifestConfig,
             "dump_feature": DumpFeatureConfig,
-            "learn_kmeans": LearnKmeansConfig,
+            "learn_kmeans": LearnKMeansConfig,
             "dump_label": DumpLabelConfig,
             "count_clusters": CountClustersConfig,
         },
@@ -46,7 +46,7 @@ def main(args: Namespace) -> None:
         create_manifest(config)
     elif isinstance(config, DumpFeatureConfig):
         dump_feature(config)
-    elif isinstance(config, LearnKmeansConfig):
+    elif isinstance(config, LearnKMeansConfig):
         learn_kmeans(config)
     elif isinstance(config, DumpLabelConfig):
         dump_label(config)

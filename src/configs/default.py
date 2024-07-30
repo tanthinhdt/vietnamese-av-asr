@@ -62,7 +62,7 @@ class DumpFeatureConfig(ProcessConfig):
 
 
 @dataclass
-class LearnKmeansConfig(ProcessConfig):
+class LearnKMeansConfig(ProcessConfig):
     feat_dir: str = None
     split: str = None
     nshard: int = None
