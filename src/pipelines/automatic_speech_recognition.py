@@ -137,8 +137,8 @@ class Sanitize:
                 f"Expected video input to have 'sampling_rate' key, got {inputs.keys()}"
 
             data_shape = inputs["data"].shape
-            assert len(data_shape.shape) == 1, \
-                f"Expected audio input to have 1 dimensions, got {data_shape.shape}"
+            assert len(data_shape) == 1, \
+                f"Expected audio input to have 1 dimensions, got {data_shape}"
 
         return inputs
 
