@@ -29,7 +29,8 @@ class AVHubertFeatureExtractor(FeatureExtractionMixin):
         super().__init__(**kwargs)
         self.audio_feat_dim = config.audio_feat_dim
 
-        self.size = 88
+        self.height = 88
+        self.width = 88
         self.num_frames = 76
         self.num_channels = 1
 
