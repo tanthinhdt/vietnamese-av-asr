@@ -24,9 +24,9 @@ class CreateManifestConfig(ProcessConfig):
     output_dir: str = None
 
     def __post_init__(self):
-        assert self.data_dir is not None and Path(self.data_dir).exists(), \
-            "Data directory is not found"
+        assert self.data_dir is not None, "Data directory is required"
         self.data_dir = Path(self.data_dir)
+        assert self.data_dir.exists(), f"Data directory {self.data_dir} is not found"
         self.metadata_path = self.data_dir / "metadata.parquet"
         assert self.metadata_path.exists(), "Metadata file is not found"
         assert self.split is not None, "Split is required"
