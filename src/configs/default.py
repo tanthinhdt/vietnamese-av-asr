@@ -86,6 +86,7 @@ class LearnKMeansConfig(ProcessConfig):
         assert self.nshard is not None, "Number of shards is required"
         assert self.km_path is not None, "K-means path is required"
         self.km_path = Path(self.km_path)
+        self.km_path.parent.mkdir(parents=True, exist_ok=True)
         assert self.n_clusters is not None, "Number of clusters is required"
         assert self.percent <= 1.0, "Percentage should be less than or equal to 1.0"
 
