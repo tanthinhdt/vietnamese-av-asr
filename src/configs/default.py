@@ -11,6 +11,28 @@ EXTENSIONS = (
 
 
 @dataclass
+class CreateManifestConfig:
+    data_dir: str = None
+    split: str = None
+    src_lang: str = "vi"
+    dst_lang: str = "vi"
+    frac: float = 1.0
+    output_dir: str = None
+
+    def __post_init__(self):
+        assert self.data_dir is not None and Path(self.data_dir).exists(), \
+            "Data directory is not found"
+        self.data_dir = Path(self.data_dir)
+        self.metadata_path = self.data_dir / "metadata.parquet"
+        assert self.metadata_path.exists(), "Metadata file is not found"
+        assert self.split is not None, "Split is required"
+        assert 0 < self.frac <= 1.0, "Fraction should be in (0, 1]"
+        assert self.output_dir is not None, "Output directory is required"
+        self.output_dir = Path(self.output_dir)
+        self.output_dir.mkdir(parents=True, exist_ok=True)
+
+
+@dataclass
 class DumpFeatureConfig:
     tsv_dir: str = None
     split: str = None
