@@ -10,7 +10,12 @@ EXTENSIONS = (
 
 
 @dataclass
-class CreateManifestConfig:
+class ProcessConfig:
+    ...
+
+
+@dataclass
+class CreateManifestConfig(ProcessConfig):
     data_dir: str = None
     split: str = None
     src_lang: str = "vi"
@@ -32,7 +37,7 @@ class CreateManifestConfig:
 
 
 @dataclass
-class DumpFeatureConfig:
+class DumpFeatureConfig(ProcessConfig):
     tsv_dir: str = None
     split: str = None
     ckpt_path: str = None
@@ -57,7 +62,7 @@ class DumpFeatureConfig:
 
 
 @dataclass
-class LearnKmeansConfig:
+class LearnKmeansConfig(ProcessConfig):
     feat_dir: str = None
     split: str = None
     nshard: int = None
@@ -85,7 +90,7 @@ class LearnKmeansConfig:
 
 
 @dataclass
-class DumpLabelConfig:
+class DumpLabelConfig(ProcessConfig):
     feat_dir: str = None
     split: str = None
     km_path: str = None
@@ -107,7 +112,7 @@ class DumpLabelConfig:
 
 
 @dataclass
-class CountClustersConfig:
+class CountClustersConfig(ProcessConfig):
     split: str = None
     nshard: int = None
     lab_dir: str = None
@@ -124,21 +129,11 @@ class CountClustersConfig:
 
 
 @dataclass
-class ProcessConfig:
+class UploadConfig:
     path: str = None    # Path to the file or directory to process
     log_path: str = None    # Path to the log file
     overwrite: bool = False     # Overwrite existing files
     reverse: bool = False   # Reverse the order of the files
-
-    def __post_init__(self):
-        assert glob(self.path), f"Path {self.path} does not exist."
-        self.path = Path(self.path)
-        if self.log_path is not None:
-            self.log_path = Path(self.log_path)
-
-
-@dataclass
-class UploadConfig(ProcessConfig):
     repo_id: str = None     # HuggingFace repository ID
     dir_in_repo: str = "."      # Path to upload in the repository
     repo_type: str = "dataset"      # Type of the repository
@@ -147,7 +142,10 @@ class UploadConfig(ProcessConfig):
     zip: bool = False   # Zip the directory before uploading
 
     def __post_init__(self):
-        super().__post_init__()
+        assert glob(self.path), f"Path {self.path} does not exist."
+        self.path = Path(self.path)
+        if self.log_path is not None:
+            self.log_path = Path(self.log_path)
         assert self.repo_id is not None, "Repository ID is required"
         self.dir_in_repo = Path(self.dir_in_repo)
         assert self.repo_type in ["dataset", "model"], \
