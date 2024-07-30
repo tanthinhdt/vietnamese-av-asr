@@ -79,6 +79,7 @@ target/
 /data/
 /models/
 /scripts/
+/legacy/
 
 # exclude cache folders
 models--*/
