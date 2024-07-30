@@ -38,6 +38,14 @@ class AVHubertFeatureExtractor(FeatureExtractionMixin):
 class AVSPLLMFeatureExtractor(AVHubertFeatureExtractor):
     def __init__(self, config: AVSPLLMConfig = AVSPLLMConfig(), **kwargs) -> None:
         super().__init__(config, **kwargs)
+        self.mean = 0.421
+        self.std = 0.165
+        self.sampling_rate = 16000
+        self.stack_order = 4
+        self.normalization = True
+        self.label_rate = -1
+        self.max_sample_size = 500
+        self.pad_audio = True
 
 
 class AVHubertVideoFeatureEncoder(nn.Module):
