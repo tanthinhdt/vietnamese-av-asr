@@ -7,6 +7,7 @@ common:
   tensorboard_logdir: tblog
   seed: 1337
   user_dir: ???
+  wandb_project: AVSP-LLM
 
 checkpoint:
   save_interval: 1
@@ -19,11 +20,11 @@ checkpoint:
 distributed_training:
   ddp_backend: no_c10d
   find_unused_parameters: true
-  distributed_world_size: 8
-  nprocs_per_node: 8
+  distributed_world_size: 1
+  nprocs_per_node: 1
 
 task:
-  _name: vsp_llm_training
+  _name: avsp_llm_training
   is_s2s: true
   data: ???
   label_dir: ???
@@ -33,19 +34,19 @@ task:
   fine_tuning: true
   stack_order_audio: 4
   max_sample_size: 500
-  modalities: ["video"]
+  modalities: ["video", "audio"]
   image_aug: true
   pad_audio: true
   random_crop: false
   llm_ckpt_path: ???
 
 dataset:
-  num_workers: 0
+  num_workers: 0 # useless
   validate_after_updates: 0
   validate_interval: 1
   train_subset: train
-  valid_subset: test
-  batch_size: 1
+  valid_subset: valid
+  batch_size: 1 # must be 1
 
 criterion:
   _name: decoder_only_language_modeling_loss
@@ -71,7 +72,7 @@ lr_scheduler:
   final_lr_scale: 0.05
 
 model:
-  _name: vsp_llm
+  _name: avsp_llm
   w2v_path: ???
   llm_ckpt_path: ???
   apply_mask: false
@@ -91,7 +92,6 @@ model:
   encoder_embed_dim: 1024
   decoder_embed_dim: 4096
   freeze_finetune_updates: 18000
-
 
 hydra:
   job:
