@@ -7,7 +7,7 @@ from transformers import (
 )
 from transformers.pipelines import PIPELINE_REGISTRY
 from configs import ModelConfig, InferenceConfig
-from models import (
+from modules import (
     AVSPLLMConfig,
     AVSPLLMFeatureExtractor,
     AVSPLLMModel,
