@@ -1,0 +1,1 @@
+from .test_wav2vec2_large_vi_vlsp2020 import test_wav2vec2_large_vi_vlsp2020

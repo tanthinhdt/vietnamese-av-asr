@@ -244,3 +244,30 @@ class InferenceConfig:
             f"Only video sources are supported for now (got {self.source})"
         self.output_dir = Path(self.output_dir)
         self.output_dir.mkdir(parents=True, exist_ok=True)
+
+
+@dataclass
+class TestConfig:
+    model: str = None
+    test_manifest_file: str = "data/processed/vasr/audio-visual/full/test.tsv"
+    test_ref_file: str = "data/processed/vasr/audio-visual/full/test.wrd"
+    output_dir: str = None
+    cache_dir: str = "models/huggingface"
+    device: str = "cpu"
+    log_file: str = None
+
+    with_lm: bool = False
+
+    def __post_init__(self):
+        assert self.model is not None, "Model is required"
+        assert Path(self.test_manifest_file).exists(), "Test manifest file is not found"
+        assert Path(self.test_ref_file).exists(), "Test reference file is not found"
+        if self.output_dir is None:
+            self.output_dir = Path("evaluations") / self.model
+        self.output_dir = Path(self.output_dir)
+        self.output_dir.mkdir(parents=True, exist_ok=True)
+
+
+@dataclass
+class DecodeConfig:
+    ...
