@@ -149,10 +149,10 @@ class Sanitize:
         for key, value in inputs.items():
             if value is None:
                 continue
-            if isinstance(value[key]["data"], np.ndarray):
-                value[key]["data"] = torch.from_numpy(value[key]["data"])
+            if isinstance(value["data"], np.ndarray):
+                inputs[key]["data"] = torch.from_numpy(value["data"])
             else:
-                value[key]["data"] = value[key]["data"].cpu()
+                inputs[key]["data"] = value["data"].cpu()
 
         return inputs
 
