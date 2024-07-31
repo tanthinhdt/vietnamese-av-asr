@@ -551,6 +551,7 @@ class Extract:
         self.video_transforms = TV.Compose(
             [
                 CropMouth(crop_size),
+                TV.ToDtype(torch.float32),
                 TV.Lambda(lambda x: x.permute(0, 3, 1, 2)),
                 TV.Grayscale(num_output_channels=1),
                 TV.Normalize((0.0,), (255.0,)),
@@ -560,6 +561,7 @@ class Extract:
         )
 
         self.audio_transforms = [
+            ConvertStereoToMono(),
             Resample(sampling_rate),
             LogMelFilterBank(sampling_rate),
             Stack(stack_order),
