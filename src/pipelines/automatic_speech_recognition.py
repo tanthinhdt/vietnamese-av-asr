@@ -135,11 +135,6 @@ class Sanitize:
                 f"Expected video input to have 'data' key, got {inputs.keys()}"
             assert "sampling_rate" in inputs, \
                 f"Expected video input to have 'sampling_rate' key, got {inputs.keys()}"
-
-            data_shape = inputs["data"].shape
-            assert len(data_shape) == 1, \
-                f"Expected audio input to have 1 dimensions, got {data_shape}"
-
         return inputs
 
     def __call__(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
@@ -423,6 +418,26 @@ class CropMouth:
         # Cut the image
         cutted_img = np.copy(frame[y_min:y_max, x_min:x_max])
         return cutted_img
+
+
+class ConvertStereoToMono:
+    def __call__(self, inputs: torch.Tensor) -> torch.Tensor:
+        """
+        Parameters
+        ----------
+        inputs : torch.Tensor
+            The input tensor with shape (channels, time).
+
+        Returns
+        -------
+        torch.Tensor
+            The output tensor with shape (1, time).
+        """
+        if inputs["data"].shape[0] > 1:
+            inputs["data"] = torch.mean(inputs["data"], dim=0, keepdim=True)
+
+        logger.info("Converted stereo to mono")
+        return inputs
 
 
 class Resample:
