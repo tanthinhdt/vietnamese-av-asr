@@ -12,7 +12,11 @@ def load_test_set(test_manifest_file: str, test_ref_file: str) -> Dataset:
     with open(test_ref_file) as f:
         refs = [line.strip() for line in f.readlines()]
     test_set = Dataset.from_dict({"audio": audio_files, "ref": refs})
-    return test_set.cast_column("audio", Audio())
+    test_set = test_set.cast_column("audio", Audio())
+
+    logger.info("Test set loaded")
+    logger.info(f"Num samples: {len(test_set)}")
+    return test_set
 
 
 def log_params(model: torch.nn.Module) -> None:

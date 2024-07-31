@@ -51,8 +51,6 @@ def evaluate(
 
 def test_wav2vec2_base_vietnamese_250h(config: TestConfig) -> None:
     test_set = load_test_set(config.test_manifest_file, config.test_ref_file)
-    logger.info("Test set loaded")
-    logger.info(f"Num samples: {len(test_set)}")
 
     repo_id = "nguyenvulebinh/wav2vec2-base-vietnamese-250h"
     logger.info(f"Model {repo_id}")
@@ -77,6 +75,7 @@ def test_wav2vec2_base_vietnamese_250h(config: TestConfig) -> None:
     )
     flops = compute_flops(model, inputs=(input_values,))
     logger.info(f"FLOPs: {flops:,}")
+    logger.info(f"FLOPs (G): {flops / 1_000_000_000:.2f}")
 
     results = test_set.map(
         evaluate,
