@@ -21,10 +21,12 @@ def load_test_set(test_manifest_file: str, test_ref_file: str) -> Dataset:
 
 def log_params(model: torch.nn.Module) -> None:
     num_params = sum(p.numel() for p in model.parameters())
-    logger.info(f"Num trainable params: {num_params:,}")
+    logger.info(f"Num params: {num_params:,}")
+    logger.info(f"Num params (M): {num_params / 1_000_000:,.2f}")
 
     num_trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
-    logger.info(f"Num params: {num_trainable_params:,}")
+    logger.info(f"Num trainable params: {num_trainable_params:,}")
+    logger.info(f"Num trainable params (M): {num_trainable_params / 1_000_000:,.2f}")
 
 
 def log_average_results(results: pd.DataFrame) -> None:
