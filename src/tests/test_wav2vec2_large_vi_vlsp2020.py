@@ -5,7 +5,7 @@ from importlib.machinery import SourceFileLoader
 from utils import compute_cer, compute_wer, compute_flops
 from loguru import logger
 from configs import TestConfig
-from .utils import load_test_set
+from .utils import load_test_set, log_params
 
 
 def get_input_values(
@@ -83,12 +83,7 @@ def test_wav2vec2_large_vi_vlsp2020(config: TestConfig) -> None:
     )
     model = model.eval().to(config.device)
     logger.info("Model loaded")
-
-    num_params = sum(p.numel() for p in model.parameters())
-    logger.info(f"Num trainable params: {num_params:,}")
-
-    num_trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
-    logger.info(f"Num params: {num_trainable_params:,}")
+    log_params(model)
 
     sample = test_set[0]["audio"]
     input_values = get_input_values(
