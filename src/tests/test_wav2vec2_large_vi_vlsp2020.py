@@ -5,7 +5,12 @@ from importlib.machinery import SourceFileLoader
 from utils import compute_cer, compute_wer, compute_flops
 from loguru import logger
 from configs import TestConfig
-from .utils import load_test_set, log_params
+from .utils import (
+    load_test_set,
+    log_params,
+    log_average_results,
+    save_results,
+)
 
 
 def get_input_values(
@@ -106,14 +111,10 @@ def test_wav2vec2_large_vi_vlsp2020(config: TestConfig) -> None:
     )
     results = results.to_pandas()
     logger.info("Evaluation done")
-
-    logger.info(f"WER: {results['wer'].mean():.2f}")
-    logger.info(f"CER: {results['cer'].mean():.2f}")
+    log_average_results(results)
 
     if config.with_lm:
         results_file = config.output_dir / "results_with_lm.json"
     else:
         results_file = config.output_dir / "results_without_lm.json"
-    reduced_results = results[["ref", "hyp", "cer", "wer"]]
-    reduced_results.to_json(results_file, default_handler=str)
-    logger.info(f"Results saved to {results_file}")
+    save_results(results, results_file)

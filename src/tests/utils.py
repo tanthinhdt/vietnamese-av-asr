@@ -1,4 +1,5 @@
 import torch
+import pandas as pd
 from pathlib import Path
 from datasets import Dataset, Audio
 from loguru import logger
@@ -20,3 +21,16 @@ def log_params(model: torch.nn.Module) -> None:
 
     num_trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     logger.info(f"Num params: {num_trainable_params:,}")
+
+
+def log_average_results(results: pd.DataFrame) -> None:
+    avg_wer = results["wer"].mean()
+    avg_cer = results["cer"].mean()
+    logger.info(f"Average WER: {avg_wer:.2f}")
+    logger.info(f"Average CER: {avg_cer:.2f}")
+
+
+def save_results(results: pd.DataFrame, results_file: Path) -> None:
+    reduced_results = results[["ref", "hyp", "cer", "wer"]]
+    reduced_results.to_json(results_file, default_handler=str)
+    logger.info(f"Results saved to {results_file}")
