@@ -6,6 +6,7 @@ from configs import TestConfig
 from tests import (
     test_wav2vec2_large_vi_vlsp2020,
     test_wav2vec2_base_vietnamese_250h,
+    test_wav2vec2_bartpho,
 )
 from utils import config_logger
 
@@ -16,6 +17,7 @@ logging.root.setLevel(logging.WARNING)
 test_models_dict = {
     "wav2vec2-large-vi-vlsp2020": test_wav2vec2_large_vi_vlsp2020,
     "wav2vec2-base-vietnamese-250h": test_wav2vec2_base_vietnamese_250h,
+    "wav2vec2-bartpho": test_wav2vec2_bartpho,
 }
 
 
