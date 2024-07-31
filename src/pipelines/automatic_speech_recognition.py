@@ -650,12 +650,12 @@ class Pad:
         else:
             inputs, start = self.__crop_to_max_size(inputs, target_size, start)
 
-        if len(inputs.shape) == 2:
+        if len(inputs.shape) == 3:
             # [B, T, F] -> [B, F, T]
             inputs = inputs.transpose(1, 2)
         else:
-            # [T, C, H, W] -> [C, T, H, W]
-            inputs = inputs.permute((1, 0, 2, 3)).contiguous()
+            # [B, T, C, H, W] -> [B, C, T, H, W]
+            inputs = inputs.permute((0, 2, 1, 3, 4)).contiguous()
 
         return inputs, padding_mask, start
 
