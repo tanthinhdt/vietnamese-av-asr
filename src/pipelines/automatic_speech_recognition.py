@@ -147,7 +147,7 @@ class Sanitize:
         inputs["audio"] = self.__sanitize_audio(inputs.get("audio", None))
 
         for key, value in inputs.items():
-            if value is None:
+            if value is None or isinstance(value, torch.Tensor):
                 continue
             if isinstance(value["data"], np.ndarray):
                 inputs[key]["data"] = torch.from_numpy(value["data"])
