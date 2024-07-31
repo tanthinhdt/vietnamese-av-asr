@@ -1,6 +1,5 @@
 import torch
 from transformers import Wav2Vec2Processor, Wav2Vec2ForCTC
-from transformers import Wav2Vec2ProcessorWithLM
 from utils import compute_cer, compute_wer, compute_flops
 from loguru import logger
 from configs import TestConfig
@@ -13,7 +12,7 @@ from .utils import (
 
 
 def get_input_values(
-    processor: Wav2Vec2ProcessorWithLM,
+    processor: Wav2Vec2Processor,
     data: torch.Tensor,
     sampling_rate: int,
     device: str,
