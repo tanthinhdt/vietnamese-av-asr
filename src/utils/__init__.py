@@ -5,3 +5,4 @@ from .loggers import *
 from .visualization import *
 from .media import *
 from .transforms import *
+from .metrics import *
