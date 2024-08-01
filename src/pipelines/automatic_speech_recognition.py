@@ -579,6 +579,7 @@ class Extract:
                 TV.Normalize((0.0,), (255.0,)),
                 TV.Normalize((mean,), (std,)),
                 TV.ToDtype(torch.float32),
+                TV.Lambda(lambda x: x.permute(0, 2, 3, 1)),
             ]
         )
 
@@ -631,9 +632,15 @@ class Collate:
 
 
 class Pad:
-    def __init__(self, max_sample_size: int, pad_audio: bool) -> None:
+    def __init__(
+        self,
+        max_sample_size: int,
+        pad_audio: bool,
+        random_crop: bool = False,
+    ) -> None:
         self.max_sample_size = max_sample_size
         self.pad_audio = pad_audio
+        self.random_crop = random_crop
 
     def __crop_to_max_size(
         self,
@@ -659,32 +666,38 @@ class Pad:
         self,
         inputs: torch.Tensor,
         target_size: int,
-        start: int = None,
+        starts: list = None,
     ) -> Tuple[torch.Tensor, int, int]:
-        padding_mask = torch.BoolTensor(target_size).fill_(False)
-        start = start or None
+        feat_dim = list(inputs.shape[2:])
+        processed_inputs = torch.zeros([len(inputs), target_size] + feat_dim)
+        print(processed_inputs.shape)
+        padding_mask = torch.BoolTensor(len(inputs), target_size).fill_(False)
+        starts = starts if starts is not None else [None] * len(inputs)
 
-        diff = len(inputs) - target_size
-        if diff < 0:
-            assert self.pad_audio, "Cannot pad audio"
-            inputs = torch.cat(
-                [
-                    inputs,
-                    inputs.new_full([-diff] + list(inputs.shape[1:]), 0.0),
-                ]
-            )
-            padding_mask[diff:] = True
-        else:
-            inputs, start = self.__crop_to_max_size(inputs, target_size, start)
+        for i, sample in enumerate(inputs):
+            diff = len(sample) - target_size
+            if diff < 0:
+                assert self.pad_audio, "Cannot pad audio"
+                processed_inputs[i] = torch.cat(
+                    [
+                        sample,
+                        sample.new_full([-diff] + list(sample.shape[1:]), 0.0),
+                    ]
+                )
+                padding_mask[i, diff:] = True
+            else:
+                processed_inputs[i], starts[i] = self.__crop_to_max_size(
+                    sample, target_size, starts[i]
+                )
 
-        if len(inputs.shape) == 3:
+        if len(processed_inputs.shape) == 3:
             # [B, T, F] -> [B, F, T]
-            inputs = inputs.transpose(1, 2)
+            processed_inputs = processed_inputs.transpose(1, 2)
         else:
             # [B, T, C, H, W] -> [B, C, T, H, W]
-            inputs = inputs.permute((0, 2, 1, 3, 4)).contiguous()
+            processed_inputs = processed_inputs.permute((0, 4, 1, 2, 3)).contiguous()
 
-        return inputs, padding_mask, start
+        return processed_inputs, padding_mask, starts
 
     def __call__(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
         video = inputs["source"]["video"]
@@ -705,36 +718,29 @@ class Pad:
             elif diff > 0:
                 audio = audio[:-diff]
 
-        if audio is not None:
-            audio_size = len(audio)
-        else:
-            audio_size = len(video)
+        target_size = video.shape[1] if audio is None else audio.shape[1]
 
         if self.pad_audio:
-            audio_size = min(audio_size, self.max_sample_size)
+            target_size = min(target_size, self.max_sample_size)
         else:
-            audio_size = max(audio_size, self.max_sample_size)
+            target_size = max(target_size, self.max_sample_size)
 
         if audio is not None:
-            audio, audio_mask, audio_start = self.__generate_padding_mask(
-                audio, audio_size
+            audio, audio_mask, audio_starts = self.__generate_padding_mask(
+                audio, target_size
             )
 
         if video is not None:
-            video, video_mask, video_start = self.__generate_padding_mask(
-                video, audio_size
+            video, video_mask, video_starts = self.__generate_padding_mask(
+                video, target_size, audio_starts
             )
 
-        assert audio_size == len(audio) == len(video), \
-            "Audio and video sizes are not equal"
-        assert audio_mask == video_mask, "Audio and video masks are not equal"
-        assert audio_start == video_start, "Audio and video starts are not equal"
-
+        logger.info("Padded inputs")
         return {
             "source": {
                 "audio": audio,
                 "video": video,
-                "text": inputs["text"],
+                "text": inputs["source"]["text"],
             },
             "padding_mask": audio_mask,
         }
