@@ -6,7 +6,7 @@ import torch.nn.functional as F
 import torchaudio.transforms as TA
 import torchvision.transforms.v2 as TV
 from typing import Dict, Any, Tuple
-from transformers import Pipeline
+from transformers import Pipeline, GenerationConfig
 from python_speech_features import logfbank
 from optimum.onnxruntime import ORTModelForCausalLM
 from mediapipe.python.solutions.face_detection import FaceDetection, FaceKeyPoint
@@ -61,8 +61,11 @@ class AutomaticSpeechRecognitionPipeline(Pipeline):
             f"Language {preprocess_kwargs['lang']} is not supported"
         # Sanitize the parameters for the forward pass
         forward_kwargs = {}
+        forward_kwargs["generation_config"] = kwargs.pop(
+            "generation_config", GenerationConfig()
+        )
         # Sanitize the parameters for postprocessing
-        postprocess_kwargs = kwargs
+        postprocess_kwargs = {}
 
         return preprocess_kwargs, forward_kwargs, postprocess_kwargs
 
@@ -105,15 +108,30 @@ class AutomaticSpeechRecognitionPipeline(Pipeline):
 
         return self.transforms(inputs)
 
-    def _forward(self, inputs: torch.Tensor) -> torch.Tensor:
+    def _forward(
+        self,
+        inputs: torch.Tensor,
+        generation_config: GenerationConfig,
+    ) -> torch.Tensor:
         llm_input, _ = self.model.embed(**inputs)
-        return llm_input
-
-    def postprocess(self, llm_input: torch.Tensor, **kwargs) -> str:
+        llm_input = llm_input.to(torch.float16).to(self.device)
         if self.assistant_model is None:
             self.model.decoder.config.use_cache = True
-            return self.model.decoder.generate(inputs_embeds=llm_input, **kwargs)
-        return self.assistant_model.generate(inputs_embeds=llm_input, **kwargs)
+            return self.model.decoder.generate(
+                inputs_embeds=llm_input,
+                **vars(generation_config),
+            )
+        return self.assistant_model.generate(
+            inputs_embeds=llm_input,
+            **vars(generation_config),
+        )
+
+    def postprocess(self, inputs: torch.Tensor) -> str:
+        return self.tokenizer.batch_decode(
+            inputs,
+            skip_special_tokens=True,
+            clean_up_tokenization_spaces=True,
+        )
 
 
 class Sanitize:
