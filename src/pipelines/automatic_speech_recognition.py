@@ -10,6 +10,7 @@ from transformers import Pipeline
 from python_speech_features import logfbank
 from optimum.onnxruntime import ORTModelForCausalLM
 from mediapipe.python.solutions.face_detection import FaceDetection, FaceKeyPoint
+from loguru import logger
 
 
 class AutomaticSpeechRecognitionPipeline(Pipeline):
@@ -84,7 +85,7 @@ class AutomaticSpeechRecognitionPipeline(Pipeline):
                 "audio":
                     "sampling_rate": int,
                     "data": np.ndarray or torch.Tensor
-                        (time,).
+                        (channels, time).
 
         Returns
         -------
@@ -100,6 +101,8 @@ class AutomaticSpeechRecognitionPipeline(Pipeline):
             return_tensors="pt",
         )
         inputs["text_source"] = tokenizer_output.input_ids[0]
+        logger.info("Tokenized instruction")
+
         return self.transforms(inputs)
 
     def _forward(self, inputs: torch.Tensor) -> torch.Tensor:
@@ -149,6 +152,7 @@ class Sanitize:
             else:
                 inputs[key]["data"] = value["data"].cpu()
 
+        logger.info("Sanitized inputs")
         return inputs
 
 
@@ -172,9 +176,10 @@ class CropMouth:
     def __call__(self, video_frames: torch.Tensor):
         landmarks = self.landmarks_detector(video_frames.numpy())
         video = self.video_process(video_frames.numpy(), landmarks)
-        if video is None:
-            return
-        return torch.from_numpy(video)
+        video = torch.from_numpy(video) if video is not None else None
+
+        logger.info("Cropped mouth")
+        return video
 
     def landmarks_detector(self, video_frames):
         landmarks = self.detect(video_frames, self.full_range_detector)
@@ -447,12 +452,15 @@ class Resample:
     def __call__(self, inputs: Dict[str, Any]) -> torch.Tensor:
         data = inputs["data"]
         sampling_rate = inputs["sampling_rate"]
+
         if sampling_rate != self.sampling_rate:
             transform = TA.Resample(
                 orig_freq=sampling_rate,
                 new_freq=self.sampling_rate,
             )
             data = transform(data)
+
+        logger.info("Resampled audio")
         return data
 
 
@@ -461,8 +469,16 @@ class LogMelFilterBank:
         self.sampling_rate = sampling_rate
 
     def __call__(self, inputs: torch.Tensor) -> torch.Tensor:
-        inputs = torch.from_numpy(logfbank(inputs.numpy(), samplerate=self.sampling_rate))
-        return inputs.to(torch.float32)
+        inputs = torch.from_numpy(
+            logfbank(
+                inputs.numpy(),
+                samplerate=self.sampling_rate,
+            )
+        )
+        inputs = inputs.to(torch.float32)
+
+        logger.info("Computed log mel filter bank")
+        return inputs
 
 
 class Stack:
@@ -471,6 +487,7 @@ class Stack:
 
     def __call__(self, inputs: torch.Tensor) -> torch.Tensor:
         feat_dim = inputs.shape[1]
+
         if len(inputs) % self.stack_order != 0:
             res = self.stack_order - len(inputs) % self.stack_order
             res = torch.zeros([res, feat_dim], dtype=inputs.dtype)
@@ -480,6 +497,8 @@ class Stack:
             .reshape((-1, self.stack_order, feat_dim))
             .reshape(-1, self.stack_order * feat_dim)
         )
+
+        logger.info("Stacked audio")
         return inputs
 
 
@@ -487,6 +506,8 @@ class Normalize:
     def __call__(self, inputs: torch.Tensor) -> torch.Tensor:
         with torch.no_grad():
             inputs = F.layer_norm(inputs, inputs.shape[1:])
+
+        logger.info("Normalized audio")
         return inputs
 
 
@@ -531,8 +552,9 @@ class Tokenize:
             size = int(((size - 0.1) // pad_to_multiple + 1) * pad_to_multiple)
 
         res = values.new(size).fill_(pad_idx)
-
         copy_tensor(values, res[size - len(values):] if left_pad else res[: len(values)])
+
+        logger.info("Tokenized text")
         return res
 
 
@@ -583,6 +605,8 @@ class Extract:
         if inputs["audio"] is not None:
             inputs["audio"] = self.audio_transforms(inputs["audio"])
         tokens = self.text_transforms(inputs["text_source"])
+
+        logger.info("Extracted features")
         return {
             "source": {
                 "audio": inputs["audio"],
@@ -594,13 +618,16 @@ class Extract:
 
 class Collate:
     def __call__(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
-        return {
+        inputs = {
             "source": {
                 "audio": torch.stack([inputs["source"]["audio"]]),
                 "video": torch.stack([inputs["source"]["video"]]),
                 "text": torch.stack([inputs["source"]["text"]]),
             },
         }
+
+        logger.info("Collated inputs")
+        return inputs
 
 
 class Pad:
@@ -718,7 +745,7 @@ class ToDevice:
         self.device = device
 
     def __call__(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
-        return {
+        inputs = {
             "source": {
                 "audio": inputs["source"]["audio"].to(self.device),
                 "video": inputs["source"]["video"].to(self.device),
@@ -726,3 +753,6 @@ class ToDevice:
             },
             "padding_mask": inputs["padding_mask"].to(self.device),
         }
+
+        logger.info("Moved inputs to device")
+        return inputs
