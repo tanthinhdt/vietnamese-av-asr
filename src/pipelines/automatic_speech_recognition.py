@@ -624,6 +624,7 @@ class Extract:
         if inputs["audio"] is not None:
             inputs["audio"] = self.audio_transforms(inputs["audio"])
         tokens = self.text_transforms(inputs["text_source"])
+        text_attn_mask = tokens != 0
 
         logger.info("Extracted features")
         return {
@@ -632,6 +633,7 @@ class Extract:
                 "video": inputs["video"],
                 "text": tokens,
             },
+            "text_attn_mask": text_attn_mask,
         }
 
 
@@ -643,6 +645,7 @@ class Collate:
                 "video": torch.stack([inputs["source"]["video"]]),
                 "text": torch.stack([inputs["source"]["text"]]),
             },
+            "text_attn_mask": torch.stack([inputs["text_attn_mask"]]),
         }
 
         logger.info("Collated inputs")
@@ -761,6 +764,7 @@ class Pad:
                 "text": inputs["source"]["text"],
             },
             "padding_mask": audio_mask,
+            "text_attn_mask": inputs["text_attn_mask"],
         }
 
 
@@ -776,6 +780,7 @@ class ToDevice:
                 "text": inputs["source"]["text"].to(self.device),
             },
             "padding_mask": inputs["padding_mask"].to(self.device),
+            "text_attn_mask": inputs["text_attn_mask"].to(self.device),
         }
 
         logger.info("Moved inputs to device")
