@@ -695,6 +695,9 @@ class AVSPLLMModel(PreTrainedModel):
         self.decoder.print_trainable_parameters()
 
     def apply_kmeans(self, feat: torch.Tensor) -> torch.Tensor:
+        self. C = self.C.to(feat.device)
+        self.Cnorm = self.Cnorm.to(feat.device)
+
         dist = (
             feat.squeeze(0).pow(2).sum(1, keepdim=True)
             - 2 * torch.matmul(feat.squeeze(0), self.C)
@@ -749,7 +752,7 @@ class AVSPLLMModel(PreTrainedModel):
         output["encoder_out"] = self.avfeat_to_llm(output["encoder_out"])
 
         reduced_enc_out = self.deduplicate(output["encoder_out"], cluster_counts)
-        reduced_enc_out = reduced_enc_out.to(self.decoder.device)
+        reduced_enc_out = reduced_enc_out.to(self.device)
         B, T, D = reduced_enc_out.size()
 
         instruction = source["text"]
@@ -769,9 +772,7 @@ class AVSPLLMModel(PreTrainedModel):
         llm_labels[llm_labels == 0] = -100
 
         _, instruction_embedding_t, _ = instruction_embedding.size()
-        target_ids = (
-            torch.full((B, T + instruction_embedding_t), -100).long().to(labels.device)
-        )
+        target_ids = torch.full((B, T + instruction_embedding_t), -100).long()
         llm_labels = torch.cat((target_ids, llm_labels), dim=1)
 
         return llm_input, llm_labels
@@ -786,21 +787,26 @@ class AVSPLLMModel(PreTrainedModel):
         llm_input, llm_labels = self.embed(
             source, padding_mask, target_list, **kwargs
         )
+        llm_input = llm_input.to(torch.float16).to(self.device)
+        if llm_labels is not None:
+            llm_labels = llm_labels.to(self.device)
         return self.decoder(
-            inputs_embeds=llm_input.to(torch.float16), labels=llm_labels, return_dict=True
+            inputs_embeds=llm_input,
+            labels=llm_labels,
+            return_dict=True,
         )
 
     @torch.no_grad()
     def generate(
         self,
         inputs: Optional[Dict[str, torch.Tensor]] = None,
-        generation_config: Optional[GenerationConfig] = None,
+        generation_config: Optional[GenerationConfig] = GenerationConfig(),
         **kwargs,
     ) -> Any:
         llm_input, _ = self.embed(**inputs, **kwargs)
+        llm_input = llm_input.to(torch.float16).to(self.device)
         self.decoder.config.use_cache = True
         return self.decoder.generate(
             inputs_embeds=llm_input,
-            **generation_config,
-            **kwargs,
+            **vars(generation_config),
         )

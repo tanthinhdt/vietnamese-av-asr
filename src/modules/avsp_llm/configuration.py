@@ -1,4 +1,5 @@
-from typing import Tuple
+from typing import Tuple, Optional
+from dataclasses import dataclass, field
 from transformers import PretrainedConfig
 
 
@@ -186,3 +187,34 @@ class AVSPLLMConfig(AVHubertConfig):
         self.w2v_args = w2v_args
         self.freeze_finetune_updates = freeze_finetune_updates
         self.km_path = km_path
+
+
+@dataclass
+class GenerationConfig:
+    """
+    For more details, please visit:
+    https://huggingface.co/docs/transformers/main_classes/text_generation
+    """
+    max_length: int = field(default=20)
+    max_new_tokens: Optional[int] = field(default=None)
+    min_length: int = field(default=0)
+    min_new_tokens: Optional[int] = field(default=None)
+    max_time: Optional[float] = field(default=None)
+
+    do_sample: bool = field(default=False)
+    num_beams: int = field(default=1)
+    num_beam_groups: int = field(default=1)
+
+    temperature: float = field(default=1.0)
+    top_k: int = field(default=50)
+    top_p: float = field(default=1.0)
+    min_p: Optional[float] = field(default=None)
+    typical_p: float = field(default=1.0)
+    epsilon_cutoff: float = field(default=0.0)
+    eta_cutoff: float = field(default=0.0)
+    diversity_penalty: float = field(default=0.0)
+    repetition_penalty: float = field(default=1.0)
+    encoder_repetition_penalty: float = field(default=1.0)
+    length_penalty: float = field(default=1.0)
+    no_repeat_ngram_size: float = field(default=0)
+    exponential_decay_length_penalty: Optional[Tuple[int, float]] = field(default=None)
