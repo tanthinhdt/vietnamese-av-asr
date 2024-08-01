@@ -80,6 +80,7 @@ target/
 /models/
 /scripts/
 /legacy/
+/evaluations/
 
 # exclude cache folders
 models--*/
