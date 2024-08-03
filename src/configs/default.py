@@ -23,6 +23,8 @@ class SaveFramesConfig(ProcessConfig):
     def __post_init__(self):
         assert self.video_file is not None, "Video file is required"
         self.video_file = Path(self.video_file)
+        assert self.output_dir is not None, "Output directory is required"
+        self.output_dir = Path(self.output_dir)
 
 
 @dataclass
