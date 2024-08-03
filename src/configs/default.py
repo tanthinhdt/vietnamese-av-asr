@@ -15,6 +15,17 @@ class ProcessConfig:
 
 
 @dataclass
+class SaveFramesConfig(ProcessConfig):
+    video_file: str = None
+    output_dir: str = None
+    overwrite: bool = False
+
+    def __post_init__(self):
+        assert self.video_file is not None, "Video file is required"
+        self.video_file = Path(self.video_file)
+
+
+@dataclass
 class CreateManifestConfig(ProcessConfig):
     data_dir: str = None
     split: str = None

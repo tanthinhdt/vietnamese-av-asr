@@ -9,8 +9,11 @@ from data import (
     dump_label,
     count_clusters,
 )
+from loguru import logger
+from visualization import save_frames
 from configs import (
     ProcessConfig,
+    SaveFramesConfig,
     CreateManifestConfig,
     DumpFeatureConfig,
     LearnKMeansConfig,
@@ -26,6 +29,7 @@ logging.root.setLevel(logging.WARNING)
 class Config:
     process: ProcessConfig = subgroups(
         {
+            "save_frames": SaveFramesConfig,
             "create_manifest": CreateManifestConfig,
             "dump_feature": DumpFeatureConfig,
             "learn_kmeans": LearnKMeansConfig,
@@ -45,6 +49,7 @@ def get_args() -> Namespace:
 
 def main(args: Namespace) -> None:
     config = args.config.process
+    logger.info(config)
 
     if isinstance(config, CreateManifestConfig):
         create_manifest(config)
@@ -56,6 +61,8 @@ def main(args: Namespace) -> None:
         dump_label(config)
     elif isinstance(config, CountClustersConfig):
         count_clusters(config)
+    elif isinstance(config, SaveFramesConfig):
+        save_frames(config)
 
 
 if __name__ == "__main__":
