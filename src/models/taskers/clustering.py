@@ -10,14 +10,14 @@ import torch.nn.functional as F
 from npy_append_array import NpyAppendArray
 from python_speech_features import logfbank
 from scipy.io import wavfile
+from src.models.utils import get_logger
 
-from src.models.utils.logging import get_logger
-
-logger = get_logger(name='Clustering', is_stream=True)
+logger = get_logger('Clustering', is_stream=True)
 
 
-class HubertFeatureReader(object):
+class HubertFeatureReader(torch.nn.Module):
     def __init__(self, ckpt_path, layer, max_chunk=1600000, custom_utils=None):
+        super().__init__()
         (
             model,
             cfg,
@@ -36,9 +36,6 @@ class HubertFeatureReader(object):
             custom_utils.Normalize(image_mean, image_std)])
 
         self.custom_utils = custom_utils
-        logger.info(f"TASK CONFIG:\n{self.task.cfg}")
-        logger.info(f" max_chunk = {self.max_chunk}")
-        logger.info(f"Transform: {self.transform}")
 
     def load_feature(self, mix_name, modalities):
         def stacker(feats, stack_order):
@@ -142,13 +139,7 @@ def get_path_iterator(tsv, nshard, rank):
         shard_size = math.ceil(tot / nshard)
         start, end = rank * shard_size, min((rank + 1) * shard_size, tot)
         assert start < end, f"start={start}, end={end}"
-        logger.info(
-            f"rank {rank} of {nshard}, process {end-start} "
-            f"({start}-{end}) out of {tot}"
-        )
-
         lines = lines[start:end]
-
         def iterate():
             for line in lines:
                 items = line.strip().split("\t")
@@ -162,10 +153,10 @@ def dump_feature(
 ):
     if modalities is None:
         logger.critical("Select modalities to dump feature")
-        exit(1)
+        raise RuntimeError()
     if not {'visual', 'audio'}.intersection(set(modalities)):
         logger.critical("No visual or audio modalities.")
-        exit(1)
+        raise RuntimeError()
     tsv_path = os.path.join(tsv_dir, f"{split}.tsv")
     generator, num = get_path_iterator(tsv_path, nshard, rank)
     iterator = generator()
@@ -213,7 +204,7 @@ def dump_label(feat_dir, split, km_path, lab_dir):
         for feat in tqdm.tqdm(iterator, total=num):
             lab = apply_kmeans(feat).tolist()
             f.write(" ".join(map(str, lab)) + "\n")
-    logger.info("Assign labels finished successfully")
+    logger.info("Assign units finished successfully")
 
 
 def cluster_count():
@@ -237,3 +228,4 @@ def cluster_count():
     cluster_counts_pth = unit_pth.replace('.km','.cluster_counts')
     with open(cluster_counts_pth, 'w') as f:
         f.write(''.join(count_list))
+    logger.info("Cluster count finished successfully")

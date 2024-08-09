@@ -6,13 +6,14 @@ from src.models.utils.media import get_duration
 from src.models.utils.logging import get_logger
 from src.models.utils.dirs import *
 
-logger = get_logger(name=__name__, log_path=None, is_stream=True)
+logger = get_logger(name='Splitter', is_stream=True)
 
 
 class Splitter(Tasker):
     FPS = 25
     SR = 16_000
-
+    DETACH_VISUAL_CMD = "ffmpeg -y -i %s -an -c:v copy -r 25 -map 0 -f avi %s -loglevel panic"
+    DETACH_AUDIO_CMD = "ffmpeg -y -i %s -vn -ac 1 -c:a pcm_s16le -ar 16000 -b:a 192k -map 0 -f wav %s -loglevel panic"
     def __init__(self):
         super().__init__()
 
@@ -22,7 +23,7 @@ class Splitter(Tasker):
             '-loglevel', 'panic',
             '-i', metadata_dict['video_path'],
             '-ss', '%.3f',
-            '-t', '%.3f',
+            '-t', '%3.f',
             '-c:v', 'libx264',
             '-c:a', 'pcm_s16le',
             '-ac', '1',
@@ -38,6 +39,8 @@ class Splitter(Tasker):
         _samples['result_video_path'] = metadata_dict['result_video_path']
         i = 0
 
+        if time_interval == -1:
+            time_interval = int(metadata_dict['duration'])
         for timestamp in range(0, int(metadata_dict['duration']), time_interval):
             _video_name = "video_%.5d" % i
             _video_path = os.path.join(
@@ -58,92 +61,34 @@ class Splitter(Tasker):
                 _sample['index'] = i
                 _sample['chunk_visual_id'] = _video_name.replace('video', 'visual')
                 dur = get_duration(_video_path)
-                print(dur)
                 _sample['timestamp'] = (timestamp, timestamp+int(dur))
                 _sample['visual_output_dir'] = _VISUAL_DIR
-                if metadata_dict['has_v']:
-                    _sample['visual_path'] = self._detach_visual(
-                        video_path=_video_path,
-                        output_path=pv_path,
-                    )
-                else:
-                    _sample['visual_path'] = self._create_placeholder_visual(file=pv_path, duration=dur)
-
-                if metadata_dict['has_a']:
-                    _sample['audio_path'] = self._detach_audio(
-                        video_path=_video_path,
-                        output_path=pa_path
-                    )
-                else:
-                    _sample['audio_path'] = self._create_placeholder_audio(file=pa_path, duration=dur)
-
+                _sample['visual_path'] = self._detach(
+                    cmd=self.DETACH_VISUAL_CMD,
+                    video_path=_video_path,
+                    output_path=pv_path,
+                    fail_msg="Detach visual fail",
+                )
+                _sample['audio_path'] = self._detach(
+                    cmd=self.DETACH_AUDIO_CMD,
+                    video_path=_video_path,
+                    output_path=pa_path,
+                    fail_msg="Detach audio fail",
+                )
                 _samples[i] = _sample
-
                 i += 1
+        if i == 0:
+            logger.critical(f"Can not split video '{metadata_dict['video_path']}' into segments.")
+            raise RuntimeError()
 
         return _samples
 
-    def _create_placeholder_audio(self, file: str, duration: float):
-        _cmd = [
-            'ffmpeg', '-y',
-            '-loglevel', 'panic',
-            '-f', 'lavfi',
-            '-i', 'anullsrc=channel_layout=mono:sample_rate=%d' % self.SR,
-            '-ss', '0.000',
-            '-to', '%.3f' % duration,
-            '-f', 'wav',
-            file
-        ]
-
-        subprocess.run(_cmd, shell=False, capture_output=False, stdout=None)
-
-        if not os.path.isfile(file):
-            logger.critical(f"Create placeholder audio for non-audio media file fail.")
-            exit(1)
-
-        return file
-
-    def _create_placeholder_visual(self, file: str, duration: float):
-        _cmd = [
-            'ffmpeg', '-y',
-            '-loglevel', 'panic',
-            '-f', 'lavfi',
-            '-i', 'color=c=black',
-            '-c:v', 'libx264',
-            '-t', '%.3f' % duration,
-            '-r', '%d' % self.FPS,
-            '-pix_fmt', 'yuv420p',
-            '-vf', 'scale=96:96',
-            '-f', 'avi',
-            file
-        ]
-
-        subprocess.run(_cmd, shell=False, capture_output=False, stdout=None)
-
-        if not os.path.isfile(file):
-            logger.critical(f"Create placeholder visual for non-visual media file fail.")
-            exit(1)
-
-        return file
-
-    def _detach_visual(self, video_path: str, output_path: str,):
-        command = "ffmpeg -y -i %s -an -c:v copy -r 25 -map 0 -f avi %s -loglevel panic" % \
-                  (video_path, output_path)
+    def _detach(self, cmd: str,  video_path: str, output_path: str, fail_msg: str):
+        command = cmd % (video_path, output_path)
         subprocess.run(command, shell=True, stdout=None)
 
         if not os.path.isfile(output_path):
-            logger.critical(f"Detach visual fail")
-            exit(1)
-
-        return output_path
-
-    def _detach_audio(self, video_path: str, output_path: str,):
-        command = "ffmpeg -y -i %s -vn -ac 1 -c:a pcm_s16le -ar 16000 -b:a 192k -map 0 -f wav %s -loglevel panic" % \
-                  (video_path, output_path)
-        subprocess.run(command, shell=True, stdout=None)
-
-        if not os.path.isfile(output_path):
-            logger.critical(f"Detach audio fail")
-            exit(1)
+            logger.critical(fail_msg)
+            raise RuntimeError()
 
         return output_path

@@ -6,7 +6,7 @@ from src.models.taskers.tasker import Tasker
 from src.models.utils.logging import get_logger
 
 logger = get_logger(
-    name=__name__,
+    name='Checker',
     is_stream=True,
     log_path=None,
 )
@@ -58,7 +58,7 @@ class Checker(Tasker):
     def post_do(self, metadata_dict: dict):
         if metadata_dict['duration'] > self._threshold_duration:
             logger.critical("Duration of video (%.3f) over threshold (%.3f)" % (metadata_dict['duration'], self._threshold_duration))
-            exit(1)
+            raise RuntimeError()
         n_con = 0
         if not metadata_dict['has_v']:
             logger.info(f"Video in '{metadata_dict['video_path']}\' has no visual.")
@@ -68,7 +68,7 @@ class Checker(Tasker):
             n_con += 1
         if n_con == 2:
             logger.critical(f"INVALID. Video in '{metadata_dict['video_path']}\' has no visual and audio.")
-            exit(1)
+            raise RuntimeError()
 
     def _get_metadata_streams(self, video_path: str) -> dict:
         """
@@ -79,7 +79,7 @@ class Checker(Tasker):
         """
         if not os.path.isfile(path=video_path):
             logger.error(f"The video file '{video_path}' not exist.")
-            exit(1)
+            raise RuntimeError()
 
         cmd = [
             "ffprobe",

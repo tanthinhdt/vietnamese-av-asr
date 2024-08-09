@@ -40,7 +40,6 @@ def clean_dirs():
         _VIDEO_DIR,
         _OUTPUT_DIR,
         _FLAGGED_DIR,
-        _DECODE_DIR,
     ]
     for _dir in dirs:
         if os.path.isdir(_dir):

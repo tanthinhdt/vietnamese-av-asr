@@ -1,5 +1,4 @@
 import itertools
-import logging
 import os
 import sys
 import torch
@@ -14,8 +13,6 @@ from scipy.io import wavfile
 from transformers import AutoTokenizer
 
 from src.models.utils import vsp_llm as custom_utils
-
-logger = logging.getLogger(__name__)
 
 
 def load_audio_visual(
@@ -62,13 +59,7 @@ def load_audio_visual(
                 sizes.append(sz)
                 cluster_counts.append(cluster_counts_list[ind].strip())
     tot = ind + 1
-    logger.info(
-        (
-            f"max_keep={max_keep}, min_keep={min_keep}, "
-            f"loaded {len(names)}, skipped {n_short} short and {n_long} long and {n_unaligned} unaligned, "
-            f"longest-loaded={max(sizes)}, shortest-loaded={min(sizes)}"
-        )
-    )
+
     return root, names, inds, tot, sizes, cluster_counts
 
 
@@ -94,42 +85,17 @@ def load_label_offset(label_path, inds, tot):
 
 
 def verify_label_lengths(
-    audio_sizes,
-    audio_rate,
     label_path,
     label_rate,
-    inds,
     tot,
-    tol=0.1,  # tolerance in seconds
 ):
     if label_rate < 0:
-        logger.info(f"{label_path} is sequence label. skipped")
         return
 
     with open(label_path) as f:
         lengths = [len(line.rstrip().split()) for line in f]
         assert len(lengths) == tot
-        lengths = [lengths[i] for i in inds]
-    num_invalid = 0
-    for i, ind in enumerate(inds):
-        dur_from_audio = audio_sizes[i] / audio_rate
-        dur_from_label = lengths[i] / label_rate
-        if abs(dur_from_audio - dur_from_label) > tol:
-            logger.warning(
-                (
-                    f"audio and label duration differ too much "
-                    f"(|{dur_from_audio} - {dur_from_label}| > {tol}) "
-                    f"in line {ind+1} of {label_path}. Check if `label_rate` "
-                    f"is correctly set (currently {label_rate}). "
-                    f"num. of samples = {audio_sizes[i]}; "
-                    f"label length = {lengths[i]}"
-                )
-            )
-            num_invalid += 1
-    if num_invalid > 0:
-        logger.warning(
-            f"total {num_invalid} (audio, label) pairs with mismatched lengths"
-        )
+
 
 
 class VSP_LLM_dataset(FairseqDataset):
@@ -223,11 +189,7 @@ class VSP_LLM_dataset(FairseqDataset):
             ]
         if not skip_verify:
             for label_path, label_rate in zip(label_paths, self.label_rates):
-                verify_label_lengths(
-                    self.sizes, self.sample_rate, label_path, label_rate, inds, tot
-                )
-        else:
-            logger.info(f"Skip label alignment verifying")
+                verify_label_lengths(label_path, label_rate, tot)
 
         self.max_sample_size = (
             max_sample_size if max_sample_size is not None else sys.maxsize
@@ -251,16 +213,6 @@ class VSP_LLM_dataset(FairseqDataset):
                     custom_utils.Normalize(image_mean, image_std),
                 ]
             )
-        logger.info(f"image transform: {self.transform}")
-
-        logger.info(
-            f"pad_audio={pad_audio}, random_crop={random_crop}, "
-            f"normalize={normalize}, max_sample_size={self.max_sample_size}, "
-            f"seqs2seq data={self.is_s2s},"
-        )
-        logger.info(
-            f"Noise wav: {noise_fn}->{len(self.noise_wav)} wav, Prob: {self.noise_prob}, SNR: {self.noise_snr}, Number of mixture: {self.noise_num}"
-        )
 
     def load_units(self, index):
         av_units = self.cluster_counts[index].strip().split(" ")

@@ -1,5 +1,3 @@
-import logging
-import os
 import sys
 
 import fairseq.tasks
@@ -19,8 +17,6 @@ from fairseq.sequence_generator import SequenceGeneratorWithAlignment
 
 from .hubert_dataset import AVHubertDataset
 from .sequence_generator import SequenceGenerator
-
-logger = logging.getLogger(__name__)
 
 
 class LabelEncoder(object):
@@ -154,9 +150,6 @@ class AVHubertPretrainingTask(FairseqTask):
     ) -> None:
         super().__init__(cfg)
 
-        logger.info(f"current directory is {os.getcwd()}")
-        logger.info(f"AVHubertPretrainingTask Config {cfg}")
-
         self.fine_tuning = cfg.fine_tuning
         if cfg.fine_tuning:
             self.state.add_factory("target_dictionary", self.load_dictionaries)
@@ -218,7 +211,6 @@ class AVHubertPretrainingTask(FairseqTask):
         if not self.cfg.is_s2s:
             procs = [LabelEncoder(dictionary) for dictionary in dictionaries]
         else:
-            logger.info(f"Using tokenizer")
             bpe_tokenizer = self.s2s_tokenizer
             procs = [LabelEncoderS2SToken(dictionary, bpe_tokenizer) for dictionary in dictionaries]
         paths = [

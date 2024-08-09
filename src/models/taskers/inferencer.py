@@ -1,5 +1,3 @@
-import os
-import sys
 import torch
 
 from src.models.taskers import Checker, Normalizer, Splitter, MouthCropper, Embedder
@@ -8,23 +6,22 @@ from src.models.utils.manifest import create_demo_manifest
 from src.models.taskers.clustering import dump_feature, cluster_count, dump_label
 from src.models.vsp_llm.vsp_llm_decode import produce_predictions
 
-sys.path.append(os.getcwd())
-logger = get_logger('inference', is_stream=True)
+logger = get_logger('Inference', is_stream=True)
 
 
 @get_spent_time(message='Inferencing time: ')
 def infer(
         video_path: str,
-        cfg,
-        saved_cfg,
-        llm_tokenizer,
-        model: torch.nn.Module,
-        extractor: torch.nn.Module
+        cfg=None,
+        saved_cfg=None,
+        llm_tokenizer=None,
+        model: torch.nn.Module=None,
+        extractor: torch.nn.Module=None,
 ):
     checker = Checker(duration_threshold=180)
-    normalizer = Normalizer(checker=checker)
-    mouth_cropper = MouthCropper()
+    normalizer = Normalizer()
     splitter = Splitter()
+    mouth_cropper = MouthCropper()
     embedder = Embedder()
 
     logger.info('Start inferencing')
@@ -52,7 +49,6 @@ def infer(
     manifest_dir = create_demo_manifest(samples_dict=samples)
 
     logger.info('Extract features to cluster')
-
     dump_feature(
         extractor=extractor,
         tsv_dir=manifest_dir,
@@ -64,18 +60,18 @@ def infer(
         modalities=modalities,
     )
 
-    logger.info("Assign cluster")
-    k_mean_path = "src/models/checkpoints/kmean_model.km"
+    logger.info("Assign units")
     dump_label(
         feat_dir=manifest_dir,
         split='test',
-        km_path=k_mean_path,
+        km_path="src/models/checkpoints/kmean_model.km",
         lab_dir=manifest_dir,
     )
 
     logger.info("Cluster count")
     cluster_count()
 
+    logger.info("Predict transcripts")
     produce_predictions(
         cfg=cfg,
         saved_cfg=saved_cfg,

@@ -1,6 +1,4 @@
-import logging
 import sys
-import os
 import numpy as np
 
 from typing import List, Optional, Tuple
@@ -12,8 +10,6 @@ from fairseq.tasks.fairseq_task import FairseqTask
 from omegaconf import MISSING, II
 
 from .vsp_llm_dataset import VSP_LLM_dataset
-
-logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -117,6 +113,7 @@ class VSP_LLM_TrainingConfig(FairseqDataclass):
     noise_num: int = field(default=1, metadata={'help': 'number of noise wav files to mix'})
     fine_tuning: bool = field(default=False, metadata={"help": "set to true if fine-tuning AV-Hubert"})
 
+
 @register_task("vsp_llm_training", dataclass=VSP_LLM_TrainingConfig)
 class VSP_LLM_TrainingTask(FairseqTask):
 
@@ -127,9 +124,6 @@ class VSP_LLM_TrainingTask(FairseqTask):
         cfg: VSP_LLM_TrainingConfig,
     ) -> None:
         super().__init__(cfg)
-
-        logger.info(f"current directory is {os.getcwd()}")
-        logger.info(f"AVHubertPretrainingTask Config {cfg}")
 
         self.fine_tuning = cfg.fine_tuning    
         self.blank_symbol = "<s>"
@@ -161,7 +155,6 @@ class VSP_LLM_TrainingTask(FairseqTask):
 
     def load_dataset(self, split: str, **kwargs) -> None:
         manifest = f"{self.cfg.data}/{split}.tsv"
-        logger.info(f"Using tokenizer")
         paths = [
             f"{self.get_label_dir()}/{split}.{l}" for l in self.cfg.labels
         ]

@@ -1,5 +1,4 @@
 import contextlib
-import logging
 import torch
 import torch.nn as nn
 
@@ -14,7 +13,6 @@ from fairseq.dataclass.utils import convert_namespace_to_omegaconf
 from fairseq.models import BaseFairseqModel, FairseqEncoder, register_model
 from transformers import AutoModelForCausalLM, BitsAndBytesConfig
 
-logger = logging.getLogger(__name__)
 MASKING_DISTRIBUTION_CHOICES = ChoiceEnum(
     ["static", "uniform", "normal", "poisson"]
 )
@@ -345,55 +343,6 @@ class avhubert_llm_seq2seq_cluster_count(BaseFairseqModel):
             mean_tensor = torch.mean(slice, dim=1, keepdim=True)
             results_tensor.append(mean_tensor)
             start_idx = end_idx
-
-        print(cluster_counts.sum().item(), encoder_output.size()[1])
-        return
-
-        reduced_enc_out = torch.cat(results_tensor, dim=1).to(device=self.device)
-        instruction = kwargs['source']['text']
-        instruction_embedding = self.decoder.model.model.embed_tokens(instruction).to(device=self.device)
-        llm_input = torch.cat((instruction_embedding, reduced_enc_out), dim=1)
-
-        self.decoder.config.use_cache = True
-        outputs = self.decoder.generate(
-            inputs_embeds=llm_input,
-            top_p=top_p,
-            num_beams=num_beams,
-            max_new_tokens=max_length,
-            min_length=min_length,
-            repetition_penalty=repetition_penalty,
-            do_sample=True,
-            length_penalty=length_penalty,
-        )
-
-        return outputs
-
-    def decoder_generate(
-            self,
-            encoder_output: torch.Tensor,
-            num_beams=20,
-            max_length=30,
-            min_length=1,
-            top_p=0.9,
-            repetition_penalty=1.0,
-            length_penalty=0.0,
-            **kwargs,
-    ):
-        with torch.autocast(device_type='cpu'):
-            encoder_output = self.avfeat_to_llm(encoder_output)
-
-        cluster_counts = kwargs['source']['cluster_counts'][0]
-        results_tensor = []
-        start_idx = 0
-
-        for clutser_num in cluster_counts:
-            end_idx = start_idx + clutser_num
-            slice = encoder_output[:, start_idx:end_idx, :]
-            mean_tensor = torch.mean(slice, dim=1, keepdim=True)
-            results_tensor.append(mean_tensor)
-            start_idx = end_idx
-
-        assert (cluster_counts.sum().item() == encoder_output.size()[1])
 
         reduced_enc_out = torch.cat(results_tensor, dim=1).to(device=self.device)
         instruction = kwargs['source']['text']

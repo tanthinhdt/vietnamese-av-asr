@@ -1,11 +1,13 @@
 import copy
-import logging
 import os
 import subprocess
 
 from src.models.taskers.tasker import Tasker
 from src.models.taskers.checker import Checker
 from src.models.utils.dirs import *
+from src.models.utils import get_logger
+
+logger = get_logger(name='Normalizer', is_stream=True)
 
 
 class Normalizer(Tasker):
@@ -73,7 +75,7 @@ class Normalizer(Tasker):
         'output_path',
     ]
 
-    def __init__(self, checker: Checker = None):
+    def __init__(self):
         super().__init__()
 
     def do(self, metadata_dict: dict, checker: Checker=Checker()):
@@ -127,7 +129,7 @@ class Normalizer(Tasker):
         subprocess.run(cmd, shell=False, capture_output=False, stdout=None)
 
         if not os.path.isfile(output_path):
-            logging.warning(fail_msg)
-            exit([1])
+            logger.critical(fail_msg)
+            raise RuntimeError()
 
         return output_path

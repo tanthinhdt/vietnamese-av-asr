@@ -87,8 +87,11 @@ target/
 # Mypy cache
 .mypy_cache/
 
+# In repo
 test.py
-app.py
+test_pipeline.py
+test_crop.py
+
 /data/
 /tmp/
 /outputs/
@@ -99,11 +102,19 @@ app.py
 /docs/
 /models/
 /notebooks/
+/scripts/
+
 /src/tools/
 /src/utils/
 /src/visualization/
 /src/modules/
-/src/models/dataset/
 /src/data/
 /src/weights/
-/src/models/checkpoints/*.pt
+/src/pipelines/
+
+/src/models/inferences/
+/src/models/scripts/
+/src/models/dataset/
+/src/models/configs/
+/src/models/detector/
+/src/models/features/

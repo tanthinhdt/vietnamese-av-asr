@@ -13,11 +13,7 @@ from src.models.taskers.tasker import Tasker
 from src.models.utils.dirs import *
 from src.models.utils.logging import get_logger
 
-logger = get_logger(
-    name=__name__,
-    log_path=None,
-    is_stream=True,
-)
+logger = get_logger(name='Embedder', is_stream=True,)
 
 
 class Embedder(Tasker):
@@ -35,14 +31,15 @@ class Embedder(Tasker):
 
         _output_path = os.path.join(_FINAL_RESULT_DIR, 'output.mp4')
         _srt_path = os.path.join(_FINAL_RESULT_DIR, 'subtitle.srt')
-
+        if not any(_hypo_dict['hypo']):
+            logger.critical('Empty transcript is predicted')
+            raise RuntimeError()
         f = open(_srt_path, 'w')
         for utt_id, hypo in sorted(zip(_hypo_dict['utt_id'], _hypo_dict['hypo']), key=lambda x: x[0]):
             index = int(utt_id.split('/')[0])
             timestamp = samples[index]['timestamp']
             self._append_to_srt(f=f, index=index, subtitle=hypo, timestamp=timestamp)
         f.close()
-
         self._embed_subtitle(samples['result_video_path'], _srt_path, _output_path)
 
         return _output_path
@@ -55,10 +52,10 @@ class Embedder(Tasker):
     ) -> str:
         if not os.path.isfile(video_path):
             logger.critical("Video file is not exist.")
-            exit(1)
+            raise RuntimeError()
         if not os.path.isfile(subtitle_path):
             logger.critical("Subtitle file is not exist.")
-            exit(1)
+            raise RuntimeError()
 
         _cmd = [
             'ffmpeg', '-y',
@@ -72,7 +69,7 @@ class Embedder(Tasker):
 
         if not os.path.isfile(output_path):
             logger.warning(f"Add subtitle into video '{video_path}' fail.")
-            exit(1)
+            raise RuntimeError()
 
         return output_path
 

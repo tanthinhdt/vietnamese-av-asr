@@ -73,5 +73,3 @@ def get_logger(
             logger.addHandler(hdlr=f_handler)
 
     return logger
-
-

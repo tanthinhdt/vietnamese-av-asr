@@ -1,4 +1,3 @@
-import logging
 import torch
 import torch.nn as nn
 import numpy as np
@@ -20,9 +19,10 @@ from .hubert_pretraining import (
     )
 from .resnet import ResEncoder
 from src.models.utils.vsp_llm import compute_mask_indices
+from src.models.utils.logging import get_logger
 from omegaconf import II
 
-logger = logging.getLogger(__name__)
+logger = get_logger(name='AV-Hubert Encoder', is_stream=True)
 
 EXTRACTOR_MODE_CHOICES = ChoiceEnum(["default", "layer_norm"])
 MASKING_DISTRIBUTION_CHOICES = ChoiceEnum(
@@ -313,8 +313,6 @@ class AVHubertModel(BaseFairseqModel):
         **kwargs
     ) -> None:
         super().__init__()
-        logger.info(f"HubertModel Config: {cfg}")
-
         feature_ds_rate = 1
         self.feat2tar_ratio = cfg.label_rate * feature_ds_rate / task_cfg.sample_rate
         sub_cfg = deepcopy(cfg)
@@ -407,8 +405,7 @@ class AVHubertModel(BaseFairseqModel):
     def build_model(cls, cfg: AVHubertConfig, task: AVHubertPretrainingTask):
         """Build a new model instance."""
 
-        kwargs = {}
-        model = AVHubertModel(cfg, task.cfg, task.dictionaries, **kwargs)
+        model = AVHubertModel(cfg, task.cfg, task.dictionaries)
         return model
 
     def apply_input_mask(self, x, padding_mask, target_list):
@@ -697,7 +694,7 @@ class AVHubertModel(BaseFairseqModel):
         elif src_audio is not None and src_video is not None:
             features_video = self.forward_features(src_video, modality='video')
             features_audio = self.forward_features(src_audio, modality='audio')  # features: [B, F, T]
-        print(features_video.shape, features_audio.shape)
+
         if self.modality_fuse == 'concat':
             features = torch.cat([features_audio, features_video], dim=1)
         elif self.modality_fuse == 'add':
