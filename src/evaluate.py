@@ -103,7 +103,7 @@ class GenerationConfig(FairseqDataclass):
 
 
 @dataclass
-class DecodeConfig(FairseqDataclass):
+class EvaluationConfig(FairseqDataclass):
     task: Any = None
     generation: GenerationConfig = GenerationConfig()
     common: CommonConfig = CommonConfig()
@@ -340,8 +340,8 @@ def _main(cfg, log_file: None):
             fo.write(f"{yaml_str}")
 
 
-@hydra.main(config_path=config_path, config_name="infer")
-def hydra_main(cfg: DecodeConfig) -> Union[float, Tuple[float, Optional[float]]]:
+@hydra.main(config_path=config_path, config_name="evaluation")
+def hydra_main(cfg: EvaluationConfig) -> Union[float, Tuple[float, Optional[float]]]:
     container = OmegaConf.to_container(cfg, resolve=True, enum_to_str=True)
     cfg = OmegaConf.create(container)
     OmegaConf.set_struct(cfg, True)
@@ -374,11 +374,11 @@ def cli_main() -> None:
         cfg_name = "infer"
 
     cs = ConfigStore.instance()
-    cs.store(name=cfg_name, node=DecodeConfig)
+    cs.store(name=cfg_name, node=EvaluationConfig)
 
-    for k in DecodeConfig.__dataclass_fields__:
-        if is_dataclass(DecodeConfig.__dataclass_fields__[k].type):
-            v = DecodeConfig.__dataclass_fields__[k].default
+    for k in EvaluationConfig.__dataclass_fields__:
+        if is_dataclass(EvaluationConfig.__dataclass_fields__[k].type):
+            v = EvaluationConfig.__dataclass_fields__[k].default
             cs.store(name=k, node=v)
 
     hydra_main()  # pylint: disable=no-value-for-parameter
