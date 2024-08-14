@@ -10,7 +10,7 @@ from python_speech_features import logfbank
 from typing import Any, List, Optional, Union, Tuple
 from fairseq.data.fairseq_dataset import FairseqDataset
 from .utils import load_label, load_label_offset, verify_label_lengths
-from utils import (
+from src.utils import (
     load_video,
     Compose,
     Normalize,

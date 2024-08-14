@@ -6,7 +6,7 @@ from typing import List, Optional, Tuple
 from fairseq.data import Dictionary
 from fairseq.tasks import register_task
 from fairseq.tasks.fairseq_task import FairseqTask
-from features import AVSPLLMDataset
+from src.features import AVSPLLMDataset
 from fairseq.dataclass.configs import FairseqDataclass
 from typing import List, Optional, Tuple
 from dataclasses import dataclass, field
@@ -244,11 +244,12 @@ class AVSPLLMTrainingTask(FairseqTask):
         logger.info("Using tokenizer")
         paths = [f"{self.get_label_dir()}/{split}.{label}" for label in self.cfg.labels]
         image_aug = self.cfg.image_aug if split == "train" else False
-        noise_fn, noise_snr = (
+        noise_fn = (
             f"{self.cfg.noise_wav}/{split}.tsv"
             if self.cfg.noise_wav is not None
             else None
-        ), eval(self.cfg.noise_snr)
+        )
+        noise_snr = eval(self.cfg.noise_snr)
         noise_num = self.cfg.noise_num  #
         self.datasets[split] = AVSPLLMDataset(
             manifest,

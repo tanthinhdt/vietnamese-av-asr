@@ -10,7 +10,7 @@ from fairseq.models import BaseFairseqModel, register_model
 from fairseq.modules import GradMultiply, LayerNorm
 from copy import deepcopy
 from loguru import logger
-from tasks import AVHubertPretrainingConfig, AVHubertPretrainingTask
+from src.tasks import AVHubertPretrainingConfig, AVHubertPretrainingTask
 from .resnet import ResEncoder
 from .encoder import TransformerEncoder
 from .utils import compute_mask_indices

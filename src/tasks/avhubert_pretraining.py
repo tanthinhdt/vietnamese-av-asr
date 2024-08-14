@@ -11,8 +11,8 @@ from fairseq.tasks import register_task
 from fairseq.tasks.fairseq_task import FairseqTask
 from omegaconf import MISSING, II
 from argparse import Namespace
-from features import AVHubertDataset
-from models import SequenceGenerator
+from src.features import AVHubertDataset
+from src.models import SequenceGenerator
 
 
 class LabelEncoder(object):

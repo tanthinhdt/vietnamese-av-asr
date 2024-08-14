@@ -178,7 +178,7 @@ class HubertEncoderWrapper(FairseqEncoder):
 
 
 @register_model("avsp_llm", dataclass=AVSPLLMConfig)
-class avhubert_llm_seq2seq_cluster_count(BaseFairseqModel):
+class AVSPLLMModel(BaseFairseqModel):
     def __init__(self, encoder, decoder, cfg):
         super().__init__()
         self.cfg = cfg
@@ -269,7 +269,7 @@ class avhubert_llm_seq2seq_cluster_count(BaseFairseqModel):
         decoder_4bit = get_peft_model(decoder_4bit, config)
         decoder_4bit.print_trainable_parameters()
 
-        return avhubert_llm_seq2seq_cluster_count(encoder, decoder_4bit, cfg)
+        return AVSPLLMModel(encoder, decoder_4bit, cfg)
 
     def forward(self, **kwargs):
         ft = self.freeze_finetune_updates <= self.num_updates
