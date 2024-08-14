@@ -34,6 +34,10 @@ class AVSPLLMConfig(FairseqDataclass):
     llm_ckpt_path: str = field(
         default=MISSING, metadata={"help": "path to llama model"}
     )
+    cache_dir: str = field(
+        default="models/huggingface",
+        metadata={"help": "directory to cache pre-trained models"},
+    )
     no_pretrained_weights: bool = field(
         default=False,
         metadata={"help": "if true, does not load pretrained weights"},
@@ -253,6 +257,7 @@ class AVSPLLMModel(BaseFairseqModel):
 
         decoder_4bit = AutoModelForCausalLM.from_pretrained(
             cfg.llm_ckpt_path,
+            cache_dir=cfg.cache_dir,
             quantization_config=bnb_config,
         )
 
