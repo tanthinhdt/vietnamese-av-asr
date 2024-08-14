@@ -1,0 +1,3 @@
+from .test_wav2vec2_large_vi_vlsp2020 import test_wav2vec2_large_vi_vlsp2020
+from .test_wav2vec2_base_vietnamese_250h import test_wav2vec2_base_vietnamese_250h
+from .test_wav2vec2_bartpho import test_wav2vec2_bartpho

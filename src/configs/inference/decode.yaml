@@ -1,0 +1,24 @@
+common:
+  user_dir: ???
+  fp16: true
+
+generation:
+  max_length: 300
+  num_beams: 20
+
+common_eval:
+  results_path: ???
+  path: ???
+
+dataset:
+  max_tokens: 1000
+  gen_subset: ???
+  num_workers: 0
+
+override:
+  noise_prob: 0.0
+  noise_snr: 0
+  modalities: ["video", "audio"]
+  llm_ckpt_path: ???
+
+show_sample: true
