@@ -81,12 +81,10 @@ target/
 /scripts/
 /legacy/
 /evaluations/
+/experiments/
 
 # exclude cache folders
 models--*/
-
-# exclude libs from source control by default
-libs/
 
 # Mac OS-specific storage files
 .DS_Store
