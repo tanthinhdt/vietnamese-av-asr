@@ -1,5 +1,4 @@
 import os
-import sys
 import json
 import hashlib
 import torch
@@ -7,29 +6,127 @@ import hydra
 import logging
 import sacrebleu
 import numpy as np
-import editdistance as ed
+from typing import Any, Optional, Tuple, Union, List
 from argparse import Namespace
+from dataclasses import dataclass, field
 from itertools import chain
 from fairseq import checkpoint_utils, tasks, utils, distributed_utils
 from fairseq.dataclass.utils import convert_namespace_to_omegaconf
 from fairseq.logging import progress_bar
 from fairseq.logging.meters import StopwatchMeter, TimeMeter
-from omegaconf import DictConfig
+from omegaconf import DictConfig, OmegaConf, MISSING
 from pathlib import Path
 from hydra.core.config_store import ConfigStore
 from dataclasses import is_dataclass
-from typing import Optional, Tuple, Union
-from omegaconf import OmegaConf
-from fairseq import tasks
+from loguru import logger
 from transformers import AutoTokenizer
-from configs import InferConfig
+from utils import compute_cer, compute_wer
+from fairseq.dataclass.configs import (
+    CheckpointConfig,
+    CommonConfig,
+    CommonEvalConfig,
+    DatasetConfig,
+    DistributedTrainingConfig,
+    FairseqDataclass,
+)
 
 
-logging.root.setLevel(logging.INFO)
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+logging.root.setLevel(logging.WARNING)
+config_path = Path(__file__).resolve().parent / "configs"
 
-config_path = Path(__file__).resolve().parent / "conf"
+
+@dataclass
+class OverrideConfig(FairseqDataclass):
+    noise_wav: Optional[str] = field(
+        default=None,
+        metadata={"help": "noise wav file"},
+    )
+    noise_prob: float = field(
+        default=0,
+        metadata={"help": "noise probability"},
+    )
+    noise_snr: float = field(
+        default=0,
+        metadata={"help": "noise SNR in audio"},
+    )
+    modalities: List[str] = field(
+        default_factory=lambda: ["video"],
+        metadata={"help": "which modality to use"},
+    )
+    data: Optional[str] = field(
+        default=None,
+        metadata={"help": "path to test data directory"},
+    )
+    label_dir: Optional[str] = field(
+        default=None,
+        metadata={"help": "path to test label directory"},
+    )
+    eval_bleu: bool = field(
+        default=False,
+        metadata={"help": "evaluate bleu score"},
+    )
+    llm_ckpt_path: str = field(
+        default=MISSING,
+        metadata={"help": "path to llama checkpoint"},
+    )
+
+
+@dataclass
+class GenerationConfig(FairseqDataclass):
+    """
+    For more details, please visit:
+    https://huggingface.co/docs/transformers/main_classes/text_generation
+    """
+    max_length: int = field(default=20)
+    max_new_tokens: Optional[int] = field(default=None)
+    min_length: int = field(default=0)
+    min_new_tokens: Optional[int] = field(default=None)
+    max_time: Optional[float] = field(default=None)
+
+    do_sample: bool = field(default=False)
+    num_beams: int = field(default=1)
+    num_beam_groups: int = field(default=1)
+
+    temperature: float = field(default=1.0)
+    top_k: int = field(default=50)
+    top_p: float = field(default=1.0)
+    min_p: Optional[float] = field(default=None)
+    typical_p: float = field(default=1.0)
+    epsilon_cutoff: float = field(default=0.0)
+    eta_cutoff: float = field(default=0.0)
+    diversity_penalty: float = field(default=0.0)
+    repetition_penalty: float = field(default=1.0)
+    encoder_repetition_penalty: float = field(default=1.0)
+    length_penalty: float = field(default=1.0)
+    no_repeat_ngram_size: float = field(default=0)
+    exponential_decay_length_penalty: Optional[Tuple[int, float]] = field(default=None)
+
+
+@dataclass
+class DecodeConfig(FairseqDataclass):
+    task: Any = None
+    generation: GenerationConfig = GenerationConfig()
+    common: CommonConfig = CommonConfig()
+    common_eval: CommonEvalConfig = CommonEvalConfig()
+    checkpoint: CheckpointConfig = CheckpointConfig()
+    distributed_training: DistributedTrainingConfig = DistributedTrainingConfig()
+    dataset: DatasetConfig = DatasetConfig()
+    override: OverrideConfig = OverrideConfig()
+    is_ax: bool = field(
+        default=False,
+        metadata={
+            "help": (
+                "if true, assumes we are using ax for tuning"
+                "and returns a tuple for ax to consume"
+            )
+        },
+    )
+    show_sample: bool = field(
+        default=False,
+        metadata={
+            "help": "Show ref, hypo and evaluation results of each sample"
+        }
+    )
 
 
 def main(cfg: DictConfig):
@@ -41,24 +138,14 @@ def main(cfg: DictConfig):
 
     if cfg.common_eval.results_path is not None:
         os.makedirs(cfg.common_eval.results_path, exist_ok=True)
-        output_path = os.path.join(cfg.common_eval.results_path, "decode.log")
-        with open(output_path, "w", buffering=1, encoding="utf-8") as h:
-            return _main(cfg, h)
+        log_file = os.path.join(cfg.common_eval.results_path, "decode.log")
+        return _main(cfg, log_file)
 
-    return _main(cfg, sys.stdout)
+    return _main(cfg)
 
 
-def _main(cfg, output_file):
-    logging.basicConfig(
-        format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S",
-        level=os.environ.get("LOGLEVEL", "INFO").upper(),
-        stream=output_file,
-    )
-    logger = logging.getLogger("hybrid.speech_recognize")
-    if output_file is not sys.stdout:  # also print to stdout
-        logger.addHandler(logging.StreamHandler(sys.stdout))
-
+def _main(cfg, log_file: None):
+    logger.add(log_file)
     utils.import_user_module(cfg.common)
 
     tokenizer = AutoTokenizer.from_pretrained(cfg.override.llm_ckpt_path)
@@ -202,9 +289,8 @@ def _main(cfg, output_file):
             if not cfg.show_sample:
                 continue
 
-            cer = ed.eval(hypo_str, ref_sent) * 100 / len(ref_sent)
-            hypo_words, ref_words = hypo_str.split(), ref_sent.split()
-            wer = ed.eval(hypo_words, ref_words) * 100 / len(ref_words)
+            cer = compute_cer(hypo_str, ref_sent)
+            wer = compute_wer(hypo_str, ref_sent)
             result = (
                 (
                     "\nID: {0}\nINST: {1}\nREF: {2}\nHYP: {3}\nWER: {4:.2f}"
@@ -225,10 +311,9 @@ def _main(cfg, output_file):
         n_cer, n_c_total = 0, 0
         assert len(result_dict["hypo"]) == len(result_dict["ref"])
         for hypo, ref in zip(result_dict["hypo"], result_dict["ref"]):
-            n_cer += ed.eval(hypo, ref)
+            n_cer += compute_cer(hypo, ref)
             n_c_total += len(ref)
-            hypo, ref = hypo.strip().split(), ref.strip().split()
-            n_wer += ed.eval(hypo, ref)
+            n_wer += compute_wer(hypo, ref)
             n_w_total += len(ref)
 
         cer = 100 * n_cer / n_c_total
@@ -256,7 +341,7 @@ def _main(cfg, output_file):
 
 
 @hydra.main(config_path=config_path, config_name="infer")
-def hydra_main(cfg: InferConfig) -> Union[float, Tuple[float, Optional[float]]]:
+def hydra_main(cfg: DecodeConfig) -> Union[float, Tuple[float, Optional[float]]]:
     container = OmegaConf.to_container(cfg, resolve=True, enum_to_str=True)
     cfg = OmegaConf.create(container)
     OmegaConf.set_struct(cfg, True)
@@ -289,11 +374,11 @@ def cli_main() -> None:
         cfg_name = "infer"
 
     cs = ConfigStore.instance()
-    cs.store(name=cfg_name, node=InferConfig)
+    cs.store(name=cfg_name, node=DecodeConfig)
 
-    for k in InferConfig.__dataclass_fields__:
-        if is_dataclass(InferConfig.__dataclass_fields__[k].type):
-            v = InferConfig.__dataclass_fields__[k].default
+    for k in DecodeConfig.__dataclass_fields__:
+        if is_dataclass(DecodeConfig.__dataclass_fields__[k].type):
+            v = DecodeConfig.__dataclass_fields__[k].default
             cs.store(name=k, node=v)
 
     hydra_main()  # pylint: disable=no-value-for-parameter
