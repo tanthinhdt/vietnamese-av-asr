@@ -2,17 +2,17 @@ ROOT=$(dirname "$(dirname "$(readlink -fm "$0")")")
 EXP=ViAVSP-LLM_v2.0
 
 DATA_DIR=${ROOT}/data/processed/vasr/audio-visual/full
-EXP_DIR=${ROOT}/experiments
+EXP_DIR=${ROOT}/models
 OUT_PATH=${EXP_DIR}/${EXP}
 
-SRC=${ROOT}/src
+SRC_DIR=${ROOT}/src
 LLM_PATH=vilm/vinallama-2.7b
 PRETRAINED_MODEL_PATH=${ROOT}/models/AV-Hubert/large_vox_iter5.pt
 
 fairseq-hydra-train \
-    --config-dir ${SRC}/configs/training \
+    --config-dir ${SRC_DIR}/configs/training \
     --config-name ${EXP} \
-        common.user_dir=${SRC} \
+        common.user_dir=${SRC_DIR} \
         task.data=${DATA_DIR} \
         task.label_dir=${DATA_DIR} \
         task.llm_ckpt_path=${LLM_PATH} \
