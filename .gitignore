@@ -78,7 +78,6 @@ target/
 # exclude root folders from source control by default
 /data/
 /models/
-/scripts/
 /legacy/
 /evaluations/
 /experiments/
