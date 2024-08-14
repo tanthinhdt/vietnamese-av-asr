@@ -81,6 +81,7 @@ target/
 /legacy/
 /evaluations/
 /experiments/
+/outputs/
 
 # exclude cache folders
 models--*/
