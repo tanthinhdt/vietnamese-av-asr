@@ -184,7 +184,6 @@ class AVSPLLMModel(BaseFairseqModel):
         self.cfg = cfg
         self.encoder = encoder
         self.decoder = decoder
-        # self.avfeat_to_llm = nn.Linear(1024, 4096)
         self.avfeat_to_llm = nn.Linear(1024, 2560)
         self.freeze_finetune_updates = cfg.freeze_finetune_updates
 
