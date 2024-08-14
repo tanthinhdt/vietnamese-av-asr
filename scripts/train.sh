@@ -1,31 +1,21 @@
-#! /bin/bash
-# Copyright (c) Meta Platforms, Inc. and its affiliates.
-# All rights reserved.
-#
-# This source code is licensed under the license found in the
-# LICENSE file in the root directory of this source tree.
-
-
-# set variables
-DATA_PATH=???   # path to train dataset dir
-OUT_PATH=???    # output path to save 
-
 ROOT=$(dirname "$(dirname "$(readlink -fm "$0")")")
-SRC=${ROOT}/src
-LLM_PATH=${ROOT}/checkpoints/Llama-2-7b-hf   # path to llama checkpoint
-PRETRAINED_MODEL_PATH=${ROOT}/checkpoints/large_vox_iter5.pt   # path to pretrained avhubert
+EXP=ViAVSP-LLM_v2.0
 
-# start training
-export PYTHONPATH="${ROOT}/fairseq:$PYTHONPATH"
+DATA_DIR=${ROOT}/data/processed/vasr/audio-visual/full
+EXP_DIR=${ROOT}/experiments
+OUT_PATH=${EXP_DIR}/${EXP}
+
+SRC=${ROOT}/src
+LLM_PATH=vilm/vinallama-2.7b
+PRETRAINED_MODEL_PATH=${ROOT}/models/AV-Hubert/large_vox_iter5.pt
+
 fairseq-hydra-train \
-    --config-dir ${SRC}/conf \
-    --config-name vsp-llm-433h-freeze \
+    --config-dir ${SRC}/configs/training \
+    --config-name ${EXP} \
         common.user_dir=${SRC} \
-        task.data=${DATA_PATH} \
-        task.label_dir=${DATA_PATH} \
+        task.data=${DATA_DIR} \
+        task.label_dir=${DATA_DIR} \
         task.llm_ckpt_path=${LLM_PATH} \
         model.w2v_path=${PRETRAINED_MODEL_PATH} \
         model.llm_ckpt_path=${LLM_PATH} \
         hydra.run.dir=${OUT_PATH} \
-        distributed_training.distributed_world_size=1 \
-        distributed_training.nprocs_per_node=1 
