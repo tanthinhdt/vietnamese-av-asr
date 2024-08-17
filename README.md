@@ -121,7 +121,7 @@ python src/process_data.py \
     --ckpt_path path/to/AV-Hubert/large_vox_iter5.pt \
     --layer 12 \
 ```
-* `split`: Split name to extract (train, valid, test).
+* `split`: Split name to process (train, valid, test).
 * `nshard`: Number of shards.
 * `rank`: Which shard to process (from 0 to `nshard`)
 
@@ -137,7 +137,7 @@ python src/process_data.py \
     --n_clusters <n_clusters> \
     --percent <percent>
 ```
-* `split`: Split name to extract (train, valid, test).
+* `split`: Split name to process (train, valid, test).
 * `nshard`: Number of shards. Must be consistent with one at Step 2.
 * `n_clusters`: Number of clusters inputted to K-Means.
 * `percent`: Percent of the split to train K-Means.
@@ -154,9 +154,9 @@ python src/process_data.py \
     --rank <rank> \
     --lab_dir path/to/output/labels/directory
 ```
-* `split`: Split name to extract (train, valid, test).
+* `split`: Split name to process (train, valid, test).
 * `nshard`: Number of shards. Must be consistent with one at Step 2 and 3.
-* `rank`: Which shard to process (from 0 to `nshard`)
+* `rank`: Which shard to process (from 0 to `nshard`).
 
 ### 5. Count similar frames.
 Run the following command to count similar consecutive frames.
@@ -168,8 +168,8 @@ python src/process_data.py \
     --lab_dir path/to/output/labels/directory \
     --output_dir path/to/output/directory
 ```
-* `split`: Split name to extract (train, valid, test).
-* `nshard`: Number of shards. Must be consistent with one at Step 2 and 3.
+* `split`: Split name to process (train, valid, test).
+* `nshard`: Number of shards. Must be consistent with one at Step 2, 3 and 4.
 
 # Pretrained Backbones
 
