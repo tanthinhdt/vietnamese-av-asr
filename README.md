@@ -18,23 +18,39 @@ Read [prepare environment.](scripts/README.md)
 - Download and move [VSP_LLM checkpoint](https://drive.google.com/file/d/1NEeXC6qHDPQ0Wd7Z8OeXavx0OOshLCEU/view?usp=share_link) to [checkpoints dir](src/models/checkpoints/).
 - Download and move[ AV_HuBert checkpoint](https://drive.google.com/file/d/167-_DiLutzMZtDcnA69tdlp5KxwMmHxQ/view?usp=share_link) to [checkpoints dir](src/models/checkpoints/).
 
-## Go to project dir
-```bash
-cd vietnamese-av-asr/
-```
+[//]: # (## Go to project dir)
 
-## Run inference
-```bash
-python src/models/inferences/main.py 
-    <video-path>
-```
-##### Arguments:
-- `<video-path>`: Path to video file. It can be video/visual/audio clip. It is required duration not to be greater than **30** seconds, because of resource constraints.
+[//]: # (```bash)
 
-## Video with embedded transcript
-### Output video and transcript are located in `result/` dir
-#### Note: 
-The output video is **JUST INTUITIVE**, means the transcript in video ASYNCHRONOUS with both audio and visual. 
-Because of model's purpose, **JUST** transcribe **WITHOUT** time stamp.
+[//]: # (cd vietnamese-av-asr/)
 
-## Deploy in [Gradio](https://huggingface.co/spaces/nguyenminh4099/Demo) 
+[//]: # (```)
+
+[//]: # ()
+[//]: # (## Run inference)
+
+[//]: # (```bash)
+
+[//]: # (python src/models/inferences/main.py )
+
+[//]: # (    <video-path>)
+
+[//]: # (```)
+
+[//]: # (##### Arguments:)
+
+[//]: # (- `<video-path>`: Path to video file. It can be video/visual/audio clip. It is required duration not to be greater than **30** seconds, because of resource constraints.)
+
+[//]: # ()
+[//]: # (## Video with embedded transcript)
+
+[//]: # (### Output video and transcript are located in `result/` dir)
+
+[//]: # (#### Note: )
+
+[//]: # (The output video is **JUST INTUITIVE**, means the transcript in video ASYNCHRONOUS with both audio and visual. )
+
+[//]: # (Because of model's purpose, **JUST** transcribe **WITHOUT** time stamp.)
+
+[//]: # ()
+[//]: # (## Deploy in [Gradio]&#40;https://huggingface.co/spaces/nguyenminh4099/Demo&#41; )

@@ -16,7 +16,6 @@ def setup_environment():
     cmd = ['bash', 'scripts/prepare.sh', '--platform', 'gradio']
     subprocess.run(cmd, shell=False, capture_output=False, stdout=None)
 
-
 setup_environment()
 logger.info("Environment is set up")
 
@@ -32,8 +31,11 @@ model, cfg, saved_cfg, llm_tokenizer = load_ensemble_model(
 logger.info("Loaded model")
 
 
-def predict(video: str = None):
-    video_path = video
+def predict(
+        video_path,
+        time_interval
+):
+    progress = gr.Progress()
     if video_path is None:
         logger.warning('Upload/record a video. The pipeline is crashed')
         exit(1)
@@ -43,6 +45,8 @@ def predict(video: str = None):
     try:
         output_file = infer(
             video_path=video_path,
+            progress=progress,
+            time_interval=time_interval,
             model=model,
             cfg=cfg,
             saved_cfg=saved_cfg,
@@ -67,10 +71,15 @@ if __name__ == "__main__":
                 sources=['upload', 'webcam'],
                 format='mp4'
             ),
+            gr.Slider(
+                minimum=1, maximum=999,
+                value=3, step=1,
+                label='Second',
+            ),
         ],
         outputs=gr.Video(),
         title="Demo project",
         description="Vietnamese Automatic Speech Recognition Utilizing Audio and Visual Data"
     )
 
-    app.launch(share=True)
+    app.queue().launch(share=True)
