@@ -2,18 +2,18 @@ ROOT=$(dirname "$(dirname "$(readlink -fm "$0")")")
 EXP=ViAVSP-LLM_v2.0
 EVAL_SET=test
 
-DATA_DIR=${ROOT}/data/processed/vasr/audio-visual/full
-EXP_DIR=${ROOT}/models
-MODEL_PATH=${EXP_DIR}/${EXP}/checkpoints/checkpoint_best.pt
+DATA_DIR=${ROOT}/data/processed/vasr/full
+EXP_DIR=${ROOT}/models/${EXP}
+MODEL_PATH=${EXP_DIR}/checkpoints/checkpoint_best.pt
 LLM_PATH=vilm/vinallama-2.7b 
 
 USE_BLEU=false
 OUT_PATH=${EXP_DIR}/evaluations/${EVAL_SET}
 SRC_DIR=${ROOT}/src
 
-CUDA_VISIBLE_DEVICES=0 python -B ${SRC_DIR}/decode.py \
+CUDA_VISIBLE_DEVICES=0 python -B ${SRC_DIR}/evaluate.py \
     --config-dir ${SRC_DIR}/configs/inference \
-    --config-name decode \
+    --config-name evaluation \
         common.user_dir=${SRC_DIR} \
         dataset.gen_subset=${EVAL_SET} \
         override.data=${DATA_DIR} \
