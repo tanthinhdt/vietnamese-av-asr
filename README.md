@@ -126,7 +126,7 @@ python src/process_data.py \
 * `rank`: Which shard to process (from 0 to `nshard`)
 
 ### 3. Train K-Means model.
-Run the following command to create manifest for training, validation and test splits.
+Run the following command to train K-Means model.
 ```
 python src/process_data.py \
     --process learn_kmeans \
@@ -143,7 +143,7 @@ python src/process_data.py \
 * `percent`: Percent of the split to train K-Means.
 
 ### 4. Get pseudo labels from K-Means model.
-Run the following command to create manifest for training, validation and test splits.
+Run the following command to obtain pseudo labels from K-Means model.
 ```
 python src/process_data.py \
     --process dump_label \
@@ -159,7 +159,7 @@ python src/process_data.py \
 * `rank`: Which shard to process (from 0 to `nshard`)
 
 ### 5. Count similar frames.
-Run the following command to create manifest for training, validation and test splits.
+Run the following command to count similar consecutive frames.
 ```
 python src/process_data.py \
     --process count_clusters \
