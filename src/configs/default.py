@@ -19,6 +19,7 @@ class SaveFramesConfig(ProcessConfig):
     video_file: str = None
     output_dir: str = None
     overwrite: bool = False
+    size: tuple = (88, 88)
 
     def __post_init__(self):
         assert self.video_file is not None, "Video file is required"

@@ -1,10 +1,12 @@
 import cv2
+import torch
 import shutil
 from tqdm import tqdm
 from glob import glob
 from pathlib import Path
 from loguru import logger
 from configs import SaveFramesConfig
+from torchvision.transforms.v2.functional import center_crop
 
 
 def save_frames(config: SaveFramesConfig):
@@ -31,6 +33,11 @@ def save_frames(config: SaveFramesConfig):
                 break
             frame_count += 1
             frame_path = output_dir / f"{frame_count}.jpg"
+
+            # Center crop the frame
+            torch_frame = torch.from_numpy(frame).permute(2, 0, 1)
+            frame = center_crop(torch_frame, config.size).permute(1, 2, 0).numpy()
+
             cv2.imwrite(frame_path, frame)
 
         logger.info(f"Saved {frame_count} frames to {output_dir}")
