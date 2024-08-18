@@ -39,7 +39,7 @@ class Splitter(Tasker):
         _samples['result_video_path'] = metadata_dict['result_video_path']
         i = 0
 
-        if time_interval == -1 or time_interval <= int(metadata_dict['duration']):
+        if time_interval == -1 or time_interval > int(metadata_dict['duration']):
             time_interval = int(metadata_dict['duration'])
         for timestamp in range(0, int(metadata_dict['duration']), time_interval):
             _video_name = "video_%.5d" % i

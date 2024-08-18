@@ -16,51 +16,24 @@ from src.models.utils import vsp_llm as custom_utils
 
 
 def load_audio_visual(
-    manifest_path, max_keep, min_keep, frame_rate, label_paths, label_rates, tol=0.1
+    manifest_path
 ):
-    def is_audio_label_aligned(audio_dur, label_durs):
-        return all([abs(audio_dur - label_dur) < tol for label_dur in label_durs])
-    n_long, n_short, n_unaligned = 0, 0, 0
     names, inds, sizes = [], [], []
-    dur_from_label_list = []
-    is_seq_label = any([x == -1 for x in label_rates])
-    for label_path, label_rate in zip(label_paths, label_rates):
-        label_lengths = [
-            len(line.rstrip().split()) / label_rate
-            for line in open(label_path).readlines()
-        ]
-        dur_from_label_list.append(label_lengths)
-    dur_from_label_list = list(zip(*dur_from_label_list))
-
-    manifest = manifest_path.split("/")[-1].split(".")[0]
-    cluster_counts_fn = manifest_path.replace(".tsv", ".cluster_counts")
-    cluster_counts_list = open(cluster_counts_fn).readlines()
-
-    cluster_counts = []
     with open(manifest_path) as f:
         root = f.readline().strip()
         for ind, line in enumerate(f):
             items = line.strip().split("\t")
             sz = int(items[-2])  #
-            if min_keep is not None and sz < min_keep:
-                n_short += 1
-            elif max_keep is not None and sz > max_keep:
-                n_long += 1
-            elif (not is_seq_label) and (
-                not is_audio_label_aligned(sz / frame_rate, dur_from_label_list[ind])
-            ):
-                n_unaligned += 1
-            else:
-                video_path = items[1]
-                audio_path = items[2]
-                audio_id = items[0]
-                names.append((video_path, audio_path + ":" + audio_id))
-                inds.append(ind)
-                sizes.append(sz)
-                cluster_counts.append(cluster_counts_list[ind].strip())
+
+            video_path = items[1]
+            audio_path = items[2]
+            audio_id = items[0]
+            names.append((video_path, audio_path + ":" + audio_id))
+            inds.append(ind)
+            sizes.append(sz)
     tot = ind + 1
 
-    return root, names, inds, tot, sizes, cluster_counts
+    return root, names, inds, tot, sizes
 
 
 def load_label(label_path, inds, tot):
@@ -106,8 +79,6 @@ class VSP_LLM_dataset(FairseqDataset):
         llm_ckpt_path: str,
         label_paths: List[str],
         label_rates: Union[List[float], float],  # -1 for sequence labels
-        max_keep_sample_size: Optional[int] = None,
-        min_keep_sample_size: Optional[int] = None,
         max_sample_size: Optional[int] = None,
         shuffle: bool = True,
         pad_audio: bool = False,
@@ -140,15 +111,7 @@ class VSP_LLM_dataset(FairseqDataset):
             inds,
             tot,
             self.sizes,
-            self.cluster_counts,
-        ) = load_audio_visual(
-            manifest_path,
-            max_keep_sample_size,
-            min_keep_sample_size,
-            frame_rate=sample_rate,
-            label_paths=label_paths,
-            label_rates=self.label_rates,
-        )
+        ) = load_audio_visual(manifest_path)
         self.sample_rate = sample_rate
         self.stack_order_audio = stack_order_audio
         self.shuffle = shuffle
@@ -169,24 +132,13 @@ class VSP_LLM_dataset(FairseqDataset):
             noise_num,
         )
         self.lang_dict = {
-            "en": "English",
-            "es": "Spanish",
-            "fr": "French",
-            "it": "Italian",
-            "pt": "Portuguese",
             "vi": "Vietnamese",
         }
 
         assert self.single_target == (
             self.label_rates[0] == -1
         ), f"single target should be equivalent to sequence label (label_rate==-1)"
-        if store_labels:
-            self.label_list = [load_label(p, inds, tot) for p in label_paths]
-        else:
-            self.label_paths = label_paths
-            self.label_offsets_list = [
-                load_label_offset(p, inds, tot) for p in label_paths
-            ]
+
         if not skip_verify:
             for label_path, label_rate in zip(label_paths, self.label_rates):
                 verify_label_lengths(label_path, label_rate, tot)
@@ -351,13 +303,6 @@ class VSP_LLM_dataset(FairseqDataset):
         if self.normalize and "audio" in self.modalities:
             with torch.no_grad():
                 audio_feats = F.layer_norm(audio_feats, audio_feats.shape[1:])
-        cluster_counts = self.load_units(index)
-        labels = [
-            self.llm_tokenizer(
-                self.label_list[0][index], return_tensors="pt"
-            ).input_ids[0]
-        ]
-        labels = [torch.cat((labels[0], torch.tensor([2]).long()))]
 
         fid = self.names[index][1].split(":")[1]
 
@@ -378,8 +323,6 @@ class VSP_LLM_dataset(FairseqDataset):
             "fid": fid,
             "video_source": video_feats,
             "audio_source": audio_feats,
-            "cluster_counts": cluster_counts,
-            "label_list": labels,
             "text_source": [txt_feats],
         }
 
@@ -405,9 +348,6 @@ class VSP_LLM_dataset(FairseqDataset):
         samples = [s for s in samples if s["id"] is not None]
         if len(samples) == 0:
             return {}
-
-        ############# cluster_counts ############
-        cluster_counts_source = [s["cluster_counts"] for s in samples]
 
         ############# av_hubert ############
         audio_source, video_source = [s["audio_source"] for s in samples], [
@@ -438,10 +378,6 @@ class VSP_LLM_dataset(FairseqDataset):
         else:
             collated_videos = None
 
-        targets_by_label = [
-            [s["label_list"][i] for s in samples] for i in range(self.num_labels)
-        ]
-
         text_instructions = [
             [s["text_source"][i] for s in samples] for i in range(self.num_labels)
         ]
@@ -450,16 +386,11 @@ class VSP_LLM_dataset(FairseqDataset):
             text_instructions, audio_size, audio_starts
         )
 
-        targets_list, lengths_list, ntokens_list = self.collater_label(
-            targets_by_label, audio_size, audio_starts
-        )
         text_attn_mask = collated_texts[0][0] != 0
-        target_attn_mask = targets_list[0][0] != 0
 
         source = {
             "audio": collated_audios,
             "video": collated_videos,
-            "cluster_counts": cluster_counts_source,
             "text": collated_texts[0][0],
         }
 
@@ -475,21 +406,6 @@ class VSP_LLM_dataset(FairseqDataset):
             "utt_id": [s["fid"] for s in samples],
         }
 
-        if self.single_target:
-            batch["target_lengths"] = lengths_list[0]
-            batch["ntokens"] = ntokens_list[0]
-            if self.is_s2s:
-                batch["target"], net_input["prev_output_tokens"] = (
-                    targets_list[0][0],
-                    targets_list[0][1],
-                )
-                batch["target_attn_mask"] = target_attn_mask
-            else:
-                batch["target"] = targets_list[0]
-        else:
-            batch["target_lengths_list"] = lengths_list
-            batch["ntokens_list"] = ntokens_list
-            batch["target_list"] = targets_list
         return batch
 
     def collater_audio(self, audios, audio_size, audio_starts=None):
@@ -531,9 +447,6 @@ class VSP_LLM_dataset(FairseqDataset):
             rem_size = [len(t) - s for t, s in zip(targets, frm_starts)]
             frm_size = min(frm_size, *rem_size)
         targets = [t[s : s + frm_size] for t, s in zip(targets, frm_starts)]
-        logger.debug(f"audio_starts={audio_starts}")
-        logger.debug(f"frame_starts={frm_starts}")
-        logger.debug(f"frame_size={frm_size}")
 
         lengths = torch.LongTensor([len(t) for t in targets])
         ntokens = lengths.sum().item()

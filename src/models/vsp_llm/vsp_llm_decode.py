@@ -40,7 +40,6 @@ def produce_predictions(
     task.load_dataset('test')
     logger.info('Loaded dataset')
 
-    # Load dataset (possibly sharded)
     cfg.dataset.batch_size = 1
     cfg.dataset.max_tokens = 1000
     itr = task.get_batch_iterator(
@@ -87,7 +86,7 @@ def produce_predictions(
             result_dict['utt_id'].append(sample['utt_id'][i])
             hypo_str = best_hypo[i]
             result_dict['hypo'].append(hypo_str)
-            logger.info(f"HYP:{hypo_str}")
+            logger.info(f"HYP: {hypo_str}")
 
     os.makedirs(cfg.common_eval.results_path, exist_ok=True)
     result_fn = f"{cfg.common_eval.results_path}/hypo.json"

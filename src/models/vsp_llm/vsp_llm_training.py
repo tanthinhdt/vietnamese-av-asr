@@ -167,8 +167,6 @@ class VSP_LLM_TrainingTask(FairseqTask):
             llm_ckpt_path=self.cfg.llm_ckpt_path,
             label_paths=paths,
             label_rates=self.cfg.label_rate,
-            max_keep_sample_size=self.cfg.max_sample_size,
-            min_keep_sample_size=self.cfg.min_sample_size,
             max_sample_size=self.cfg.max_trim_sample_size,
             pad_audio=self.cfg.pad_audio,
             normalize=self.cfg.normalize,

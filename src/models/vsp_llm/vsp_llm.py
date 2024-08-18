@@ -333,21 +333,9 @@ class avhubert_llm_seq2seq_cluster_count(BaseFairseqModel):
         with torch.autocast(device_type='cpu'):
             encoder_output = self.avfeat_to_llm(encoder_output)
 
-        cluster_counts = kwargs['source']['cluster_counts'][0]
-        results_tensor = []
-        start_idx = 0
-
-        for clutser_num in cluster_counts:
-            end_idx = start_idx + clutser_num
-            slice = encoder_output[:, start_idx:end_idx, :]
-            mean_tensor = torch.mean(slice, dim=1, keepdim=True)
-            results_tensor.append(mean_tensor)
-            start_idx = end_idx
-
-        reduced_enc_out = torch.cat(results_tensor, dim=1).to(device=self.device)
         instruction = kwargs['source']['text']
         instruction_embedding = self.decoder.model.model.embed_tokens(instruction).to(device=self.device)
-        llm_input = torch.cat((instruction_embedding, reduced_enc_out), dim=1)
+        llm_input = torch.cat((instruction_embedding, encoder_output), dim=1)
 
         self.decoder.config.use_cache = True
         outputs = self.decoder.generate(

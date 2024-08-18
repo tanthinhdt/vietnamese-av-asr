@@ -15,8 +15,7 @@ git clone -b inference https://github.com/minhnv4099/vietnamese-av-asr.git
 Read [prepare environment.](scripts/README.md) 
 
 ## Prepare checkpoints
-- Download and move [VSP_LLM checkpoint](https://drive.google.com/file/d/1NEeXC6qHDPQ0Wd7Z8OeXavx0OOshLCEU/view?usp=share_link) to [checkpoints dir](src/models/checkpoints/).
-- Download and move[ AV_HuBert checkpoint](https://drive.google.com/file/d/167-_DiLutzMZtDcnA69tdlp5KxwMmHxQ/view?usp=share_link) to [checkpoints dir](src/models/checkpoints/).
+- Download and move [VSP_LLM checkpoint](https://drive.google.com/file/d/1dKXL0cYrTCqkfuIBuo1avlAlGwIPQhP1/view?usp=sharing) to [checkpoints dir](src/models/checkpoints/).
 
 [//]: # (## Go to project dir)
 

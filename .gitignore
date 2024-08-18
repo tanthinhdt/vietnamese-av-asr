@@ -89,20 +89,19 @@ target/
 
 # In repo
 test.py
-test_pipeline.py
-test_crop.py
+*.mp4
 
 /data/
+/decode/
 /tmp/
 /outputs/
 /flagged/
+/notebooks/
 /onnx/
-/decode/
 /results/
 /docs/
 /models/
-/notebooks/
-/scripts/
+
 
 /src/tools/
 /src/utils/
@@ -112,6 +111,7 @@ test_crop.py
 /src/weights/
 /src/pipelines/
 
+/src/models/checkpoints/*.pt
 /src/models/inferences/
 /src/models/scripts/
 /src/models/dataset/

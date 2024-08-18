@@ -5,8 +5,7 @@ import gradio as gr
 
 repo_dir = os.path.dirname(__file__)
 sys.path.extend((repo_dir, os.getcwd()))
-from src.models.utils.model import load_ensemble_model, load_feature_extractor
-from src.models.utils import vsp_llm as custom_utils
+from src.models.utils.model import load_ensemble_model
 from src.models.utils.logging import get_logger
 from src.models.taskers.inferencer import infer
 
@@ -18,12 +17,6 @@ def setup_environment():
 
 setup_environment()
 logger.info("Environment is set up")
-
-extractor = load_feature_extractor(
-        os.path.join(repo_dir, 'src/models/checkpoints/large_vox_iter5.pt'),
-        12, custom_utils=custom_utils
-)
-logger.info("Loaded feature extractor")
 
 model, cfg, saved_cfg, llm_tokenizer = load_ensemble_model(
     os.path.join(repo_dir, 'vavsp_llm.yaml')
@@ -51,7 +44,6 @@ def predict(
             cfg=cfg,
             saved_cfg=saved_cfg,
             llm_tokenizer=llm_tokenizer,
-            extractor=extractor
         )
     except RuntimeError:
         logger.critical('Runtime error caught while inferencing.')
