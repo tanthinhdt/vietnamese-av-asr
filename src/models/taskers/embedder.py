@@ -61,7 +61,7 @@ class Embedder(Tasker):
             'ffmpeg', '-y',
             '-loglevel', 'panic',
             '-i', video_path,
-            '-vf', 'subtitles=%s' % subtitle_path,
+            '-vf', f"subtitles={subtitle_path}:force_style='PrimaryColour=&HFFFFFF,BorderStyle=4,BackColour=0'",
             output_path,
         ]
 

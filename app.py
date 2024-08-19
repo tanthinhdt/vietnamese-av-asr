@@ -11,15 +11,12 @@ from src.models.taskers.inferencer import infer
 
 logger = get_logger("Application", is_stream=True)
 
-def setup_environment():
-    cmd = ['bash', 'scripts/prepare.sh', '--platform', 'gradio']
-    subprocess.run(cmd, shell=False, capture_output=False, stdout=None)
-
-setup_environment()
+cmd = ['bash', 'src/prepare.sh', '--platform', 'gradio']
+subprocess.run(cmd, shell=False, capture_output=False, stdout=None)
 logger.info("Environment is set up")
 
 model, cfg, saved_cfg, llm_tokenizer = load_ensemble_model(
-    os.path.join(repo_dir, 'vavsp_llm.yaml')
+    os.path.join(repo_dir, 'src/models/vavsp_llm.yaml')
 )
 logger.info("Loaded model")
 
@@ -64,7 +61,7 @@ if __name__ == "__main__":
                 format='mp4'
             ),
             gr.Slider(
-                minimum=1, maximum=999,
+                minimum=1, maximum=200,
                 value=3, step=1,
                 label='Second',
             ),
@@ -74,4 +71,4 @@ if __name__ == "__main__":
         description="Vietnamese Automatic Speech Recognition Utilizing Audio and Visual Data"
     )
 
-    app.queue().launch(share=True)
+    app.launch(share=True)
