@@ -68,7 +68,8 @@ if __name__ == "__main__":
         ],
         outputs=gr.Video(),
         title="Demo project",
-        description="Vietnamese Automatic Speech Recognition Utilizing Audio and Visual Data"
+        description="Vietnamese Automatic Speech Recognition Utilizing Audio and Visual Data",
+        concurrency_limit=100,
     )
 
-    app.launch(share=True)
+    app.queue(max_size=100).launch(share=True)
