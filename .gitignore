@@ -82,6 +82,7 @@ target/
 /evaluations/
 /experiments/
 /outputs/
+logs/
 
 # exclude cache folders
 models--*/

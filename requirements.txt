@@ -43,3 +43,4 @@ av
 kenlm
 pyctcdecode
 thop
+seaborn==0.13.2
