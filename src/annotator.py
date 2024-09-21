@@ -41,7 +41,6 @@ def set_sidebar_layout():
         help="Directory containing the videos to be annotated",
     )
     st.session_state.data_dir = Path(data_dir)
-    st.session_state.video_dir = st.session_state.data_dir / "video"
 
     uploaded_file = st.sidebar.file_uploader(
         "Upload annotation file",
@@ -55,8 +54,11 @@ def set_sidebar_layout():
             st.session_state.data_dir / "metadata.parquet"
         )
 
+    visual_dir = st.session_state.data_dir / "visual"
+    audio_dir = st.session_state.data_dir / "audio"
     available_shards = (
-        set([f.name for f in st.session_state.video_dir.iterdir() if f.is_dir()])
+        set([f.name for f in visual_dir.iterdir() if f.is_dir()])
+        .intersection([f.name for f in audio_dir.iterdir() if f.is_dir()])
         .intersection(st.session_state.metadata_df["shard"].to_list())
     )
     st.sidebar.selectbox(
