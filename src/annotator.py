@@ -154,6 +154,18 @@ def app():
         help="Directory containing the videos to be annotated",
     )
     st.session_state.data_dir = Path(data_dir)
+    visual_dir = st.session_state.data_dir / "visual"
+    if not visual_dir.exists():
+        st.error("Visual directory not found.")
+        st.stop()
+    audio_dir = st.session_state.data_dir / "audio"
+    if not audio_dir.exists():
+        st.error("Audio directory not found.")
+        st.stop()
+    metadata_file = st.session_state.data_dir / "metadata.parquet"
+    if not metadata_file.exists():
+        st.error("Metadata file not found.")
+        st.stop()
 
     uploaded_file = st.sidebar.file_uploader(
         "Upload annotation file",
@@ -163,28 +175,28 @@ def app():
     if uploaded_file is not None:
         st.session_state.metadata_df = pl.read_parquet(uploaded_file.read())
     elif "metadata_df" not in st.session_state:
-        st.session_state.metadata_df = pl.read_parquet(
-            st.session_state.data_dir / "metadata.parquet"
-        )
+        st.session_state.metadata_df = pl.read_parquet(metadata_file)
 
-    visual_dir = st.session_state.data_dir / "visual"
-    audio_dir = st.session_state.data_dir / "audio"
     available_shards = (
         set([f.name for f in visual_dir.iterdir() if f.is_dir()])
         .intersection([f.name for f in audio_dir.iterdir() if f.is_dir()])
         .intersection(st.session_state.metadata_df["shard"].to_list())
     )
-    shard_id = st.sidebar.selectbox(
-        "Shard ID",
-        options=list(available_shards) + ["all"],
+    available_shards = sorted(available_shards)
+    if len(available_shards) == 0:
+        st.error("No shards found in the data directory.")
+        st.stop()
+
+    shard_ids = st.sidebar.multiselect(
+        "Shard ID(s)",
+        options=available_shards,
+        default=available_shards[0],
         help="Select the shard to annotate",
     )
-    if shard_id != "all":
+    if shard_ids is not None:
         st.session_state.df = st.session_state.metadata_df.filter(
-            pl.col("shard") == shard_id
+            pl.col("shard").is_in(shard_ids)
         )
-    else:
-        st.session_state.df = st.session_state.metadata_df
 
     split = st.sidebar.selectbox(
         "Split",
