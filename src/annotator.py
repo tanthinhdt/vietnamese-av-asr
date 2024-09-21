@@ -163,16 +163,16 @@ def media_view():
             disabled=lock_next_id,
             help="Go to the next ID.",
         )
-
-        col_1, col_2 = container.columns([2, 3])
-        col_1.button(
+        container.button(
             "Previous ID",
             on_click=iter_backward,
             use_container_width=True,
             disabled=st.session_state.curr_idx == 0,
             help="Go to the previous ID.",
         )
-        col_2.selectbox(
+
+        col_1, col_2 = container.columns(2)
+        col_1.selectbox(
             "To ID",
             options=ids,
             on_change=to_id,
