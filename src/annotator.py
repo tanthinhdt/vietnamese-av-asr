@@ -54,7 +54,6 @@ def set_sidebar_layout():
         st.session_state.metadata_df = pl.read_parquet(
             st.session_state.data_dir / "metadata.parquet"
         )
-    print(st.session_state.metadata_df)
 
     available_shards = (
         set([f.name for f in st.session_state.video_dir.iterdir() if f.is_dir()])
