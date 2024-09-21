@@ -3,74 +3,6 @@ import streamlit as st
 from pathlib import Path
 
 
-def set_layout():
-    st.set_page_config(
-        page_title="Video Annotator",
-        page_icon="🎥",
-        layout="wide",
-        initial_sidebar_state="expanded",
-    )
-    set_page_layout()
-    set_sidebar_layout()
-
-
-def set_page_layout():
-    metadata_col, media_col = st.columns([3, 1])
-    st.session_state.metadata_col = metadata_col
-    st.session_state.media_col = media_col
-    st.session_state.container_height = 640
-
-    st.divider()
-
-    col_1, col_2, col_3, col_4, col_5, col_6, col_7 = st.columns(7)
-    st.session_state.num_examples_display = col_1.empty()
-    st.session_state.progress_display = col_2.empty()
-    st.session_state.num_male_display = col_3.empty()
-    st.session_state.num_female_display = col_4.empty()
-    st.session_state.num_north_dialect_display = col_5.empty()
-    st.session_state.num_central_dialect_display = col_6.empty()
-    st.session_state.num_south_dialect_display = col_7.empty()
-
-
-def set_sidebar_layout():
-    st.sidebar.header("Settings")
-
-    data_dir = st.sidebar.text_input(
-        "Data Directory",
-        value="data/raw/vasr",
-        help="Directory containing the videos to be annotated",
-    )
-    st.session_state.data_dir = Path(data_dir)
-
-    uploaded_file = st.sidebar.file_uploader(
-        "Upload annotation file",
-        type=["parquet"],
-        help="Upload a Parquet file containing annotations",
-    )
-    if uploaded_file is not None:
-        st.session_state.metadata_df = pl.read_parquet(uploaded_file.read())
-    elif "metadata_df" not in st.session_state:
-        st.session_state.metadata_df = pl.read_parquet(
-            st.session_state.data_dir / "metadata.parquet"
-        )
-
-    visual_dir = st.session_state.data_dir / "visual"
-    audio_dir = st.session_state.data_dir / "audio"
-    available_shards = (
-        set([f.name for f in visual_dir.iterdir() if f.is_dir()])
-        .intersection([f.name for f in audio_dir.iterdir() if f.is_dir()])
-        .intersection(st.session_state.metadata_df["shard"].to_list())
-    )
-    st.sidebar.selectbox(
-        "Shard ID",
-        options=list(available_shards) + ["all"],
-        key="shard_id",
-        help="Select the shard to annotate",
-    )
-
-    st.session_state.export_button = st.sidebar.container()
-
-
 def metadata_view():
     with st.session_state.metadata_col:
         container = st.container(height=st.session_state.container_height, border=False)
@@ -191,14 +123,89 @@ def media_view():
 
 
 def app():
-    set_layout()
+    st.set_page_config(
+        page_title="Video Annotator",
+        page_icon="🎥",
+        layout="wide",
+        initial_sidebar_state="expanded",
+    )
 
-    if st.session_state.shard_id != "all":
+    metadata_col, media_col = st.columns([3, 1])
+    st.session_state.metadata_col = metadata_col
+    st.session_state.media_col = media_col
+    st.session_state.container_height = 640
+
+    st.divider()
+
+    col_1, col_2, col_3, col_4, col_5, col_6, col_7 = st.columns(7)
+    st.session_state.num_examples_display = col_1.empty()
+    st.session_state.progress_display = col_2.empty()
+    st.session_state.num_male_display = col_3.empty()
+    st.session_state.num_female_display = col_4.empty()
+    st.session_state.num_north_dialect_display = col_5.empty()
+    st.session_state.num_central_dialect_display = col_6.empty()
+    st.session_state.num_south_dialect_display = col_7.empty()
+
+    st.sidebar.header("Settings")
+
+    data_dir = st.sidebar.text_input(
+        "Data Directory",
+        value="data/raw/vasr",
+        help="Directory containing the videos to be annotated",
+    )
+    st.session_state.data_dir = Path(data_dir)
+
+    uploaded_file = st.sidebar.file_uploader(
+        "Upload annotation file",
+        type=["parquet"],
+        help="Upload a Parquet file containing annotations",
+    )
+    if uploaded_file is not None:
+        st.session_state.metadata_df = pl.read_parquet(uploaded_file.read())
+    elif "metadata_df" not in st.session_state:
+        st.session_state.metadata_df = pl.read_parquet(
+            st.session_state.data_dir / "metadata.parquet"
+        )
+
+    visual_dir = st.session_state.data_dir / "visual"
+    audio_dir = st.session_state.data_dir / "audio"
+    available_shards = (
+        set([f.name for f in visual_dir.iterdir() if f.is_dir()])
+        .intersection([f.name for f in audio_dir.iterdir() if f.is_dir()])
+        .intersection(st.session_state.metadata_df["shard"].to_list())
+    )
+    shard_id = st.sidebar.selectbox(
+        "Shard ID",
+        options=list(available_shards) + ["all"],
+        help="Select the shard to annotate",
+    )
+    if shard_id != "all":
         st.session_state.df = st.session_state.metadata_df.filter(
-            pl.col("shard") == st.session_state.shard_id
+            pl.col("shard") == shard_id
         )
     else:
         st.session_state.df = st.session_state.metadata_df
+
+    split = st.sidebar.selectbox(
+        "Split",
+        options=["all", "train", "valid", "test"],
+        help="Select the split to annotate",
+    )
+    if split != "all":
+        st.session_state.df = st.session_state.df.filter(pl.col("split") == split)
+
+    num_rows = st.sidebar.number_input(
+        "Number of rows",
+        min_value=1,
+        max_value=len(st.session_state.df),
+        value=len(st.session_state.df),
+        step=100,
+        help="Number of rows to display in the metadata table",
+    )
+    st.session_state.df = st.session_state.df.head(num_rows)
+
+    st.session_state.export_button = st.sidebar.container()
+
     if "done" not in st.session_state.df.columns:
         st.session_state.df = st.session_state.df.with_columns(
             done=pl.Series([False] * len(st.session_state.df))
