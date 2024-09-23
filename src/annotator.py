@@ -9,10 +9,12 @@ def metadata_view():
         st.session_state.df = container.data_editor(
             st.session_state.df,
             height=st.session_state.container_height - 10,
-            num_rows="dynamic",
+            num_rows="fixed",
             use_container_width=True,
             hide_index=False,
-            column_order=["id", "transcript", "female", "dialect", "done"],
+            column_order=[
+                "id", "transcript", "female", "dialect", "english", "done", "error"
+            ],
             column_config={
                 "id": st.column_config.Column(
                     label="ID",
@@ -43,10 +45,20 @@ def metadata_view():
                     options=["northern", "central", "southern"],
                     help="Select the dialect of the speaker in the video",
                 ),
+                "english": st.column_config.CheckboxColumn(
+                    label="English",
+                    width="small",
+                    help="Check if the transcript has English words",
+                ),
                 "done": st.column_config.CheckboxColumn(
                     label="Done",
                     width="small",
                     help="Check if the video has been annotated",
+                ),
+                "error": st.column_config.CheckboxColumn(
+                    label="Error",
+                    width="small",
+                    help="Check if the example has an error",
                 ),
             },
         )
@@ -176,6 +188,27 @@ def app():
         st.session_state.metadata_df = pl.read_parquet(uploaded_file.read())
     elif "metadata_df" not in st.session_state:
         st.session_state.metadata_df = pl.read_parquet(metadata_file)
+
+    if "female" not in st.session_state.metadata_df.columns:
+        st.session_state.metadata_df = st.session_state.metadata_df.with_columns(
+            female=pl.Series([False] * len(st.session_state.metadata_df))
+        )
+    if "dialect" not in st.session_state.metadata_df.columns:
+        st.session_state.metadata_df = st.session_state.metadata_df.with_columns(
+            dialect=pl.Series([None] * len(st.session_state.metadata_df)).cast(pl.String)
+        )
+    if "english" not in st.session_state.metadata_df.columns:
+        st.session_state.metadata_df = st.session_state.metadata_df.with_columns(
+            english=pl.Series([False] * len(st.session_state.metadata_df))
+        )
+    if "done" not in st.session_state.metadata_df.columns:
+        st.session_state.metadata_df = st.session_state.metadata_df.with_columns(
+            done=pl.Series([False] * len(st.session_state.metadata_df))
+        )
+    if "error" not in st.session_state.metadata_df.columns:
+        st.session_state.metadata_df = st.session_state.metadata_df.with_columns(
+            error=pl.Series([False] * len(st.session_state.metadata_df))
+        )
 
     available_shards = (
         set([f.name for f in visual_dir.iterdir() if f.is_dir()])
