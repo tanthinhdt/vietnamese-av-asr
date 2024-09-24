@@ -52,16 +52,27 @@ def filter() -> None:
     )
 
 
-def update_df(col_name: str) -> None:
+def update_label(col_name: str) -> None:
     st.session_state.df[st.session_state.curr_idx, col_name] = st.session_state[col_name]
 
 
-def update_label() -> None:
+def update_values() -> None:
     col_names = [
         "female", "dialect", "english", "english", "error", "transcript", "done"
     ]
     for col_name in col_names:
         st.session_state[col_name] = st.session_state.curr_row[col_name]
+
+
+def update_df() -> None:
+    edited_rows = st.session_state.data_editor["edited_rows"]
+    for idx, col in edited_rows.items():
+        for col_name, value in col.items():
+            st.session_state.df[idx, col_name] = value
+    st.session_state.curr_row = st.session_state.df.row(
+        st.session_state.curr_idx, named=True
+    )
+    update_values()
 
 
 def iterate(direction: str) -> None:
@@ -74,7 +85,7 @@ def iterate(direction: str) -> None:
     )
     st.session_state.to_idx = st.session_state.curr_idx
     st.session_state.to_id = ids[st.session_state.curr_idx]
-    update_label()
+    update_values()
 
 
 def to_id(ids: list) -> None:
@@ -83,7 +94,7 @@ def to_id(ids: list) -> None:
         st.session_state.curr_idx, named=True
     )
     st.session_state.to_idx = st.session_state.curr_idx
-    update_label()
+    update_values()
 
 
 def to_idx(ids: list) -> None:
@@ -92,7 +103,7 @@ def to_idx(ids: list) -> None:
         st.session_state.curr_idx, named=True
     )
     st.session_state.to_id = ids[st.session_state.to_idx]
-    update_label()
+    update_values()
 
 
 def save(metadata_file: Path) -> None:
@@ -303,7 +314,7 @@ if "to_idx" not in st.session_state:
 female_input.checkbox(
     label="Is female",
     value=st.session_state.curr_row["female"],
-    on_change=update_df,
+    on_change=update_label,
     kwargs={"col_name": "female"},
     key="female",
     help="Check if the speaker in the video is female.",
@@ -313,7 +324,7 @@ dialect_input.radio(
     options=["northern", "central", "southern", "unknown"],
     horizontal=True,
     index=["northern", "central", "southern", "unknown"].index(st.session_state.curr_row["dialect"]),
-    on_change=update_df,
+    on_change=update_label,
     kwargs={"col_name": "dialect"},
     key="dialect",
     help="Select the dialect of the speaker in the video.",
@@ -321,7 +332,7 @@ dialect_input.radio(
 english_input.checkbox(
     label="Has English",
     value=st.session_state.curr_row["english"],
-    on_change=update_df,
+    on_change=update_label,
     kwargs={"col_name": "english"},
     key="english",
     help="Check if the transcript has English words.",
@@ -329,7 +340,7 @@ english_input.checkbox(
 error_input.checkbox(
     label="Has error",
     value=st.session_state.curr_row["error"],
-    on_change=update_df,
+    on_change=update_label,
     kwargs={"col_name": "error"},
     key="error",
     help="Check if the example has an error.",
@@ -337,7 +348,7 @@ error_input.checkbox(
 transcript_input.text_area(
     label="Transcript",
     value=st.session_state.curr_row["transcript"],
-    on_change=update_df,
+    on_change=update_label,
     kwargs={"col_name": "transcript"},
     key="transcript",
     help="Transcript of the video.",
@@ -345,20 +356,22 @@ transcript_input.text_area(
 done_input.checkbox(
     label="Is done",
     value=st.session_state.curr_row["done"],
-    on_change=update_df,
+    on_change=update_label,
     kwargs={"col_name": "done"},
     key="done",
     help="Check if the video has been annotated.",
 )
 
 # Show the metadata view ===========================================================
-data_editor.dataframe(
+data_editor.data_editor(
     st.session_state.df,
     use_container_width=True,
     hide_index=False,
     column_order=[
         "id", "transcript", "female", "dialect", "english", "error", "done"
     ],
+    key="data_editor",
+    on_change=update_df,
     column_config={
         "id": st.column_config.Column(
             label="ID",
