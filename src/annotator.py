@@ -162,14 +162,15 @@ prev_id_button = media_container.container()
 
 st.divider()
 
-metric_cols = st.columns(7)
+metric_cols = st.columns(8)
 num_examples_display = metric_cols[0].empty()
 progress_display = metric_cols[1].empty()
-num_male_display = metric_cols[2].empty()
-num_female_display = metric_cols[3].empty()
-num_north_dialect_display = metric_cols[4].empty()
-num_central_dialect_display = metric_cols[5].empty()
-num_south_dialect_display = metric_cols[6].empty()
+num_female_display = metric_cols[2].empty()
+num_north_dialect_display = metric_cols[3].empty()
+num_central_dialect_display = metric_cols[4].empty()
+num_south_dialect_display = metric_cols[5].empty()
+num_english_display = metric_cols[6].empty()
+num_error_display = metric_cols[7].empty()
 
 # Set the sidebar layout -----------------------------------------------------------
 st.sidebar.header("Settings")
@@ -482,10 +483,6 @@ progress_display.metric(
     "Progress",
     value=f"{len(st.session_state.df.filter(pl.col('done'))) / num_examples:.2f}%"
 )
-num_male_display.metric(
-    "Male examples",
-    value=f"{len(st.session_state.df.filter(~pl.col('female'))):,}",
-)
 num_female_display.metric(
     "Female examples",
     value=f"{len(st.session_state.df.filter(pl.col('female'))):,}",
@@ -501,6 +498,14 @@ num_central_dialect_display.metric(
 num_south_dialect_display.metric(
     "Southern dialect",
     value=f"{len(st.session_state.df.filter(pl.col('dialect') == 'southern')):,}",
+)
+num_english_display.metric(
+    "English examples",
+    value=f"{len(st.session_state.df.filter(pl.col('english'))):,}",
+)
+num_error_display.metric(
+    "Error examples",
+    value=f"{len(st.session_state.df.filter(pl.col('error'))):,}",
 )
 
 # Save the annotations ============================================================
