@@ -17,6 +17,51 @@ def add_columns(df) -> pl.DataFrame:
     return df
 
 
+def load_metadata(metadata_df: pl.DataFrame) -> pl.DataFrame:
+    st.session_state.metadata_df = add_columns(st.session_state.metadata_df)
+
+    visual_dir = st.session_state.data_dir / "visual"
+    audio_dir = st.session_state.data_dir / "audio"
+    st.session_state.shards = get_available_shards(
+        visual_dir, audio_dir, st.session_state.metadata_df["shard"].to_list()
+    )
+    st.session_state.available_df = (
+        st.session_state.metadata_df
+        .filter(
+            (pl.col("shard").is_in(st.session_state.shards))
+            & (pl.col("split").is_in(st.session_state.splits))
+        )
+        .sort("id")
+    )
+    st.session_state.df = st.session_state.available_df
+    st.session_state.start_row = 0
+    st.session_state.end_row = len(st.session_state.available_df)
+
+    st.session_state.curr_idx = 0
+    st.session_state.curr_row = st.session_state.df.row(
+        st.session_state.curr_idx, named=True
+    )
+    st.session_state.to_id = st.session_state.curr_row["id"]
+    st.session_state.to_idx = st.session_state.curr_idx
+
+
+def select_subset() -> None:
+    if st.session_state.subset == "100-hour":
+        st.session_state.metadata_file_name = "metadata_100.parquet"
+    elif st.session_state.subset == "200-hour":
+        st.session_state.metadata_file_name = "metadata_200.parquet"
+    else:
+        st.session_state.metadata_file_name = "metadata.parquet"
+    st.session_state.metadata_file = st.session_state.data_dir / st.session_state.metadata_file_name
+    st.session_state.medata_df = pl.read_parquet(st.session_state.metadata_file)
+    load_metadata(st.session_state.metadata_df)
+
+
+def upload_file() -> None:
+    st.session_state.metadata_df = pl.read_parquet(st.session_state.uploaded_file.read())
+    load_metadata(st.session_state.metadata_df)
+
+
 def get_available_shards(
     visual_dir: Path,
     audio_dir: Path,
@@ -147,9 +192,9 @@ def save_as() -> None:
     )
 
 
-def save(metadata_file: Path) -> None:
+def save() -> None:
     merge_df()
-    st.session_state.metadata_df.write_parquet(metadata_file)
+    st.session_state.metadata_df.write_parquet(st.session_state.metadata_file)
 
 
 # Set the layout ===================================================================
@@ -205,8 +250,8 @@ num_error_display = metric_cols[7].empty()
 # Set the sidebar layout -----------------------------------------------------------
 st.sidebar.header("Settings")
 data_dir_input = st.sidebar.container()
-subset_input = st.sidebar.container()
-uploaded_file_input = st.sidebar.container()
+file_mode_input = st.sidebar.container()
+file_input = st.sidebar.container()
 shard_input = st.sidebar.container()
 split_input = st.sidebar.container()
 num_examples_col_1, num_examples_col_2 = st.sidebar.columns(2)
@@ -234,25 +279,48 @@ audio_dir = st.session_state.data_dir / "audio"
 if not audio_dir.exists():
     st.error("Audio directory not found.")
     st.stop()
-# Input subset ---------------------------------------------------------------------
-subset = subset_input.selectbox(
-    "Subset",
-    options=["1000-hour", "100-hour", "200-hour"],
-    help="Select the subset to annotate",
+# Input file mode ------------------------------------------------------------------
+file_mode_input.selectbox(
+    label="File mode",
+    options=["From folder", "Uploading"],
+    index=0,
+    key="file_mode",
+    help="Select the file mode",
 )
-if subset == "100-hour":
-    metadata_file_name = "metadata_100.parquet"
-elif subset == "200-hour":
-    metadata_file_name = "metadata_200.parquet"
-else:
-    metadata_file_name = "metadata.parquet"
-metadata_file = st.session_state.data_dir / metadata_file_name
-if not metadata_file.exists():
-    st.error("Metadata file not found.")
-    st.stop()
+# Input subset ---------------------------------------------------------------------
+if st.session_state.file_mode == "From folder":
+    file_input.selectbox(
+        label="Subset",
+        options=["1000-hour", "100-hour", "200-hour"],
+        on_change=select_subset,
+        key="subset",
+        help="Select the subset to annotate",
+    )
+# Upload metadata ------------------------------------------------------------------
+elif st.session_state.file_mode == "Uploading":
+    file_input.file_uploader(
+        label="Upload metadata",
+        type=["parquet"],
+        on_change=upload_file,
+        key="uploaded_file",
+        help="Upload a metadata file",
+    )
 # Load metadata --------------------------------------------------------------------
+if "metadata_file_name" not in st.session_state:
+    if st.session_state.subset == "100-hour":
+        st.session_state.metadata_file_name = "metadata_100.parquet"
+    elif st.session_state.subset == "200-hour":
+        st.session_state.metadata_file_name = "metadata_200.parquet"
+    else:
+        st.session_state.metadata_file_name = "metadata.parquet"
+if "metadata_file" not in st.session_state:
+    st.session_state.metadata_file = st.session_state.data_dir / st.session_state.metadata_file_name
+    if not st.session_state.metadata_file.exists():
+        st.error("Metadata file not found.")
+        st.stop()
+
 if "metadata_df" not in st.session_state:
-    st.session_state.metadata_df = pl.read_parquet(metadata_file)
+    st.session_state.metadata_df = pl.read_parquet(st.session_state.metadata_file)
     st.session_state.metadata_df = add_columns(st.session_state.metadata_df)
 
 available_shards = get_available_shards(
@@ -551,7 +619,7 @@ save_as_button.button(
 save_button.button(
     "Save",
     on_click=save,
-    kwargs={"metadata_file": metadata_file},
     use_container_width=True,
+    disabled=st.session_state.file_mode == "Uploading",
     help="Save the annotations",
 )
