@@ -17,7 +17,7 @@ def add_columns(df) -> pl.DataFrame:
     return df
 
 
-def load_metadata(metadata_df: pl.DataFrame) -> pl.DataFrame:
+def load_metadata() -> pl.DataFrame:
     st.session_state.metadata_df = add_columns(st.session_state.metadata_df)
 
     st.session_state.shards = get_available_shards()
@@ -50,13 +50,20 @@ def select_subset() -> None:
     else:
         st.session_state.metadata_file_name = "metadata.parquet"
     st.session_state.metadata_file = st.session_state.data_dir / st.session_state.metadata_file_name
-    st.session_state.medata_df = pl.read_parquet(st.session_state.metadata_file)
-    load_metadata(st.session_state.metadata_df)
+    st.session_state.metadata_df = pl.read_parquet(st.session_state.metadata_file)
+    load_metadata()
 
 
 def upload_file() -> None:
     st.session_state.metadata_df = pl.read_parquet(st.session_state.uploaded_file.read())
-    load_metadata(st.session_state.metadata_df)
+    load_metadata()
+
+
+def select_file_mode() -> None:
+    if st.session_state.file_mode == "Default":
+        if "subset" not in st.session_state:
+            st.session_state.subset = "1000-hour"
+        select_subset()
 
 
 def get_available_shards() -> set:
@@ -290,13 +297,14 @@ if not audio_dir.exists():
 # Input file mode ------------------------------------------------------------------
 file_mode_input.selectbox(
     label="File mode",
-    options=["From folder", "Uploading"],
+    options=["Default", "Uploading"],
     index=0,
+    on_change=select_file_mode,
     key="file_mode",
     help="Select the file mode",
 )
 # Input subset ---------------------------------------------------------------------
-if st.session_state.file_mode == "From folder":
+if st.session_state.file_mode == "Default":
     file_input.selectbox(
         label="Subset",
         options=["1000-hour", "100-hour", "200-hour"],
