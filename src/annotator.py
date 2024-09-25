@@ -28,7 +28,7 @@ def load_metadata() -> pl.DataFrame:
             (pl.col("shard").is_in(st.session_state.shards))
             & (pl.col("split").is_in(st.session_state.splits))
         )
-        .sort("id")
+        .sort(["channel", "id"])
     )
     st.session_state.df = st.session_state.available_df
     st.session_state.start_row = 0
@@ -96,7 +96,7 @@ def filter() -> None:
             pl.col("split").is_in(st.session_state.splits)
         )
 
-    st.session_state.df = st.session_state.df.sort("id")
+    st.session_state.df = st.session_state.df.sort(["channel", "id"])
     st.session_state.df = st.session_state.df.slice(
         st.session_state.start_row,
         st.session_state.end_row
@@ -352,7 +352,7 @@ if "available_df" not in st.session_state:
             (pl.col("shard").is_in(st.session_state.shards))
             & (pl.col("split").is_in(st.session_state.splits))
         )
-        .sort("id")
+        .sort(["channel", "id"])
     )
 if "start_row" not in st.session_state:
     st.session_state.start_row = 0
@@ -470,7 +470,7 @@ data_display.dataframe(
     use_container_width=True,
     hide_index=False,
     column_order=[
-        "id", "transcript", "female", "dialect", "english", "error", "done"
+        "id", "transcript", "female", "dialect", "english", "error", "done", "channel",
     ],
     selection_mode="single-row",
     on_select=select,
@@ -479,11 +479,17 @@ data_display.dataframe(
         "id": st.column_config.Column(
             label="ID",
             width="small",
-            disabled=True,
             help="Unique identifier for the video",
         ),
         "shard": None,
         "split": None,
+        "channel": st.column_config.TextColumn(
+            label="Channel",
+            width="small",
+            help="Channel number of the video",
+        ),
+        "ori_video": None,
+        "topic": None,
         "fps": None,
         "sampling_rate": None,
         "video_num_frames": None,
