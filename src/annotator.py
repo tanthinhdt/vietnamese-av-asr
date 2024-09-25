@@ -115,17 +115,13 @@ def update_values() -> None:
         st.session_state[col_name] = st.session_state.curr_row[col_name]
 
 
-def select() -> None:
-    ids = st.session_state.df["id"].to_list()
-    if len(st.session_state.dataframe.selection["rows"]) == 0:
-        return
-    selected_row_idx = st.session_state.dataframe.selection["rows"][0]
-    st.session_state.curr_idx = selected_row_idx
+def update_df() -> None:
+    for idx, cols in st.session_state.data_editor["edited_rows"].items():
+        for col_name, value in cols.items():
+            st.session_state.df[idx, col_name] = value
     st.session_state.curr_row = st.session_state.df.row(
         st.session_state.curr_idx, named=True
     )
-    st.session_state.to_idx = st.session_state.curr_idx
-    st.session_state.to_id = ids[st.session_state.curr_idx]
     update_values()
 
 
@@ -465,20 +461,20 @@ done_input.checkbox(
 )
 
 # Show the metadata view ===========================================================
-data_display.dataframe(
+data_display.data_editor(
     st.session_state.df,
     use_container_width=True,
     hide_index=False,
     column_order=[
         "id", "transcript", "female", "dialect", "english", "error", "done", "channel",
     ],
-    selection_mode="single-row",
-    on_select=select,
-    key="dataframe",
+    on_change=update_df,
+    key="data_editor",
     column_config={
         "id": st.column_config.Column(
             label="ID",
             width="small",
+            disabled=True,
             help="Unique identifier for the video",
         ),
         "shard": None,
@@ -486,6 +482,7 @@ data_display.dataframe(
         "channel": st.column_config.TextColumn(
             label="Channel",
             width="small",
+            disabled=True,
             help="Channel number of the video",
         ),
         "ori_video": None,
