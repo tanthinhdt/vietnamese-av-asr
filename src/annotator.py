@@ -180,16 +180,25 @@ def merge_df() -> None:
 
 @st.dialog("Save as")
 def save_as() -> None:
-    with st.status("Merging annotations..."):
-        merge_df()
-    st.download_button(
-        "Download",
-        data=st.session_state.metadata_df.to_pandas().to_parquet(),
-        file_name="annotated_metadata.parquet",
-        on_click=save_as,
-        use_container_width=True,
-        help="Save the annotations as a new file",
-    )
+    @st.fragment
+    def download(data) -> None:
+        st.download_button(
+            "Download",
+            data=data,
+            file_name="annotated_metadata.parquet",
+            use_container_width=True,
+            key="download_button",
+            help="Save the annotations as a new file",
+        )
+
+    progress_bar = st.progress(0, "Merging dataframes...")
+    merge_df()
+    progress_bar.progress(1 / 3, "Converting to pandas...")
+    pd_df = st.session_state.metadata_df.to_pandas()
+    progress_bar.progress(2 / 3, "Exporting as parquet...")
+    data = pd_df.to_parquet()
+    progress_bar.progress(3 / 3, "Done")
+    download(data)
 
 
 def save() -> None:
