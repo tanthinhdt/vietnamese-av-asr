@@ -107,7 +107,7 @@ def to_idx(ids: list) -> None:
     update_values()
 
 
-def save(metadata_file: Path) -> None:
+def merge_df() -> None:
     unchanged_columns = [
         "id", "shard", "split",
         "fps", "sampling_rate",
@@ -131,6 +131,24 @@ def save(metadata_file: Path) -> None:
         )
         .drop([f"{col}_right" for col in changed_columns])
     )
+
+
+@st.dialog("Save as")
+def save_as() -> None:
+    with st.status("Merging annotations..."):
+        merge_df()
+    st.download_button(
+        "Download",
+        data=st.session_state.metadata_df.to_pandas().to_parquet(),
+        file_name="annotated_metadata.parquet",
+        on_click=save_as,
+        use_container_width=True,
+        help="Save the annotations as a new file",
+    )
+
+
+def save(metadata_file: Path) -> None:
+    merge_df()
     st.session_state.metadata_df.write_parquet(metadata_file)
 
 
@@ -524,6 +542,12 @@ num_error_display.metric(
 )
 
 # Save the annotations ============================================================
+save_as_button.button(
+    "Save as",
+    on_click=save_as,
+    use_container_width=True,
+    help="Save the annotations as a new file",
+)
 save_button.button(
     "Save",
     on_click=save,
