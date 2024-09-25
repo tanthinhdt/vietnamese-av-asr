@@ -117,6 +117,8 @@ def update_values() -> None:
 
 def select() -> None:
     ids = st.session_state.df["id"].to_list()
+    if len(st.session_state.dataframe.selection["rows"]) == 0:
+        return
     selected_row_idx = st.session_state.dataframe.selection["rows"][0]
     st.session_state.curr_idx = selected_row_idx
     st.session_state.curr_row = st.session_state.df.row(
