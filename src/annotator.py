@@ -168,7 +168,7 @@ metadata_container = label_area_col_1.container(
     height=label_area_height,
     border=False,
 )
-data_editor = metadata_container.container()
+data_display = metadata_container.container()
 fields_input_cols = metadata_container.columns([3, 1, 1, 1])
 dialect_input = fields_input_cols[0].container()
 female_input = fields_input_cols[1].container()
@@ -182,8 +182,8 @@ media_container = label_area_col_2.container(
     height=label_area_height,
     border=False,
 )
-video_output = media_container.container()
-audio_output = media_container.container()
+video_display = media_container.container()
+audio_display = media_container.container()
 media_area_col_1, media_area_col_2 = media_container.columns(2)
 to_id_input = media_area_col_1.container()
 to_idx_input = media_area_col_2.container()
@@ -382,7 +382,7 @@ done_input.checkbox(
 )
 
 # Show the metadata view ===========================================================
-data_editor.dataframe(
+data_display.dataframe(
     st.session_state.df,
     use_container_width=True,
     hide_index=False,
@@ -447,9 +447,9 @@ visual_path = (
     / f"{st.session_state.curr_row['id']}.mp4"
 )
 if visual_path.exists():
-    video_output.video(str(visual_path), autoplay=True, loop=True)
+    video_display.video(str(visual_path), autoplay=True, loop=True)
 else:
-    video_output.error(f"Video file {visual_path} does not exist.")
+    video_display.error(f"Video file {visual_path} does not exist.")
 
 audio_path = (
     st.session_state.data_dir / "audio"
@@ -457,9 +457,9 @@ audio_path = (
     / f"{st.session_state.curr_row['id']}.wav"
 )
 if audio_path.exists():
-    audio_output.audio(str(audio_path), autoplay=True, loop=True)
+    audio_display.audio(str(audio_path), autoplay=True, loop=True)
 else:
-    audio_output.error(f"Audio file {audio_path} does not exist.")
+    audio_display.error(f"Audio file {audio_path} does not exist.")
 
 # Show navigation buttons ==========================================================
 lock_next_id = any(
