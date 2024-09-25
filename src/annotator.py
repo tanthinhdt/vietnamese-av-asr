@@ -86,20 +86,21 @@ def get_available_splits() -> set:
 
 
 def filter() -> None:
-    if len(st.session_state.shards) > 0:
-        st.session_state.df = st.session_state.available_df.filter(
+    if len(st.session_state.shards) == 0:
+        st.session_state.shards = get_available_shards()
+    if len(st.session_state.splits) == 0:
+        st.session_state.splits = get_available_splits()
+    st.session_state.df = (
+        st.session_state.available_df
+        .filter(
             pl.col("shard").is_in(st.session_state.shards)
+            & pl.col("split").is_in(st.session_state.splits)
         )
-
-    if len(st.session_state.splits) > 0:
-        st.session_state.df = st.session_state.available_df.filter(
-            pl.col("split").is_in(st.session_state.splits)
+        .sort(["channel", "id"])
+        .slice(
+            st.session_state.start_row,
+            st.session_state.end_row - st.session_state.start_row,
         )
-
-    st.session_state.df = st.session_state.df.sort(["channel", "id"])
-    st.session_state.df = st.session_state.df.slice(
-        st.session_state.start_row,
-        st.session_state.end_row
     )
 
 
@@ -339,7 +340,7 @@ if "metadata_df" not in st.session_state:
 
 if "shards" not in st.session_state:
     st.session_state.shards = get_available_shards()
-if "split" not in st.session_state:
+if "splits" not in st.session_state:
     st.session_state.splits = get_available_splits()
 if "available_df" not in st.session_state:
     st.session_state.available_df = (
