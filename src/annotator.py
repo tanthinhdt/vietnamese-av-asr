@@ -64,18 +64,19 @@ def update_values() -> None:
         st.session_state[col_name] = st.session_state.curr_row[col_name]
 
 
-def update_df() -> None:
-    edited_rows = st.session_state.data_editor["edited_rows"]
-    for idx, col in edited_rows.items():
-        for col_name, value in col.items():
-            st.session_state.df[idx, col_name] = value
+def select() -> None:
+    ids = st.session_state.df["id"].to_list()
+    selected_row_idx = st.session_state.dataframe.selection["rows"][0]
+    st.session_state.curr_idx = selected_row_idx
     st.session_state.curr_row = st.session_state.df.row(
         st.session_state.curr_idx, named=True
     )
+    st.session_state.to_idx = st.session_state.curr_idx
+    st.session_state.to_id = ids[st.session_state.curr_idx]
     update_values()
 
 
-def iterate(direction: str) -> None:
+def iterate(direction: str, ids: list) -> None:
     if direction == "forward":
         st.session_state.curr_idx += 1
     elif direction == "backward":
@@ -363,15 +364,16 @@ done_input.checkbox(
 )
 
 # Show the metadata view ===========================================================
-data_editor.data_editor(
+data_editor.dataframe(
     st.session_state.df,
     use_container_width=True,
     hide_index=False,
     column_order=[
         "id", "transcript", "female", "dialect", "english", "error", "done"
     ],
-    key="data_editor",
-    on_change=update_df,
+    selection_mode="single-row",
+    on_select=select,
+    key="dataframe",
     column_config={
         "id": st.column_config.Column(
             label="ID",
@@ -449,21 +451,21 @@ lock_next_id = any(
     ]
 )
 next_id_button.button(
-    "Next ID",
+    "Next example",
     use_container_width=True,
     on_click=iterate,
-    kwargs={"direction": "forward"},
+    kwargs={"direction": "forward", "ids": ids},
     disabled=lock_next_id,
-    help="Go to the next ID.",
+    help="Go to the next example.",
 )
 
 prev_id_button.button(
-    "Previous ID",
+    "Previous example",
     use_container_width=True,
     on_click=iterate,
-    kwargs={"direction": "backward"},
+    kwargs={"direction": "backward", "ids": ids},
     disabled=st.session_state.curr_idx == 0,
-    help="Go to the previous ID.",
+    help="Go to the previous example.",
 )
 
 to_id_input.selectbox(
