@@ -20,11 +20,8 @@ def add_columns(df) -> pl.DataFrame:
 def load_metadata(metadata_df: pl.DataFrame) -> pl.DataFrame:
     st.session_state.metadata_df = add_columns(st.session_state.metadata_df)
 
-    visual_dir = st.session_state.data_dir / "visual"
-    audio_dir = st.session_state.data_dir / "audio"
-    st.session_state.shards = get_available_shards(
-        visual_dir, audio_dir, st.session_state.metadata_df["shard"].to_list()
-    )
+    st.session_state.shards = get_available_shards()
+    st.session_state.splits = get_available_splits()
     st.session_state.available_df = (
         st.session_state.metadata_df
         .filter(
@@ -62,21 +59,23 @@ def upload_file() -> None:
     load_metadata(st.session_state.metadata_df)
 
 
-def get_available_shards(
-    visual_dir: Path,
-    audio_dir: Path,
-    shards_in_metadata: list,
-) -> set:
+def get_available_shards() -> set:
+    visual_dir = st.session_state.data_dir / "visual"
+    audio_dir = st.session_state.data_dir / "audio"
     available_shards = (
         set([f.name for f in visual_dir.iterdir() if f.is_dir()])
         .intersection([f.name for f in audio_dir.iterdir() if f.is_dir()])
-        .intersection(shards_in_metadata)
+        .intersection(st.session_state.metadata_df["shard"].unique().to_list())
     )
     if len(available_shards) == 0:
         st.error("No shards found in the data directory.")
         st.stop()
         return set()
     return sorted(available_shards)
+
+
+def get_available_splits() -> set:
+    return sorted(st.session_state.metadata_df["split"].unique().to_list())
 
 
 def filter() -> None:
@@ -332,13 +331,10 @@ if "metadata_df" not in st.session_state:
     st.session_state.metadata_df = pl.read_parquet(st.session_state.metadata_file)
     st.session_state.metadata_df = add_columns(st.session_state.metadata_df)
 
-available_shards = get_available_shards(
-    visual_dir, audio_dir, st.session_state.metadata_df["shard"].to_list()
-)
 if "shards" not in st.session_state:
-    st.session_state.shards = available_shards
+    st.session_state.shards = get_available_shards()
 if "split" not in st.session_state:
-    st.session_state.splits = ["train", "valid", "test"]
+    st.session_state.splits = get_available_splits()
 if "available_df" not in st.session_state:
     st.session_state.available_df = (
         st.session_state.metadata_df
@@ -358,7 +354,7 @@ if "df" not in st.session_state:
 # Filter metadata ==================================================================
 shard_input.multiselect(
     "Shard(s)",
-    options=available_shards,
+    options=st.session_state.shards,
     default=st.session_state.shards,
     on_change=filter,
     key="shards",
@@ -366,7 +362,7 @@ shard_input.multiselect(
 )
 split_input.multiselect(
     "Split",
-    options=["train", "valid", "test"],
+    options=st.session_state.splits,
     default=st.session_state.splits,
     on_change=filter,
     key="splits",
