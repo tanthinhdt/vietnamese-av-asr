@@ -176,7 +176,7 @@ def to_idx(ids: list) -> None:
 
 def merge_df() -> None:
     unchanged_columns = [
-        "id", "shard", "split",
+        "id", "shard", "split", "channel", "ori_video", "topic",
         "fps", "sampling_rate",
         "video_num_frames", "audio_num_frames",
     ]
