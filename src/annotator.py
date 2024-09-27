@@ -17,6 +17,15 @@ def add_columns(df) -> pl.DataFrame:
     return df
 
 
+def reset_iterator() -> None:
+    st.session_state.curr_idx = 0
+    st.session_state.curr_row = st.session_state.df.row(
+        st.session_state.curr_idx, named=True
+    )
+    st.session_state.to_id = st.session_state.curr_row["id"]
+    st.session_state.to_idx = st.session_state.curr_idx
+
+
 def load_metadata() -> pl.DataFrame:
     st.session_state.metadata_df = add_columns(st.session_state.metadata_df)
 
@@ -34,12 +43,7 @@ def load_metadata() -> pl.DataFrame:
     st.session_state.start_row = 0
     st.session_state.end_row = len(st.session_state.available_df)
 
-    st.session_state.curr_idx = 0
-    st.session_state.curr_row = st.session_state.df.row(
-        st.session_state.curr_idx, named=True
-    )
-    st.session_state.to_id = st.session_state.curr_row["id"]
-    st.session_state.to_idx = st.session_state.curr_idx
+    reset_iterator()
 
 
 def select_subset() -> None:
@@ -90,18 +94,31 @@ def filter() -> None:
         st.session_state.shards = get_available_shards()
     if len(st.session_state.splits) == 0:
         st.session_state.splits = get_available_splits()
-    st.session_state.df = (
-        st.session_state.available_df
+
+    st.session_state.available_df = (
+        st.session_state.metadata_df
         .filter(
             pl.col("shard").is_in(st.session_state.shards)
             & pl.col("split").is_in(st.session_state.splits)
         )
         .sort(["channel", "id"])
-        .slice(
-            st.session_state.start_row,
-            st.session_state.end_row - st.session_state.start_row,
-        )
     )
+    st.session_state.df = st.session_state.available_df
+
+    st.session_state.start_row = 0
+    st.session_state.end_row = len(st.session_state.available_df)
+
+    reset_iterator()
+    update_values()
+
+
+def slice() -> None:
+    st.session_state.df = st.session_state.available_df.slice(
+        st.session_state.start_row,
+        st.session_state.end_row - st.session_state.start_row,
+    )
+    reset_iterator()
+    update_values()
 
 
 def update_label(col_name: str) -> None:
@@ -361,7 +378,7 @@ if "df" not in st.session_state:
 # Filter metadata ==================================================================
 shard_input.multiselect(
     "Shard(s)",
-    options=st.session_state.shards,
+    options=get_available_shards(),
     default=st.session_state.shards,
     on_change=filter,
     key="shards",
@@ -369,7 +386,7 @@ shard_input.multiselect(
 )
 split_input.multiselect(
     "Split",
-    options=st.session_state.splits,
+    options=get_available_splits(),
     default=st.session_state.splits,
     on_change=filter,
     key="splits",
@@ -381,7 +398,7 @@ start_row_input.number_input(
     max_value=st.session_state.end_row,
     value=st.session_state.start_row,
     step=100,
-    on_change=filter,
+    on_change=slice,
     key="start_row",
     help="Start row of the table",
 )
@@ -391,7 +408,7 @@ end_row_input.number_input(
     max_value=len(st.session_state.available_df),
     value=st.session_state.end_row,
     step=100,
-    on_change=filter,
+    on_change=slice,
     key="end_row",
     help="End row of the table",
 )
