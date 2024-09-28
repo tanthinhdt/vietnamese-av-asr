@@ -3,7 +3,7 @@ import streamlit as st
 from pathlib import Path
 
 
-def add_columns(df) -> pl.DataFrame:
+def add_columns(df: pl.DataFrame) -> pl.DataFrame:
     if "female" not in df.columns:
         df = df.with_columns(female=pl.Series([False] * len(df)))
     if "dialect" not in df.columns:
@@ -174,7 +174,7 @@ def to_idx(ids: list) -> None:
     update_values()
 
 
-def merge_df() -> None:
+def merge_df(src_df: pl.DataFrame, dst_df: pl.DataFrame) -> pl.DataFrame:
     unchanged_columns = [
         "id", "shard", "split", "channel", "ori_video", "topic",
         "fps", "sampling_rate",
@@ -183,10 +183,10 @@ def merge_df() -> None:
     changed_columns = [
         "transcript", "female", "dialect", "english", "done", "error",
     ]
-    st.session_state.metadata_df = (
-        st.session_state.df
+    dst_df = (
+        src_df
         .join(
-            st.session_state.metadata_df,
+            dst_df,
             on=unchanged_columns,
             how="right",
         )
@@ -198,23 +198,58 @@ def merge_df() -> None:
         )
         .drop([f"{col}_right" for col in changed_columns])
     )
+    return dst_df
+
+
+@st.fragment
+def download(data, file_name: str = "annotated_metadata.parquet") -> None:
+    st.download_button(
+        "Download",
+        data=data,
+        file_name=file_name,
+        use_container_width=True,
+        key="download_button",
+        help="Save the annotations as a new file",
+    )
+
+
+@st.dialog("Synchronizing annotations", width="large")
+def sync_annotations() -> None:
+    col_1, col_2 = st.columns(2)
+    src_file = col_1.file_uploader(
+        "Source",
+        type=["parquet"],
+        key="uploaded_metadata",
+        help="Upload the metadata file to merge",
+    )
+    dst_file = col_2.file_uploader(
+        "Destination",
+        type=["parquet"],
+        key="destination_metadata",
+        help="Upload the metadata file to merge into",
+    )
+
+    if st.button(
+        "Sync",
+        disabled=src_file is None or dst_file is None,
+        use_container_width=True,
+        help="Sync the annotations",
+    ):
+        src_df = pl.read_parquet(src_file.read())
+        src_df = add_columns(src_df)
+        dst_df = pl.read_parquet(dst_file.read())
+        dst_df = add_columns(dst_df)
+        data = merge_df(src_df, dst_df).to_pandas().to_parquet()
+        download(data, file_name="synced_metadata.parquet")
 
 
 @st.dialog("Save as")
 def save_as() -> None:
-    @st.fragment
-    def download(data) -> None:
-        st.download_button(
-            "Download",
-            data=data,
-            file_name="annotated_metadata.parquet",
-            use_container_width=True,
-            key="download_button",
-            help="Save the annotations as a new file",
-        )
-
     progress_bar = st.progress(0, "Merging dataframes...")
-    merge_df()
+    st.session_state.metadata_df = merge_df(
+        src_df=st.session_state.df,
+        dst_df=st.session_state.metadata_df,
+    )
     progress_bar.progress(1 / 3, "Converting to pandas...")
     pd_df = st.session_state.metadata_df.to_pandas()
     progress_bar.progress(2 / 3, "Exporting as parquet...")
@@ -224,7 +259,10 @@ def save_as() -> None:
 
 
 def save() -> None:
-    merge_df()
+    st.session_state.metadata_df = merge_df(
+        src_df=st.session_state.df,
+        dst_df=st.session_state.metadata_df,
+    )
     st.session_state.metadata_df.write_parquet(st.session_state.metadata_file)
 
 
@@ -288,8 +326,7 @@ split_input = st.sidebar.container()
 num_examples_col_1, num_examples_col_2 = st.sidebar.columns(2)
 start_row_input = num_examples_col_1.container()
 end_row_input = num_examples_col_2.container()
-start_annotating_button = st.sidebar.container()
-stop_annotating_button = st.sidebar.container()
+sync_annotations_button = st.sidebar.container()
 save_as_button = st.sidebar.container()
 save_button = st.sidebar.container()
 
@@ -411,6 +448,13 @@ end_row_input.number_input(
     on_change=slice,
     key="end_row",
     help="End row of the table",
+)
+sync_annotations_button.button(
+    "Sync",
+    on_click=sync_annotations,
+    use_container_width=True,
+    key="sync_annotations",
+    help="Sync the annotations",
 )
 
 # Get current row ==================================================================
