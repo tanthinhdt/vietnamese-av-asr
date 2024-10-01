@@ -360,7 +360,7 @@ file_mode_input.selectbox(
 if st.session_state.file_mode == "Default":
     file_input.selectbox(
         label="Subset",
-        options=["1000-hour", "100-hour", "200-hour"],
+        options=["100-hour", "200-hour", "1000-hour"],
         on_change=select_subset,
         key="subset",
         help="Select the subset to annotate",
@@ -662,7 +662,7 @@ num_examples_display.metric(
 )
 progress_display.metric(
     "Progress",
-    value=f"{len(st.session_state.df.filter(pl.col('done'))) / num_examples:.2f}%"
+    value=f"{len(st.session_state.df.filter(pl.col('done'))) / num_examples * 100:.2f}%"
 )
 num_female_display.metric(
     "Female examples",
