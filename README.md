@@ -1,6 +1,6 @@
 # ViAVSP-LLM (Vietnamese Audio-Visual Speech Processing incorporated with LLM)
 
-This is the PyTorch code for [Vietnamese Automatic Speech Recognition Utilizing Auditory and Visual Data](docs/report.pdf). This code is developed on the code of [VSP-LLM](https://github.com/Sally-SH/VSP-LLM).
+This is the PyTorch code for [Vietnamese Automatic Speech Recognition Utilizing Auditory and Visual Data](https://doi.org/10.1109/MAPR67746.2025.11133884). This code is developed on the code of [VSP-LLM](https://github.com/Sally-SH/VSP-LLM).
 
 # Introduction
 
